@@ -31,8 +31,16 @@ def plot_nested_map_sorted(nested_map):
     topic_totals = {topic: sum(submsg.values()) for topic, submsg in nested_map.items()}
     sorted_topics = sorted(topic_totals.keys(), key=lambda t: topic_totals[t], reverse=True)
 
-    # Step 2: Gather all submessages
-    submessages = sorted({submsg for subs in nested_map.values() for submsg in subs})
+    # Calculate the total number of messages across all topics
+    total_messages = sum(topic_totals.values())
+    print(f"Total number of messages: {total_messages}")
+
+    # Step 2: Define custom order for submessages
+    custom_order = ["DATA", "HEARTBEAT", "ACKNACK", "GAP"]
+    submessages = sorted(
+        {submsg for subs in nested_map.values() for submsg in subs},
+        key=lambda x: custom_order.index(x) if x in custom_order else len(custom_order)
+    )
 
     # Step 3: Organize data for plotting
     data = {submsg: [] for submsg in submessages}
@@ -40,18 +48,20 @@ def plot_nested_map_sorted(nested_map):
         for submsg in submessages:
             data[submsg].append(nested_map[topic].get(submsg, 0))
 
-    # Step 4: Plot
+    # Step 4: Plot as a stacked bar chart
     x = range(len(sorted_topics))
-    bar_width = 0.15
     fig, ax = plt.subplots(figsize=(20, 13))
 
-    for i, submsg in enumerate(submessages):
+    bottom = [0] * len(sorted_topics)  # Initialize the bottom of the stack
+    for submsg in submessages:
         ax.bar(
-            [xi + i * bar_width for xi in x],
+            x,
             data[submsg],
-            width=bar_width,
+            bottom=bottom,
             label=submsg
         )
+        # Update the bottom to include the current submessage's values
+        bottom = [bottom[i] + data[submsg][i] for i in range(len(bottom))]
 
     # Step 5: Update X-axis tick labels to include the number of submessages and total messages
     topic_labels_with_count = [
@@ -59,10 +69,10 @@ def plot_nested_map_sorted(nested_map):
         for topic in sorted_topics
     ]
 
-    ax.set_xlabel('Topics (sorted by total count)')
+    ax.set_xlabel('Topics')
     ax.set_ylabel('Count')
-    ax.set_title('Submessage Counts by Topic (Sorted by Total Entries)')
-    ax.set_xticks([xi + bar_width * (len(submessages)-1)/2 for xi in x])
+    ax.set_title('Submessage Counts by Topic')
+    ax.set_xticks(x)
     ax.set_xticklabels(topic_labels_with_count, rotation=90, ha='center')
     ax.legend(title='Submessage')
     plt.tight_layout()
