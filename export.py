@@ -11,7 +11,6 @@ def run_tshark_with_filter(pcap_file, display_filter):
     ]
 
     result = subprocess.run(command, capture_output=True, text=True)
-    
     # Split lines and return as list of (frame_number, info) tuples
     output = []
     for line in result.stdout.splitlines():
@@ -21,8 +20,3 @@ def run_tshark_with_filter(pcap_file, display_filter):
         elif len(parts) == 1:
             output.append((parts[0], ''))  # Handle missing Info
     return output
-
-# Example usage:
-packets = run_tshark_with_filter('shapes.pcapng', 'rtps')
-for pkt in packets:
-    print(pkt[1])
