@@ -1,89 +1,74 @@
 from collections import defaultdict
 import matplotlib.pyplot as plt
+import pandas as pd
 
 SUBMESSAGE_ORDER = ["DATA", "PIGGYBACK_HEARTBEAT", "HEARTBEAT", "ACKNACK", "GAP"]
 
 def plot_nested_map_sorted(nested_map):
     """
-    Plots a stacked bar chart of submessage counts by topic.
-
-    :param nested_map: A dictionary where keys are topics and values are dictionaries
-    of submessages and their counts.
+    Plots a stacked bar chart of submessage counts by topic using a pandas DataFrame.
     """
-    # Step 1: Calculate total count per topic and sort topics by total count descending
-    # Create a dictionary with the total count of all submessages for each topic
-    total_messages_by_topic = {topic: sum(submsg.values()) for topic, submsg in nested_map.items()}
-    # Sort topics by their total counts in descending order
-    total_messages_by_topic_descending = sorted(total_messages_by_topic.keys(), key=lambda t: total_messages_by_topic[t], reverse=True)
-    # Calculate the total number of messages across all topics
-    total_messages = sum(total_messages_by_topic.values())
+    # Convert nested_map to a DataFrame
+    df = nested_map_to_dataframe(nested_map)
 
-    # Calculate total count for each submessage across all topics
-    total_messages_by_submessage = {submsg: 0 for submsg in SUBMESSAGE_ORDER}
-    for submsg_map in nested_map.values():
-        for submsg, count in submsg_map.items():
-            total_messages_by_submessage[submsg] += count
+    # Ensure all submessages in SUBMESSAGE_ORDER are included, even if missing
+    df = df.set_index(['Topic', 'Submessage']).unstack(fill_value=0).stack(future_stack=True).reset_index()
 
-    # Step 3: Organize data for plotting
-    # Create a dictionary to store the counts of each submessage for each topic
-    data = {submsg: [] for submsg in SUBMESSAGE_ORDER}
-    for topic in total_messages_by_topic_descending:
-        for submsg in SUBMESSAGE_ORDER:
-            # Append the count of the submessage for the current topic (default to 0 if not present)
-            data[submsg].append(nested_map[topic].get(submsg, 0))
+    # Calculate total messages per topic and sort topics by total count
+    df['TotalMessages'] = df.groupby('Topic')['Count'].transform('sum')
+    df = df.sort_values(by='TotalMessages', ascending=False)
 
-    # Step 4: Plot as a stacked bar chart
-    # Create a range for the x-axis based on the number of topics
-    x = range(len(total_messages_by_topic_descending))
-    # Create a figure and axis for the plot
-    fig, ax = plt.subplots(figsize=(20, 13))
+    # Pivot the DataFrame to prepare for plotting
+    pivot_df = df.pivot(index='Topic', columns='Submessage', values='Count').fillna(0)
+    pivot_df = pivot_df[SUBMESSAGE_ORDER]  # Ensure submessages are in the correct order
 
-    # Initialize the bottom of the stack for each topic
-    bottom = [0] * len(total_messages_by_topic_descending)
-    for submsg in SUBMESSAGE_ORDER:
-        # Plot the bars for the current submessage
-        bars = ax.bar(
-            x,
-            data[submsg],
-            bottom=bottom,
-            label=f"{submsg} ({total_messages_by_submessage[submsg]})"  # Add count to the legend
-        )
-        # Add quantities to each portion of the bar chart if visible
-        for i, bar in enumerate(bars):
-            # Dynamically calculate the threshold as a percentage of the y-axis height
-            y_max = ax.get_ylim()[1]  # Get the maximum y-axis value
-            threshold = y_max * 0.02  # Set threshold as 2% of the y-axis height
+    # Sort pivot_df by the total number of submessages (row-wise sum)
+    pivot_df['TotalMessages'] = pivot_df.sum(axis=1)
+    pivot_df = pivot_df.sort_values(by='TotalMessages', ascending=False)
 
-            # Only annotate if the bar segment height is greater than the threshold
-            if data[submsg][i] > 0 and data[submsg][i] > threshold:
-                ax.text(
-                    bar.get_x() + bar.get_width() / 2,  # Center of the bar
-                    bottom[i] + data[submsg][i] / 2,   # Middle of the bar segment
-                    str(data[submsg][i]),             # The value to display
-                    ha='center', va='center', fontsize=8, color='black'
-                )
-        # Update the bottom to include the current submessage's values
-        bottom = [bottom[i] + data[submsg][i] for i in range(len(bottom))]
+    # Extract total messages for each topic
+    total_messages_by_topic = pivot_df['TotalMessages']
+    pivot_df = pivot_df.drop(columns=['TotalMessages'])  # Remove the helper column
 
-    # Step 5: Update X-axis tick labels to include the number of submessages and total messages
-    # Create labels for each topic, including the total count of messages for that topic
-    topic_labels_with_count = [
-        f"{topic} ({total_messages_by_topic[topic]})"
-        for topic in total_messages_by_topic_descending
-    ]
+    # Define a consistent color mapping for submessages
+    color_mapping = {
+        "DATA": "#1f77b4",  # Blue
+        "PIGGYBACK_HEARTBEAT": "#ff7f0e",  # Orange
+        "HEARTBEAT": "#2ca02c",  # Green
+        "ACKNACK": "#d62728",  # Red
+        "GAP": "#9467bd",  # Purple
+    }
+    colors = [color_mapping[submsg] for submsg in SUBMESSAGE_ORDER]
+
+    # Plot the stacked bar chart with consistent colors
+    ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13), color=colors)
+
+    # Add counts to the legend
+    submessage_totals = df.groupby('Submessage')['Count'].sum()
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles, [f"{label} ({submessage_totals[label]})" for label in labels], title='Submessage')
+
+    # Add labels to the bars
+    # for i, topic in enumerate(pivot_df.index):
+    #     bottom = 0
+    #     for submsg in SUBMESSAGE_ORDER:
+    #         value = pivot_df.loc[topic, submsg]
+    #         if value > 0:
+    #             ax.text(i, bottom + value / 2, int(value), ha='center', va='center', fontsize=8)
+    #             bottom += value
 
     # Set axis labels and title
     ax.set_xlabel('Topics')
-    ax.set_ylabel(f'Count ({total_messages})')
+    ax.set_ylabel(f'Count ({df['Count'].sum()})')
     ax.set_title('Submessage Counts by Topic')
-    # Set the x-axis tick positions and labels
-    ax.set_xticks(x)
-    ax.set_xticklabels(topic_labels_with_count, rotation=90, ha='center')
-    # Add a legend with the submessage names and their total counts
-    ax.legend(title='Submessage')
-    # Adjust the layout to prevent overlapping elements
+
+    # Update x-axis labels to include total messages
+    x_labels = [f"{topic} ({int(total_messages_by_topic[topic])})" for topic in pivot_df.index]
+    ax.set_xticks(range(len(pivot_df.index)))
+    ax.set_xticklabels(x_labels, rotation=90, ha='center')
+
+    # Adjust layout and show the plot
     plt.tight_layout()
-    # Display the plot
     plt.show()
 
 def print_message_statistics(nested_map):
@@ -117,3 +102,16 @@ def print_message_statistics(nested_map):
     # Calculate total number of topics
     total_topics = len(nested_map)
     print(f"Total number of topics found: {total_topics}")
+
+def nested_map_to_dataframe(nested_map):
+    """
+    Converts a nested dictionary (nested_map) to a pandas DataFrame.
+    :param nested_map: A dictionary where keys are topics and values are dictionaries
+                       of submessages and their counts.
+    :return: A pandas DataFrame with columns ['Topic', 'Submessage', 'Count'].
+    """
+    rows = []
+    for topic, submessages in nested_map.items():
+        for submessage, count in submessages.items():
+            rows.append({'Topic': topic, 'Submessage': submessage, 'Count': count})
+    return pd.DataFrame(rows)
