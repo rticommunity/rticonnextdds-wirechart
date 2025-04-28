@@ -1,6 +1,8 @@
 from collections import defaultdict
 import matplotlib.pyplot as plt
 
+MESSAGE_ORDER = ["DATA", "PIGGYBACK_HEARTBEAT", "HEARTBEAT", "ACKNACK", "GAP"]
+
 def plot_nested_map_sorted(nested_map):
     # Step 1: Calculate total count per topic and sort topics by total count descending
     topic_totals = {topic: sum(submsg.values()) for topic, submsg in nested_map.items()}
@@ -10,10 +12,10 @@ def plot_nested_map_sorted(nested_map):
     total_messages = sum(topic_totals.values())
 
     # Step 2: Define custom order for submessages
-    custom_order = ["DATA", "PIGGYBACK_HEARTBEAT", "HEARTBEAT", "ACKNACK", "GAP"]
+    
     submessages = sorted(
         {submsg for subs in nested_map.values() for submsg in subs},
-        key=lambda x: custom_order.index(x) if x in custom_order else len(custom_order)
+        key=lambda x: MESSAGE_ORDER.index(x) if x in MESSAGE_ORDER else len(MESSAGE_ORDER)
     )
 
     # Step 3: Organize data for plotting
@@ -70,8 +72,15 @@ def print_message_statistics(nested_map):
             submessage_counts[submsg] += count
 
     print("Submessage counts:")
+    # Print submessages in MESSAGE_ORDER
+    for submsg in MESSAGE_ORDER:
+        if submsg in submessage_counts:
+            print(f"  {submsg}: {submessage_counts[submsg]}")
+
+    # Print any remaining submessages not in MESSAGE_ORDER
     for submsg, count in submessage_counts.items():
-        print(f"  {submsg}: {count}")
+        if submsg not in MESSAGE_ORDER:
+            print(f"  {submsg}: {count}")
 
     # Calculate total number of topics
     total_topics = len(nested_map)
