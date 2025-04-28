@@ -4,12 +4,9 @@ from pcap_utils import *
 
 
 
-def get_unique_topics(pcap_file):
+def get_unique_topics(pcap_df):
     unique_topics = set()
-
-    pcap_df = extract_pcap_data(pcap_file,
-                                ['frame.number', '_ws.col.Info'],
-                                display_filter='rtps.sm.wrEntityId == 0x000003c2 || rtps.sm.wrEntityId == 0x000004c2 || rtps.sm.wrEntityId == 0xff0003c2 || rtps.sm.wrEntityId == 0xff0004c2')
+    
     for info_column in pcap_df['_ws.col.Info']:
         if pd.notnull(info_column):  # Check for non-null values
             unique_topics.update(return_all_matches(info_column, r'DATA\([rw]\)\s*->\s*([\w:/]+),?'))
@@ -27,10 +24,30 @@ def main():
     parser.add_argument('--output', type=str, default='unique_topics.txt', help='Specify an output file for unique topics.')
     args = parser.parse_args()
 
-    unique_topics = get_unique_topics(args.pcap)
-    write_to_file(args.output, unique_topics)
+    pcap_fields = set(['frame.number'])
+    # Discovery Analysis
 
+    if True:  # Replace with actual condition for topic extraction
+        pcap_fields.update(['_ws.col.Info'])
+
+    pcap_df = extract_pcap_data(args.pcap, pcap_fields, ENDPOINT_DISCOVERY_DISPLAY_FILTER)
+    unique_topics = get_unique_topics(pcap_df)
+    write_to_file(args.output, unique_topics)
     print(f"Saved {len(unique_topics)} unique topic values to '{args.output}'")
+
+    # User Data Analysis
+    pcap_fields = set(['frame.number'])
+
+    if True:  # Replace with actual condition for message histogram
+        pcap_fields.update(['_ws.col.Info'])
+
+    if True:  # Replace with actual condition for performing lost sample analysis
+        pcap_fields.update(['rtps.guidPrefix.src', 'rtps.sm.wrEntityId', 'rtps.sm.seqNumber', '_ws.col.Info'])
+
+    pcap_df = extract_pcap_data(args.pcap, pcap_fields, USER_DATA_DISPLAY_FILTER)
+
+    pcap_df.to_csv('pcap_data.csv', index=False)
+    print("Saved pcap_df to 'pcap_data.csv'")
 
 if __name__ == "__main__":
     main()

@@ -2,6 +2,9 @@ import subprocess
 import pandas as pd
 import re
 
+ENDPOINT_DISCOVERY_DISPLAY_FILTER = 'rtps.sm.wrEntityId == 0x000003c2 || rtps.sm.wrEntityId == 0x000004c2 || rtps.sm.wrEntityId == 0xff0003c2 || rtps.sm.wrEntityId == 0xff0004c2'
+USER_DATA_DISPLAY_FILTER = 'rtps.sm.wrEntityId.entityKind == 0x02 || rtps.sm.wrEntityId.entityKind == 0x03'
+
 def return_all_matches(string, regex):
     """
     Extracts all 'topic' values from patterns like 'DATA(r) -> topic' or 'DATA(w) -> topic'
