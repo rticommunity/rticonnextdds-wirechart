@@ -18,22 +18,18 @@ def main():
 
     if True:  # Replace with actual condition for topic extraction
         pcap_fields.update(['_ws.col.Info'])
-
-    pcap_df = extract_pcap_data(args.pcap, pcap_fields, ENDPOINT_DISCOVERY_DISPLAY_FILTER)
-    unique_topics = get_unique_topics(pcap_df)
-    write_to_file(args.output, unique_topics)
-    print(f"Saved {len(unique_topics)} unique topic values to '{args.output}'")
-
-    # User Data Analysis
-    pcap_fields = set(['frame.number'])
-
+ 
     if True:  # Replace with actual condition for message histogram
         pcap_fields.update(['_ws.col.Info'])
 
     if True:  # Replace with actual condition for performing lost sample analysis
         pcap_fields.update(['rtps.guidPrefix.src', 'rtps.sm.wrEntityId', 'rtps.sm.seqNumber', '_ws.col.Info'])
 
-    pcap_df = extract_pcap_data(args.pcap, pcap_fields, USER_DATA_DISPLAY_FILTER)
+    pcap_df = extract_pcap_data(args.pcap, pcap_fields, 'rtps')
+    unique_topics = get_unique_topics(pcap_df)
+    write_to_file(args.output, unique_topics)
+    print(f"Saved {len(unique_topics)} unique topic values to '{args.output}'")
+
     message_histogram_data = count_user_messages(pcap_df)
     print_message_statistics(message_histogram_data)  # Print statistics
     plot_nested_map_sorted(message_histogram_data)    # Plot the stacked bar chart
