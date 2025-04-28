@@ -30,9 +30,9 @@ def main():
     write_to_file(args.output, unique_topics)
     print(f"Saved {len(unique_topics)} unique topic values to '{args.output}'")
 
-    message_histogram_data = count_user_messages(pcap_df)
-    print_message_statistics(message_histogram_data)  # Print statistics
-    plot_nested_map_sorted(message_histogram_data)    # Plot the stacked bar chart
+    stats_df = count_user_messages(pcap_df)
+    print_message_statistics(stats_df)  # Print statistics
+    plot_nested_map_sorted(stats_df)    # Plot the stacked bar chart
 
 if __name__ == "__main__":
     main()

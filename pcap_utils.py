@@ -1,7 +1,6 @@
 import subprocess
 import pandas as pd
 import re
-from collections import defaultdict
 from plotting import *
 
 ENDPOINT_DISCOVERY_DISPLAY_FILTER = 'rtps.sm.wrEntityId == 0x000003c2 || rtps.sm.wrEntityId == 0x000004c2 || rtps.sm.wrEntityId == 0xff0003c2 || rtps.sm.wrEntityId == 0xff0004c2'
@@ -62,7 +61,13 @@ def get_unique_topics(pcap_df):
     return unique_topics
 
 def count_user_messages(pcap_df):
-    message_map = defaultdict(lambda: defaultdict(int))
+    """
+    Counts user messages and returns the data as a pandas DataFrame.
+    
+    :param pcap_df: DataFrame containing the extracted PCAP data.
+    :return: A pandas DataFrame with columns ['Topic', 'Submessage', 'Count'].
+    """
+    rows = []  # List to store rows for the DataFrame
 
     for info_column in pcap_df['_ws.col.Info']:
         if pd.notnull(info_column):  # Check for non-null values
@@ -73,8 +78,14 @@ def count_user_messages(pcap_df):
                     topic = match[1]
                     if submessage == "HEARTBEAT" and len(matches) > 1:
                         # Multiple matches found with a HEARTBEAT, therefore a PIGGYBACK_HEARTBEAT
-                        message_map[topic]["PIGGYBACK_HEARTBEAT"] += 1
+                        rows.append({'Topic': topic, 'Submessage': "PIGGYBACK_HEARTBEAT", 'Count': 1})
                     else:
-                        message_map[topic][submessage] += 1
+                        rows.append({'Topic': topic, 'Submessage': submessage, 'Count': 1})
 
-    return message_map
+    # Convert the rows into a DataFrame
+    df = pd.DataFrame(rows)
+
+    # Aggregate the counts for each (Topic, Submessage) pair
+    df = df.groupby(['Topic', 'Submessage'], as_index=False).sum()
+
+    return df
