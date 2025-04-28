@@ -17,6 +17,12 @@ def plot_nested_map_sorted(nested_map):
         key=lambda x: MESSAGE_ORDER.index(x) if x in MESSAGE_ORDER else len(MESSAGE_ORDER)
     )
 
+    # Calculate total count for each submessage
+    submessage_totals = {submsg: 0 for submsg in submessages}
+    for submsg_map in nested_map.values():
+        for submsg, count in submsg_map.items():
+            submessage_totals[submsg] += count
+
     # Step 3: Organize data for plotting
     data = {submsg: [] for submsg in submessages}
     for topic in sorted_topics:
@@ -33,7 +39,7 @@ def plot_nested_map_sorted(nested_map):
             x,
             data[submsg],
             bottom=bottom,
-            label=submsg
+            label=f"{submsg} ({submessage_totals[submsg]})"  # Add count to the legend
         )
         # Add quantities to each portion of the bar chart if visible
         for i, bar in enumerate(bars):
@@ -58,7 +64,7 @@ def plot_nested_map_sorted(nested_map):
     ]
 
     ax.set_xlabel('Topics')
-    ax.set_ylabel('Count')
+    ax.set_ylabel(f'Count ({total_messages})')
     ax.set_title('Submessage Counts by Topic')
     ax.set_xticks(x)
     ax.set_xticklabels(topic_labels_with_count, rotation=90, ha='center')
