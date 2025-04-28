@@ -1,5 +1,14 @@
 import subprocess
 import pandas as pd
+import re
+
+def return_all_matches(string, regex):
+    """
+    Extracts all 'topic' values from patterns like 'DATA(r) -> topic' or 'DATA(w) -> topic'
+    (with or without a trailing comma), even if there are multiple matches in one string.
+    """
+    matches = re.findall(regex, string)
+    return matches
 
 def extract_pcap_data(pcap_file, fields, display_filter=None, max_frames=None):
     """

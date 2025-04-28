@@ -1,23 +1,18 @@
-import re
 import argparse
-from frame_export import run_tshark_with_filter
+import pandas as pd
+from pcap_utils import *
 
-def extract_topics(frame_info):
-    """
-    Extracts all 'topic' values from patterns like 'DATA(r) -> topic' or 'DATA(w) -> topic'
-    (with or without a trailing comma), even if there are multiple matches in one string.
-    """
-    matches = re.findall(r'DATA\([rw]\)\s*->\s*([\w:/]+),?', frame_info)
-    return matches
+
 
 def get_unique_topics(pcap_file):
     unique_topics = set()
 
-    # Returns [Frame_Number, Info]
-    frames = run_tshark_with_filter(pcap_file, 'rtps.sm.wrEntityId == 0x000003c2 || rtps.sm.wrEntityId == 0x000004c2 || rtps.sm.wrEntityId == 0xff0003c2 || rtps.sm.wrEntityId == 0xff0004c2')
-
-    for frame in frames:
-        unique_topics.update(extract_topics(frame[1]))
+    pcap_df = extract_pcap_data(pcap_file,
+                                ['frame.number', '_ws.col.Info'],
+                                display_filter='rtps.sm.wrEntityId == 0x000003c2 || rtps.sm.wrEntityId == 0x000004c2 || rtps.sm.wrEntityId == 0xff0003c2 || rtps.sm.wrEntityId == 0xff0004c2')
+    for info_column in pcap_df['_ws.col.Info']:
+        if pd.notnull(info_column):  # Check for non-null values
+            unique_topics.update(return_all_matches(info_column, r'DATA\([rw]\)\s*->\s*([\w:/]+),?'))
 
     return unique_topics
 
