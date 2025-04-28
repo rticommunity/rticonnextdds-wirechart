@@ -1,45 +1,52 @@
 from collections import defaultdict
 import matplotlib.pyplot as plt
 
-MESSAGE_ORDER = ["DATA", "PIGGYBACK_HEARTBEAT", "HEARTBEAT", "ACKNACK", "GAP"]
+SUBMESSAGE_ORDER = ["DATA", "PIGGYBACK_HEARTBEAT", "HEARTBEAT", "ACKNACK", "GAP"]
 
 def plot_nested_map_sorted(nested_map):
+    """
+    Plots a stacked bar chart of submessage counts by topic.
+
+    :param nested_map: A dictionary where keys are topics and values are dictionaries
+    of submessages and their counts.
+    """
     # Step 1: Calculate total count per topic and sort topics by total count descending
-    topic_totals = {topic: sum(submsg.values()) for topic, submsg in nested_map.items()}
-    sorted_topics = sorted(topic_totals.keys(), key=lambda t: topic_totals[t], reverse=True)
-
+    # Create a dictionary with the total count of all submessages for each topic
+    total_messages_by_topic = {topic: sum(submsg.values()) for topic, submsg in nested_map.items()}
+    # Sort topics by their total counts in descending order
+    total_messages_by_topic_descending = sorted(total_messages_by_topic.keys(), key=lambda t: total_messages_by_topic[t], reverse=True)
     # Calculate the total number of messages across all topics
-    total_messages = sum(topic_totals.values())
+    total_messages = sum(total_messages_by_topic.values())
 
-    # Step 2: Define custom order for submessages
-    submessages = sorted(
-        {submsg for subs in nested_map.values() for submsg in subs},
-        key=lambda x: MESSAGE_ORDER.index(x) if x in MESSAGE_ORDER else len(MESSAGE_ORDER)
-    )
-
-    # Calculate total count for each submessage
-    submessage_totals = {submsg: 0 for submsg in submessages}
+    # Calculate total count for each submessage across all topics
+    total_messages_by_submessage = {submsg: 0 for submsg in SUBMESSAGE_ORDER}
     for submsg_map in nested_map.values():
         for submsg, count in submsg_map.items():
-            submessage_totals[submsg] += count
+            total_messages_by_submessage[submsg] += count
 
     # Step 3: Organize data for plotting
-    data = {submsg: [] for submsg in submessages}
-    for topic in sorted_topics:
-        for submsg in submessages:
+    # Create a dictionary to store the counts of each submessage for each topic
+    data = {submsg: [] for submsg in SUBMESSAGE_ORDER}
+    for topic in total_messages_by_topic_descending:
+        for submsg in SUBMESSAGE_ORDER:
+            # Append the count of the submessage for the current topic (default to 0 if not present)
             data[submsg].append(nested_map[topic].get(submsg, 0))
 
     # Step 4: Plot as a stacked bar chart
-    x = range(len(sorted_topics))
+    # Create a range for the x-axis based on the number of topics
+    x = range(len(total_messages_by_topic_descending))
+    # Create a figure and axis for the plot
     fig, ax = plt.subplots(figsize=(20, 13))
 
-    bottom = [0] * len(sorted_topics)  # Initialize the bottom of the stack
-    for submsg in submessages:
+    # Initialize the bottom of the stack for each topic
+    bottom = [0] * len(total_messages_by_topic_descending)
+    for submsg in SUBMESSAGE_ORDER:
+        # Plot the bars for the current submessage
         bars = ax.bar(
             x,
             data[submsg],
             bottom=bottom,
-            label=f"{submsg} ({submessage_totals[submsg]})"  # Add count to the legend
+            label=f"{submsg} ({total_messages_by_submessage[submsg]})"  # Add count to the legend
         )
         # Add quantities to each portion of the bar chart if visible
         for i, bar in enumerate(bars):
@@ -47,7 +54,8 @@ def plot_nested_map_sorted(nested_map):
             y_max = ax.get_ylim()[1]  # Get the maximum y-axis value
             threshold = y_max * 0.02  # Set threshold as 2% of the y-axis height
 
-            if data[submsg][i] > 0 and data[submsg][i] > threshold:  # Only annotate if height > threshold
+            # Only annotate if the bar segment height is greater than the threshold
+            if data[submsg][i] > 0 and data[submsg][i] > threshold:
                 ax.text(
                     bar.get_x() + bar.get_width() / 2,  # Center of the bar
                     bottom[i] + data[submsg][i] / 2,   # Middle of the bar segment
@@ -58,18 +66,24 @@ def plot_nested_map_sorted(nested_map):
         bottom = [bottom[i] + data[submsg][i] for i in range(len(bottom))]
 
     # Step 5: Update X-axis tick labels to include the number of submessages and total messages
+    # Create labels for each topic, including the total count of messages for that topic
     topic_labels_with_count = [
-        f"{topic} ({topic_totals[topic]})"
-        for topic in sorted_topics
+        f"{topic} ({total_messages_by_topic[topic]})"
+        for topic in total_messages_by_topic_descending
     ]
 
+    # Set axis labels and title
     ax.set_xlabel('Topics')
     ax.set_ylabel(f'Count ({total_messages})')
     ax.set_title('Submessage Counts by Topic')
+    # Set the x-axis tick positions and labels
     ax.set_xticks(x)
     ax.set_xticklabels(topic_labels_with_count, rotation=90, ha='center')
+    # Add a legend with the submessage names and their total counts
     ax.legend(title='Submessage')
+    # Adjust the layout to prevent overlapping elements
     plt.tight_layout()
+    # Display the plot
     plt.show()
 
 def print_message_statistics(nested_map):
@@ -91,13 +105,13 @@ def print_message_statistics(nested_map):
 
     print("Submessage counts:")
     # Print submessages in MESSAGE_ORDER
-    for submsg in MESSAGE_ORDER:
+    for submsg in SUBMESSAGE_ORDER:
         if submsg in submessage_counts:
             print(f"  {submsg}: {submessage_counts[submsg]}")
 
     # Print any remaining submessages not in MESSAGE_ORDER
     for submsg, count in submessage_counts.items():
-        if submsg not in MESSAGE_ORDER:
+        if submsg not in SUBMESSAGE_ORDER:
             print(f"  {submsg}: {count}")
 
     # Calculate total number of topics
