@@ -2,17 +2,6 @@ import argparse
 import pandas as pd
 from pcap_utils import *
 
-
-
-def get_unique_topics(pcap_df):
-    unique_topics = set()
-    
-    for info_column in pcap_df['_ws.col.Info']:
-        if pd.notnull(info_column):  # Check for non-null values
-            unique_topics.update(return_all_matches(info_column, r'DATA\([rw]\)\s*->\s*([\w:/]+),?'))
-
-    return unique_topics
-
 def write_to_file(output_file_path, unique_topics):
     with open(output_file_path, 'w', encoding='utf-8') as outfile:
         for value in sorted(unique_topics):
@@ -45,9 +34,9 @@ def main():
         pcap_fields.update(['rtps.guidPrefix.src', 'rtps.sm.wrEntityId', 'rtps.sm.seqNumber', '_ws.col.Info'])
 
     pcap_df = extract_pcap_data(args.pcap, pcap_fields, USER_DATA_DISPLAY_FILTER)
-
-    pcap_df.to_csv('pcap_data.csv', index=False)
-    print("Saved pcap_df to 'pcap_data.csv'")
+    message_histogram_data = count_user_messages(pcap_df)
+    print_message_statistics(message_histogram_data)  # Print statistics
+    plot_nested_map_sorted(message_histogram_data)    # Plot the stacked bar chart
 
 if __name__ == "__main__":
     main()
