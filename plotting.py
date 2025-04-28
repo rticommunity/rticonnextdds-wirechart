@@ -12,7 +12,6 @@ def plot_nested_map_sorted(nested_map):
     total_messages = sum(topic_totals.values())
 
     # Step 2: Define custom order for submessages
-    
     submessages = sorted(
         {submsg for subs in nested_map.values() for submsg in subs},
         key=lambda x: MESSAGE_ORDER.index(x) if x in MESSAGE_ORDER else len(MESSAGE_ORDER)
@@ -30,12 +29,25 @@ def plot_nested_map_sorted(nested_map):
 
     bottom = [0] * len(sorted_topics)  # Initialize the bottom of the stack
     for submsg in submessages:
-        ax.bar(
+        bars = ax.bar(
             x,
             data[submsg],
             bottom=bottom,
             label=submsg
         )
+        # Add quantities to each portion of the bar chart if visible
+        for i, bar in enumerate(bars):
+            # Dynamically calculate the threshold as a percentage of the y-axis height
+            y_max = ax.get_ylim()[1]  # Get the maximum y-axis value
+            threshold = y_max * 0.02  # Set threshold as 2% of the y-axis height
+
+            if data[submsg][i] > 0 and data[submsg][i] > threshold:  # Only annotate if height > threshold
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,  # Center of the bar
+                    bottom[i] + data[submsg][i] / 2,   # Middle of the bar segment
+                    str(data[submsg][i]),             # The value to display
+                    ha='center', va='center', fontsize=8, color='black'
+                )
         # Update the bottom to include the current submessage's values
         bottom = [bottom[i] + data[submsg][i] for i in range(len(bottom))]
 
