@@ -1,8 +1,9 @@
 import subprocess
 import pandas as pd
 import re
-from plotting import *
+# from plotting import *
 
+SUBMESSAGE_ORDER = ["DATA", "PIGGYBACK_HEARTBEAT", "HEARTBEAT", "ACKNACK", "GAP"]
 ENDPOINT_DISCOVERY_DISPLAY_FILTER = 'rtps.sm.wrEntityId == 0x000003c2 || rtps.sm.wrEntityId == 0x000004c2 || rtps.sm.wrEntityId == 0xff0003c2 || rtps.sm.wrEntityId == 0xff0004c2'
 USER_DATA_DISPLAY_FILTER = 'rtps.sm.wrEntityId.entityKind == 0x02 || rtps.sm.wrEntityId.entityKind == 0x03'
 
@@ -60,15 +61,19 @@ def get_unique_topics(pcap_df):
 
     return unique_topics
 
-def count_user_messages(pcap_df):
+def count_user_messages(pcap_df, unique_topics):
     """
     Counts user messages and returns the data as a pandas DataFrame.
-    
+    Ensures all unique topics are included, even if they have no messages.
+    Orders the submessages based on SUBMESSAGE_ORDER.
+
     :param pcap_df: DataFrame containing the extracted PCAP data.
+    :param unique_topics: A set of unique topics to initialize the DataFrame.
     :return: A pandas DataFrame with columns ['Topic', 'Submessage', 'Count'].
     """
     rows = []  # List to store rows for the DataFrame
 
+    # Process the PCAP data to count messages
     for info_column in pcap_df['_ws.col.Info']:
         if pd.notnull(info_column):  # Check for non-null values
             matches = return_all_matches(r',\s*(\w+)\s*->\s*([\w:]+)', info_column)
@@ -87,5 +92,20 @@ def count_user_messages(pcap_df):
 
     # Aggregate the counts for each (Topic, Submessage) pair
     df = df.groupby(['Topic', 'Submessage'], as_index=False).sum()
+
+    # Ensure all unique topics are included in the DataFrame
+    all_rows = []
+    for topic in unique_topics:
+        for submessage in SUBMESSAGE_ORDER:
+            if not ((df['Topic'] == topic) & (df['Submessage'] == submessage)).any():
+                all_rows.append({'Topic': topic, 'Submessage': submessage, 'Count': 0})
+
+    # Add missing rows with a count of 0
+    if all_rows:
+        df = pd.concat([df, pd.DataFrame(all_rows)], ignore_index=True)
+
+    # Order the Submessage column based on SUBMESSAGE_ORDER
+    df['Submessage'] = pd.Categorical(df['Submessage'], categories=SUBMESSAGE_ORDER, ordered=True)
+    df = df.sort_values(by=['Topic', 'Submessage']).reset_index(drop=True)
 
     return df

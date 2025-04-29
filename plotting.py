@@ -1,8 +1,5 @@
-from collections import defaultdict
 import matplotlib.pyplot as plt
-import pandas as pd
-
-SUBMESSAGE_ORDER = ["DATA", "PIGGYBACK_HEARTBEAT", "HEARTBEAT", "ACKNACK", "GAP"]
+from pcap_utils import SUBMESSAGE_ORDER
 
 def plot_nested_map_sorted(df):
     """
@@ -18,7 +15,6 @@ def plot_nested_map_sorted(df):
 
     # Pivot the DataFrame to prepare for plotting
     pivot_df = df.pivot(index='Topic', columns='Submessage', values='Count').fillna(0)
-    pivot_df = pivot_df[SUBMESSAGE_ORDER]  # Ensure submessages are in the correct order
 
     # Filter out topics with no submessages (all counts are zero)
     pivot_df = pivot_df[(pivot_df.sum(axis=1) > 0)]
@@ -45,12 +41,12 @@ def plot_nested_map_sorted(df):
     ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13), color=colors)
 
     # Add counts to the legend
-    submessage_totals = df.groupby('Submessage')['Count'].sum()
+    submessage_totals = df.groupby('Submessage', observed=False)['Count'].sum()
     handles, labels = ax.get_legend_handles_labels()
     ax.legend(handles, [f"{label} ({submessage_totals[label]})" for label in labels], title='Submessage')
 
     # Set axis labels and title
-    ax.set_xlabel('Topics')
+    ax.set_xlabel(f'Topics ({df["Topic"].nunique()})')
     ax.set_ylabel(f'Count ({df["Count"].sum()})')
     ax.set_title('Submessage Counts by Topic')
 
@@ -93,3 +89,18 @@ def print_message_statistics(df):
     # Calculate total number of topics
     total_topics = df['Topic'].nunique()
     print(f"\nTotal number of topics found: {total_topics}")
+
+def write_dataframe_to_excel(df, output_file, sheet_name="Sheet1"):
+    """
+    Writes a pandas DataFrame to an Excel file.
+
+    :param df: A pandas DataFrame to write to Excel.
+    :param output_file: The path to the output Excel file.
+    :param sheet_name: The name of the sheet in the Excel file (default is "Sheet1").
+    """
+    try:
+        # Write the DataFrame to an Excel file
+        df.to_excel(output_file, sheet_name=sheet_name, index=False)
+        print(f"DataFrame successfully written to {output_file}")
+    except Exception as e:
+        print(f"An error occurred while writing the DataFrame to Excel: {e}")

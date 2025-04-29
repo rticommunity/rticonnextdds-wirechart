@@ -1,6 +1,6 @@
 import argparse
-import pandas as pd
 from pcap_utils import *
+from plotting import *
 
 def write_to_file(output_file_path, unique_topics):
     with open(output_file_path, 'w', encoding='utf-8') as outfile:
@@ -10,7 +10,7 @@ def write_to_file(output_file_path, unique_topics):
 def main():
     parser = argparse.ArgumentParser(description="Extract unique topics from a pcap file.")
     parser.add_argument('--pcap', type=str, required=True, help='Required argument. Specify the PCAP file.')
-    parser.add_argument('--output', type=str, default='unique_topics.txt', help='Specify an output file for unique topics.')
+    parser.add_argument('--output', type=str, default='pcap_stats.xlsx', help='Specify an output file for unique topics.')
     args = parser.parse_args()
 
     pcap_fields = set(['frame.number'])
@@ -27,12 +27,11 @@ def main():
 
     pcap_df = extract_pcap_data(args.pcap, pcap_fields, 'rtps')
     unique_topics = get_unique_topics(pcap_df)
-    write_to_file(args.output, unique_topics)
-    print(f"Saved {len(unique_topics)} unique topic values to '{args.output}'")
 
-    stats_df = count_user_messages(pcap_df)
+    stats_df = count_user_messages(pcap_df, unique_topics)
     print_message_statistics(stats_df)  # Print statistics
     plot_nested_map_sorted(stats_df)    # Plot the stacked bar chart
+    write_dataframe_to_excel(stats_df, args.output, 'PCAPData')  # Write to Excel
 
 if __name__ == "__main__":
     main()
