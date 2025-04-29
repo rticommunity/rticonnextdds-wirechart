@@ -70,8 +70,8 @@ def print_message_statistics(df):
     total_messages = df['Count'].sum()
     print(f"Total number of messages: {total_messages}")
 
-    # Calculate total messages by topic
-    total_messages_by_topic = df.groupby('Topic')['Count'].sum()
+    # Calculate total messages by topic and sort in descending order
+    total_messages_by_topic = df.groupby('Topic')['Count'].sum().sort_values(ascending=False)
     print("\nTotal messages by topic:")
     for topic, count in total_messages_by_topic.items():
         print(f"  {topic}: {count}")
