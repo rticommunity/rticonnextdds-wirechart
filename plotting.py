@@ -77,7 +77,7 @@ def print_message_statistics(df):
         print(f"  {topic}: {count}")
 
     # Calculate counts for each submessage type
-    submessage_counts = df.groupby('Submessage')['Count'].sum()
+    submessage_counts = df.groupby('Submessage', observed=False)['Count'].sum()
     print("\nSubmessage counts:")
     for submsg in SUBMESSAGE_ORDER:
         if submsg in submessage_counts:
