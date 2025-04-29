@@ -10,15 +10,14 @@ def write_to_file(output_file_path, unique_topics):
 def main():
     parser = argparse.ArgumentParser(description="Extract unique topics from a pcap file.")
     parser.add_argument('--pcap', type=str, required=True, help='Required argument. Specify the PCAP file.')
-    parser.add_argument('--output', type=str, default='pcap_stats.xlsx', help='Specify an output file for unique topics.')
+    parser.add_argument('--output', type=str, default='', help='Specify an output file PCAP statistics.')
     args = parser.parse_args()
 
     pcap_fields = set(['frame.number'])
-    # Discovery Analysis
 
     if True:  # Replace with actual condition for topic extraction
         pcap_fields.update(['_ws.col.Info'])
- 
+
     if True:  # Replace with actual condition for message histogram
         pcap_fields.update(['_ws.col.Info'])
 
@@ -31,7 +30,9 @@ def main():
     stats_df = count_user_messages(pcap_df, unique_topics)
     print_message_statistics(stats_df)  # Print statistics
     plot_nested_map_sorted(stats_df)    # Plot the stacked bar chart
-    write_dataframe_to_excel(stats_df, args.output, 'PCAPData')  # Write to Excel
+
+    if args.output:
+        write_dataframe_to_excel(stats_df, args.output, 'PCAPStats')  # Write to Excel
 
 if __name__ == "__main__":
     main()
