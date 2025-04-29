@@ -16,7 +16,7 @@ class PCAPStats:
         """
         self.df = df
 
-    def print_statistics(self):
+    def print_stats(self):
         """
         Prints statistics about the PCAP data, including total messages, 
         messages by topic, and messages by submessage type.
@@ -41,6 +41,31 @@ class PCAPStats:
             if submsg not in SUBMESSAGE_ORDER:
                 print(f"  {submsg}: {count}")
 
+    def print_stats_in_bytes(self):
+        """
+        Prints statistics about the PCAP data in bytes, including total message lengths,
+        lengths by topic, and lengths by submessage type.
+        """
+        # Calculate total message length
+        total_length = self.df['Length'].sum()
+        print(f"Total message length: {total_length:,} bytes")
+
+        # Calculate total message length by topic and sort in descending order
+        total_length_by_topic = self.df.groupby('Topic')['Length'].sum().sort_values(ascending=False)
+        print("\nTotal message length by topic:")
+        for topic, length in total_length_by_topic.items():
+            print(f"  {topic}: {length:,} bytes")
+
+        # Calculate total lengths for each submessage type
+        submessage_lengths = self.df.groupby('Submessage', observed=False)['Length'].sum()
+        print("\nSubmessage lengths:")
+        for submsg in SUBMESSAGE_ORDER:
+            if submsg in submessage_lengths:
+                print(f"  {submsg}: {submessage_lengths[submsg]:,} bytes")
+        for submsg, length in submessage_lengths.items():
+            if submsg not in SUBMESSAGE_ORDER:
+                print(f"  {submsg}: {length:,} bytes")
+
         # Calculate total number of topics
         total_topics = self.df['Topic'].nunique()
         print(f"\nTotal number of topics found: {total_topics}")
@@ -64,7 +89,7 @@ class PCAPStats:
         units = "messages" if metric == "Count" else "bytes"
 
         # Ensure all submessages in SUBMESSAGE_ORDER are included, even if missing
-        df = self.df.set_index(['Topic', 'Submessage']).unstack(fill_value=0).stack().reset_index()
+        df = self.df.set_index(['Topic', 'Submessage']).unstack(fill_value=0).stack(future_stack=True).reset_index()
 
         # Calculate total messages or lengths per topic and sort topics by total value
         df['TotalMetric'] = df.groupby('Topic')[metric].transform('sum')
@@ -112,7 +137,7 @@ class PCAPStats:
         ax.set_title(f"Submessage {metric} by Topic ({units})")
 
         # Update x-axis labels to include total metric values
-        x_labels = [f"{topic} ({int(total_metric_by_topic[topic]):,} {units})" for topic in pivot_df.index]
+        x_labels = [f"{topic} ({int(total_metric_by_topic[topic]):,})" for topic in pivot_df.index]
         ax.set_xticks(range(len(pivot_df.index)))
         ax.set_xticklabels(x_labels, rotation=90, ha='center')
 

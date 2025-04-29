@@ -31,14 +31,9 @@ def main():
     pcap_data = extract_pcap_data(args.pcap, pcap_fields, 'rtps')
     unique_topics = get_unique_topics(pcap_data)
 
-    # stats_df = count_user_messages(pcap_data, unique_topics)
-    # print_message_statistics(stats_df)  # Print statistics
-    # plot_nested_map_sorted(stats_df)    # Plot the stacked bar chart
-    # if args.output:
-    #     write_dataframe_to_excel(stats_df, args.output, 'PCAPStats')  # Write to Excel
-
     pcap_stats = PCAPStats(count_user_messages(pcap_data, unique_topics))
-    pcap_stats.print_statistics()  # Print statistics
+    pcap_stats.print_stats()  # Print statistics
+    pcap_stats.print_stats_in_bytes()  # Print statistics in bytes
     pcap_stats.plot_stats_by_frame_count()  # Plot by frame count
     pcap_stats.plot_stats_by_frame_length()  # Plot by frame length
     # Write the DataFrame to an Excel file if an output path is provided
@@ -48,4 +43,9 @@ def main():
     
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except InvalidPCAPDataException as e:
+        print(f"Invalid PCAP File: {e.message} in file {e.pcap_file}")
+    except Exception as e: 
+        print(f"An error occurred: {e}")
