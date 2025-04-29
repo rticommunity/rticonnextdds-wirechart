@@ -1,31 +1,36 @@
 import matplotlib.pyplot as plt
+from matplotlib.ticker import StrMethodFormatter
 from pcap_utils import SUBMESSAGE_ORDER
 
-def plot_nested_map_sorted(df):
+def _plot_statistics(self, metric="Count"):
     """
-    Plots a stacked bar chart of submessage counts by topic using a pandas DataFrame.
-    Only topics with at least one submessage are included in the plot.
-    """
-    # Ensure all submessages in SUBMESSAGE_ORDER are included, even if missing
-    df = df.set_index(['Topic', 'Submessage']).unstack(fill_value=0).stack(future_stack=True).reset_index()
+    Plots a stacked bar chart of submessage counts or lengths by topic.
 
-    # Calculate total messages per topic and sort topics by total count
-    df['TotalMessages'] = df.groupby('Topic')['Count'].transform('sum')
-    df = df.sort_values(by='TotalMessages', ascending=False)
+    :param metric: The column to plot, either "Count" or "Length".
+    """
+    if metric not in ["Count", "Length"]:
+        raise ValueError("Invalid metric. Choose either 'Count' or 'Length'.")
+
+    # Ensure all submessages in SUBMESSAGE_ORDER are included, even if missing
+    df = self.df.set_index(['Topic', 'Submessage']).unstack(fill_value=0).stack().reset_index()
+
+    # Calculate total messages or lengths per topic and sort topics by total value
+    df['TotalMetric'] = df.groupby('Topic')[metric].transform('sum')
+    df = df.sort_values(by='TotalMetric', ascending=False)
 
     # Pivot the DataFrame to prepare for plotting
-    pivot_df = df.pivot(index='Topic', columns='Submessage', values='Count').fillna(0)
+    pivot_df = df.pivot(index='Topic', columns='Submessage', values=metric).fillna(0)
 
-    # Filter out topics with no submessages (all counts are zero)
+    # Filter out topics with no submessages (all values are zero)
     pivot_df = pivot_df[(pivot_df.sum(axis=1) > 0)]
 
-    # Sort pivot_df by the total number of submessages (row-wise sum)
-    pivot_df['TotalMessages'] = pivot_df.sum(axis=1)
-    pivot_df = pivot_df.sort_values(by='TotalMessages', ascending=False)
+    # Sort pivot_df by the total value of the metric (row-wise sum)
+    pivot_df['TotalMetric'] = pivot_df.sum(axis=1)
+    pivot_df = pivot_df.sort_values(by='TotalMetric', ascending=False)
 
-    # Extract total messages for each topic
-    total_messages_by_topic = pivot_df['TotalMessages']
-    pivot_df = pivot_df.drop(columns=['TotalMessages'])  # Remove the helper column
+    # Extract total metric values for each topic
+    total_metric_by_topic = pivot_df['TotalMetric']
+    pivot_df = pivot_df.drop(columns=['TotalMetric'])  # Remove the helper column
 
     # Define a consistent color mapping for submessages
     color_mapping = {
@@ -40,20 +45,27 @@ def plot_nested_map_sorted(df):
     # Plot the stacked bar chart with consistent colors
     ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13), color=colors)
 
-    # Add counts to the legend
-    submessage_totals = df.groupby('Submessage', observed=False)['Count'].sum()
+    # Add totals to the legend with comma-separated values
+    submessage_totals = self.df.groupby('Submessage', observed=False)[metric].sum()
     handles, labels = ax.get_legend_handles_labels()
-    ax.legend(handles, [f"{label} ({submessage_totals[label]})" for label in labels], title='Submessage')
+    ax.legend(
+        handles,
+        [f"{label} ({submessage_totals[label]:,})" for label in labels],
+        title='Submessage'
+    )
 
-    # Set axis labels and title
-    ax.set_xlabel(f'Topics ({df["Topic"].nunique()})')
-    ax.set_ylabel(f'Count ({df["Count"].sum()})')
-    ax.set_title('Submessage Counts by Topic')
+    # Set axis labels and title with comma-separated y-axis total
+    ax.set_xlabel(f'Topics ({self.df["Topic"].nunique()})')
+    ax.set_ylabel(f"{metric} ({self.df[metric].sum():,})")
+    ax.set_title(f'Submessage {metric} by Topic')
 
-    # Update x-axis labels to include total messages
-    x_labels = [f"{topic} ({int(total_messages_by_topic[topic])})" for topic in pivot_df.index]
+    # Update x-axis labels to include total metric values
+    x_labels = [f"{topic} ({int(total_metric_by_topic[topic]):,})" for topic in pivot_df.index]
     ax.set_xticks(range(len(pivot_df.index)))
     ax.set_xticklabels(x_labels, rotation=90, ha='center')
+
+    # Disable scientific notation and format y-axis tick marks with commas
+    ax.get_yaxis().set_major_formatter(StrMethodFormatter('{x:,.0f}'))
 
     # Adjust layout and show the plot
     plt.tight_layout()
