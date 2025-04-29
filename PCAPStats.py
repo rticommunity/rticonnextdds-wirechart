@@ -116,6 +116,7 @@ class PCAPStats:
             "HEARTBEAT": "#2ca02c",  # Green
             "ACKNACK": "#d62728",  # Red
             "GAP": "#9467bd",  # Purple
+            "UNREGISTER_DISPOSE": "#8c564b",  # Brown
         }
         colors = [color_mapping[submsg] for submsg in SUBMESSAGE_ORDER]
 

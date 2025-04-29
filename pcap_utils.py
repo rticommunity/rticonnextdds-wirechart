@@ -22,7 +22,7 @@ class InvalidPCAPDataException(Exception):
             return f"{self.message} (File: {self.pcap_file})"
         return self.message
 
-SUBMESSAGE_ORDER = ["DATA", "PIGGYBACK_HEARTBEAT", "HEARTBEAT", "ACKNACK", "GAP"]
+SUBMESSAGE_ORDER = ["DATA", "PIGGYBACK_HEARTBEAT", "HEARTBEAT", "ACKNACK", "GAP", "UNREGISTER_DISPOSE"]
 ENDPOINT_DISCOVERY_DISPLAY_FILTER = 'rtps.sm.wrEntityId == 0x000003c2 || rtps.sm.wrEntityId == 0x000004c2 || rtps.sm.wrEntityId == 0xff0003c2 || rtps.sm.wrEntityId == 0xff0004c2'
 USER_DATA_DISPLAY_FILTER = 'rtps.sm.wrEntityId.entityKind == 0x02 || rtps.sm.wrEntityId.entityKind == 0x03'
 
@@ -112,13 +112,16 @@ def count_user_messages(pcap_data, unique_topics):
         udp_length = record.get('udp.length')  # Get the 'udp.length' field from the dictionary
 
         if info_column and pd.notnull(info_column):  # Check for non-null values
-            matches = return_all_matches(r',\s*(\w+)\s*->\s*([\w:]+)', info_column)
+            # matches = return_all_matches(r',\s*(\w+)\s*->\s*([\w:]+)', info_column)
+            matches = return_all_matches(r',\s*([A-Z0-9_()[\]]+)\s*->\s*([\w:]+)', info_column) # New
             for match in matches:
                 if match:
                     submessage = match[0]
                     topic = match[1]
                     length = int(udp_length) if udp_length and udp_length.isdigit() else 0  # Convert length to int
-                    if submessage == "HEARTBEAT" and len(matches) > 1:
+                    if "([" in submessage:
+                        rows.append({'Topic': topic, 'Submessage': "UNREGISTER_DISPOSE", 'Count': 1, 'Length': length})
+                    elif submessage == "HEARTBEAT" and len(matches) > 1:
                         # Multiple matches found with a HEARTBEAT, therefore a PIGGYBACK_HEARTBEAT
                         rows.append({'Topic': topic, 'Submessage': "PIGGYBACK_HEARTBEAT", 'Count': 1, 'Length': 0})
                     else:
