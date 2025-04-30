@@ -1,5 +1,5 @@
 import argparse
-from pcap_utils import *
+from PCAPUtils import *
 # from plotting import *
 from PCAPStats import *
 

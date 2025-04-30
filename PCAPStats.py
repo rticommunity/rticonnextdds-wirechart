@@ -1,7 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
-from pcap_utils import SUBMESSAGE_ORDER
+from PCAPUtils import SUBMESSAGE_ORDER
 
 class PCAPStats:
     """
