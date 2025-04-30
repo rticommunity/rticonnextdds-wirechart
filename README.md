@@ -38,5 +38,5 @@ python3 wirechart.py [-h] --pcap /path/to/PCAP_FILE.pcap [--output /path/to/OUTP
 <pre>
 --pcap      /path/to/PCAP_FILE.pcap     Required argument to specify the PCAP file.
 --output    /path/to/OUTPUT_FILE.xlsx   Optional argument to specify an output file for PCAP statistics.
---no-gui                                Optional argument to limit output to the console.
+--no-gui                                Optional argument to limit output to only the console.
 </pre>
