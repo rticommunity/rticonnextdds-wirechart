@@ -112,7 +112,8 @@ class PCAPStats:
         # Define a consistent color mapping for submessages
         color_mapping = {
             "DATA": "#1f77b4",  # Blue
-            "DATA_BATCH": "#ADD8E6",  # Light Blue
+            "DATA_FRAG": "#aec7e8",  # Light Blue
+            "DATA_BATCH": "#add8e6",  # Light Blue
             "PIGGYBACK_HEARTBEAT": "#ff7f0e",  # Orange
             "PIGGYBACK_HEARTBEAT_BATCH": "#ffbb78",  # Light Orange
             "HEARTBEAT": "#2ca02c",  # Green

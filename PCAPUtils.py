@@ -6,23 +6,19 @@ import re
 class InvalidPCAPDataException(Exception):
     """Exception raised for invalid PCAP data."""
 
-    def __init__(self, message, pcap_file=None):
+    def __init__(self, message):
         """
         Initializes the exception with a message and an optional PCAP file.
 
         :param message: The error message.
-        :param pcap_file: The path to the PCAP file (optional).
         """
         self.message = message
-        self.pcap_file = pcap_file
         super().__init__(self.message)
 
     def __str__(self):
-        if self.pcap_file:
-            return f"{self.message} (File: {self.pcap_file})"
         return self.message
 
-SUBMESSAGE_ORDER = ["DATA", "DATA_BATCH", "PIGGYBACK_HEARTBEAT", "PIGGYBACK_HEARTBEAT_BATCH", "HEARTBEAT", "HEARTBEAT_BATCH", "ACKNACK", "GAP", "UNREGISTER_DISPOSE"]
+SUBMESSAGE_ORDER = ["DATA", "DATA_FRAG", "DATA_BATCH", "PIGGYBACK_HEARTBEAT", "PIGGYBACK_HEARTBEAT_BATCH", "HEARTBEAT", "HEARTBEAT_BATCH", "ACKNACK", "GAP", "UNREGISTER_DISPOSE"]
 ENDPOINT_DISCOVERY_DISPLAY_FILTER = 'rtps.sm.wrEntityId == 0x000003c2 || rtps.sm.wrEntityId == 0x000004c2 || rtps.sm.wrEntityId == 0xff0003c2 || rtps.sm.wrEntityId == 0xff0004c2'
 USER_DATA_DISPLAY_FILTER = 'rtps.sm.wrEntityId.entityKind == 0x02 || rtps.sm.wrEntityId.entityKind == 0x03'
 
@@ -64,7 +60,7 @@ def extract_pcap_data(pcap_file, fields, display_filter=None, max_frames=None):
 
         if frame_data == ['']:
             # If the output is empty, raise an exception
-            raise InvalidPCAPDataException("tshark returned no RTPS frames", pcap_file)
+            raise InvalidPCAPDataException("tshark returned no RTPS frames")
 
         # Split each line into columns and create a list of dictionaries
         data = []
@@ -135,7 +131,7 @@ def count_user_messages(pcap_data, unique_topics):
                         rows.append({'Topic': topic, 'Submessage': submessage, 'Count': 1, 'Length': length})
 
     if not rows:
-        raise InvalidPCAPDataException("No RTPS user frames with associated discovery data", pcap_file=None)
+        raise InvalidPCAPDataException("No RTPS user frames with associated discovery data")
 
     # Convert the rows into a DataFrame
     df = pd.DataFrame(rows)
