@@ -11,7 +11,9 @@ def write_to_file(output_file_path, unique_topics):
 def main():
     parser = argparse.ArgumentParser(description="Extract unique topics from a pcap file.")
     parser.add_argument('--pcap', type=str, required=True, help='Required argument. Specify the PCAP file.')
-    parser.add_argument('--output', type=str, default='', help='Specify an output file PCAP statistics.')
+    parser.add_argument('--output', type=str, default='', help='Specify an output file for PCAP statistics.')
+    parser.add_argument('--no-gui', action='store_true', default=False, help='Disable GUI-based plotting.')
+
     args = parser.parse_args()
 
     pcap_fields = set(['frame.number'])
@@ -34,13 +36,15 @@ def main():
     pcap_stats = PCAPStats(count_user_messages(pcap_data, unique_topics))
     pcap_stats.print_stats()  # Print statistics
     pcap_stats.print_stats_in_bytes()  # Print statistics in bytes
-    pcap_stats.plot_stats_by_frame_count()  # Plot by frame count
-    pcap_stats.plot_stats_by_frame_length()  # Plot by frame length
+
+    # Plot statistics only if GUI is enabled
+    if not args.no_gui:
+        pcap_stats.plot_stats_by_frame_count()  # Plot by frame count
+        pcap_stats.plot_stats_by_frame_length()  # Plot by frame length
+
     # Write the DataFrame to an Excel file if an output path is provided
     if args.output:
         pcap_stats.save_to_excel(args.output, 'PCAPStats')  # Write to Excel
-
-    
 
 if __name__ == "__main__":
     try:
