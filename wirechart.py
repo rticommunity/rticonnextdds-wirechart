@@ -1,6 +1,6 @@
 import argparse
 from pcap_utils import *
-from plotting import *
+# from plotting import *
 from PCAPStats import *
 
 def write_to_file(output_file_path, unique_topics):
