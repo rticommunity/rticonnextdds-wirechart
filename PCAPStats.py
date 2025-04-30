@@ -127,12 +127,17 @@ class PCAPStats:
         # Plot the stacked bar chart with consistent colors
         ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13), color=colors)
 
-        # Add totals to the legend
+        # Add totals to the legend, filtering out submessages with zero totals
         submessage_totals = self.df.groupby('Submessage', observed=False)[metric].sum()
+        filtered_totals = {label: total for label, total in submessage_totals.items() if total > 0}  # Filter nonzero totals
         handles, labels = ax.get_legend_handles_labels()
+        filtered_handles_labels = [
+            (handle, label) for handle, label in zip(handles, labels) if label in filtered_totals
+        ]
+        filtered_handles, filtered_labels = zip(*filtered_handles_labels) if filtered_handles_labels else ([], [])
         ax.legend(
-            handles,
-            [f"{label} ({submessage_totals[label]:,} {units})" for label in labels],
+            filtered_handles,
+            [f"{label} ({filtered_totals[label]:,} {units})" for label in filtered_labels],
             title='Submessage'
         )
 
