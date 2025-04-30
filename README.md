@@ -24,7 +24,7 @@ pip install pandas matplotlib openpyxl
 ### External Tools
 
 - `tshark`: Required for extracting data from PCAP files.
-    - Install Wireshark, which typically includes `tshark`.
+    - Install [Wireshark](https://www.wireshark.org/download.html), which typically includes `tshark`.
     - Ensure `tshark` is accessible from your system's `PATH`.
 
 ## Usage
