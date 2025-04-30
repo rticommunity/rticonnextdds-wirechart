@@ -27,19 +27,20 @@ class PCAPStats:
 
         # Calculate total messages by topic and sort in descending order
         total_messages_by_topic = self.df.groupby('Topic')['Count'].sum().sort_values(ascending=False)
-        print("\nTotal messages by topic:")
+        print(f"{" " * 2}Total messages by topic:")
         for topic, count in total_messages_by_topic.items():
-            print(f"  {topic}: {count}")
+            print(f"{" " * 4}{topic}: {count}")
 
         # Calculate counts for each submessage type
         submessage_counts = self.df.groupby('Submessage', observed=False)['Count'].sum()
-        print("\nSubmessage counts:")
+        print(f"{" " * 2}Submessage counts:")
         for submsg in SUBMESSAGE_ORDER:
             if submsg in submessage_counts:
-                print(f"  {submsg}: {submessage_counts[submsg]}")
+                print(f"{" " * 4}{submsg}: {submessage_counts[submsg]}")
         for submsg, count in submessage_counts.items():
             if submsg not in SUBMESSAGE_ORDER:
                 print(f"  {submsg}: {count}")
+        print()
 
     def print_stats_in_bytes(self):
         """
@@ -52,23 +53,20 @@ class PCAPStats:
 
         # Calculate total message length by topic and sort in descending order
         total_length_by_topic = self.df.groupby('Topic')['Length'].sum().sort_values(ascending=False)
-        print("\nTotal message length by topic:")
+        print(f"{" " * 2}Total message length by topic:")
         for topic, length in total_length_by_topic.items():
-            print(f"  {topic}: {length:,} bytes")
+            print(f"{" " * 4}{topic}: {length:,} bytes")
 
         # Calculate total lengths for each submessage type
         submessage_lengths = self.df.groupby('Submessage', observed=False)['Length'].sum()
-        print("\nSubmessage lengths:")
+        print(f"{" " * 2}Submessage lengths:")
         for submsg in SUBMESSAGE_ORDER:
             if submsg in submessage_lengths:
-                print(f"  {submsg}: {submessage_lengths[submsg]:,} bytes")
+                print(f"{" " * 4}{submsg}: {submessage_lengths[submsg]:,} bytes")
         for submsg, length in submessage_lengths.items():
             if submsg not in SUBMESSAGE_ORDER:
-                print(f"  {submsg}: {length:,} bytes")
-
-        # Calculate total number of topics
-        total_topics = self.df['Topic'].nunique()
-        print(f"\nTotal number of topics found: {total_topics}")
+                print(f"{" " * 4}{submsg}: {length:,} bytes")
+        print()
 
     def plot_stats_by_frame_count(self):
         self._plot_statistics(metric="Count")
