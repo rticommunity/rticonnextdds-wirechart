@@ -22,7 +22,7 @@ class InvalidPCAPDataException(Exception):
             return f"{self.message} (File: {self.pcap_file})"
         return self.message
 
-SUBMESSAGE_ORDER = ["DATA", "PIGGYBACK_HEARTBEAT", "HEARTBEAT", "ACKNACK", "GAP", "UNREGISTER_DISPOSE"]
+SUBMESSAGE_ORDER = ["DATA", "DATA_BATCH", "PIGGYBACK_HEARTBEAT", "PIGGYBACK_HEARTBEAT_BATCH", "HEARTBEAT", "HEARTBEAT_BATCH", "ACKNACK", "GAP", "UNREGISTER_DISPOSE"]
 ENDPOINT_DISCOVERY_DISPLAY_FILTER = 'rtps.sm.wrEntityId == 0x000003c2 || rtps.sm.wrEntityId == 0x000004c2 || rtps.sm.wrEntityId == 0xff0003c2 || rtps.sm.wrEntityId == 0xff0004c2'
 USER_DATA_DISPLAY_FILTER = 'rtps.sm.wrEntityId.entityKind == 0x02 || rtps.sm.wrEntityId.entityKind == 0x03'
 
@@ -119,11 +119,18 @@ def count_user_messages(pcap_data, unique_topics):
                     submessage = match[0]
                     topic = match[1]
                     length = int(udp_length) if udp_length and udp_length.isdigit() else 0  # Convert length to int
+
+                    # Treat DATA_FRAG and HEARTBEAT_FRAG as DATA and HEARTBEAT respectively
+                    # if 'DATA' in submessage:
+                    #     submessage = "DATA"
+                    # elif 'HEARTBEAT' in submessage:
+                    #     submessage = "HEARTBEAT"
+
                     if "([" in submessage:
                         rows.append({'Topic': topic, 'Submessage': "UNREGISTER_DISPOSE", 'Count': 1, 'Length': length})
-                    elif submessage == "HEARTBEAT" and len(matches) > 1:
+                    elif "HEARTBEAT" in submessage and len(matches) > 1:
                         # Multiple matches found with a HEARTBEAT, therefore a PIGGYBACK_HEARTBEAT
-                        rows.append({'Topic': topic, 'Submessage': "PIGGYBACK_HEARTBEAT", 'Count': 1, 'Length': 0})
+                        rows.append({'Topic': topic, 'Submessage': "PIGGYBACK_" + submessage , 'Count': 1, 'Length': 0})
                     else:
                         rows.append({'Topic': topic, 'Submessage': submessage, 'Count': 1, 'Length': length})
 
