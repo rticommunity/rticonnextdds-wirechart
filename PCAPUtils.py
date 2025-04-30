@@ -19,8 +19,6 @@ class InvalidPCAPDataException(Exception):
         return self.message
 
 SUBMESSAGE_ORDER = ["DATA", "DATA_FRAG", "DATA_BATCH", "PIGGYBACK_HEARTBEAT", "PIGGYBACK_HEARTBEAT_BATCH", "HEARTBEAT", "HEARTBEAT_BATCH", "ACKNACK", "GAP", "UNREGISTER_DISPOSE"]
-ENDPOINT_DISCOVERY_DISPLAY_FILTER = 'rtps.sm.wrEntityId == 0x000003c2 || rtps.sm.wrEntityId == 0x000004c2 || rtps.sm.wrEntityId == 0xff0003c2 || rtps.sm.wrEntityId == 0xff0004c2'
-USER_DATA_DISPLAY_FILTER = 'rtps.sm.wrEntityId.entityKind == 0x02 || rtps.sm.wrEntityId.entityKind == 0x03'
 
 def return_all_matches(regex, string):
     """
@@ -116,17 +114,15 @@ def count_user_messages(pcap_data, unique_topics):
                     topic = match[1]
                     length = int(udp_length) if udp_length and udp_length.isdigit() else 0  # Convert length to int
 
-                    # Treat DATA_FRAG and HEARTBEAT_FRAG as DATA and HEARTBEAT respectively
-                    # if 'DATA' in submessage:
-                    #     submessage = "DATA"
-                    # elif 'HEARTBEAT' in submessage:
-                    #     submessage = "HEARTBEAT"
-
                     if "([" in submessage:
                         rows.append({'Topic': topic, 'Submessage': "UNREGISTER_DISPOSE", 'Count': 1, 'Length': length})
                     elif "HEARTBEAT" in submessage and len(matches) > 1:
+                        # Subtract the length of the HEARTBEAT from the length of the previous message
+                        length = 44 if "HEARTBEAT_BATCH" == submessage else 28
+                        rows[-1]['Length'] -= length
+
                         # Multiple matches found with a HEARTBEAT, therefore a PIGGYBACK_HEARTBEAT
-                        rows.append({'Topic': topic, 'Submessage': "PIGGYBACK_" + submessage , 'Count': 1, 'Length': 0})
+                        rows.append({'Topic': topic, 'Submessage': "PIGGYBACK_" + submessage , 'Count': 1, 'Length': length})
                     else:
                         rows.append({'Topic': topic, 'Submessage': submessage, 'Count': 1, 'Length': length})
 
