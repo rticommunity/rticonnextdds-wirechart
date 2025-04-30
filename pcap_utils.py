@@ -128,7 +128,7 @@ def count_user_messages(pcap_data, unique_topics):
                         rows.append({'Topic': topic, 'Submessage': submessage, 'Count': 1, 'Length': length})
 
     if not rows:
-        raise InvalidPCAPDataException("No RTPS frames with discovery data", pcap_file=None)
+        raise InvalidPCAPDataException("No RTPS user frames with associated discovery data", pcap_file=None)
 
     # Convert the rows into a DataFrame
     df = pd.DataFrame(rows)

@@ -46,6 +46,6 @@ if __name__ == "__main__":
     try:
         main()
     except InvalidPCAPDataException as e:
-        print(f"Invalid PCAP File: {e.message} in file {e.pcap_file}")
-    except Exception as e: 
+        print(f"Invalid PCAP File: {e.message}.")
+    except Exception as e:
         print(f"An error occurred: {e}")
