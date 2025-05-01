@@ -98,7 +98,7 @@ def count_user_messages(pcap_data, unique_topics):
     :param unique_topics: A set of unique topics to initialize the DataFrame.
     :return: A pandas DataFrame with columns ['Topic', 'Submessage', 'Count', 'Length'].
     """
-    rows = []  # List to store rows for the DataFrame
+    frames = []  # List to store rows for the DataFrame
 
     # Process the PCAP data to count messages and include lengths
     for record in pcap_data:
@@ -115,22 +115,22 @@ def count_user_messages(pcap_data, unique_topics):
                     length = int(udp_length) if udp_length and udp_length.isdigit() else 0  # Convert length to int
 
                     if "([" in submessage:
-                        rows.append({'Topic': topic, 'Submessage': "UNREGISTER_DISPOSE", 'Count': 1, 'Length': length})
+                        frames.append({'Topic': topic, 'Submessage': "UNREGISTER_DISPOSE", 'Count': 1, 'Length': length})
                     elif "HEARTBEAT" in submessage and len(matches) > 1:
                         # Subtract the length of the HEARTBEAT from the length of the previous message
                         length = 44 if "HEARTBEAT_BATCH" == submessage else 28
-                        rows[-1]['Length'] -= length
+                        frames[-1]['Length'] -= length
 
                         # Multiple matches found with a HEARTBEAT, therefore a PIGGYBACK_HEARTBEAT
-                        rows.append({'Topic': topic, 'Submessage': "PIGGYBACK_" + submessage , 'Count': 1, 'Length': length})
+                        frames.append({'Topic': topic, 'Submessage': "PIGGYBACK_" + submessage , 'Count': 1, 'Length': length})
                     else:
-                        rows.append({'Topic': topic, 'Submessage': submessage, 'Count': 1, 'Length': length})
+                        frames.append({'Topic': topic, 'Submessage': submessage, 'Count': 1, 'Length': length})
 
-    if not rows:
+    if not frames:
         raise InvalidPCAPDataException("No RTPS user frames with associated discovery data")
 
     # Convert the rows into a DataFrame
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(frames)
 
     # Aggregate the counts and lengths for each (Topic, Submessage) pair
     df = df.groupby(['Topic', 'Submessage'], as_index=False).agg({'Count': 'sum', 'Length': 'sum'})
