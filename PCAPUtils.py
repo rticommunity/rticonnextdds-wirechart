@@ -1,24 +1,12 @@
 import subprocess
 import pandas as pd
 import re
-# from plotting import *
+from collections import defaultdict
+from PCAPFrame import *
 
-class InvalidPCAPDataException(Exception):
-    """Exception raised for invalid PCAP data."""
-
-    def __init__(self, message):
-        """
-        Initializes the exception with a message and an optional PCAP file.
-
-        :param message: The error message.
-        """
-        self.message = message
-        super().__init__(self.message)
-
-    def __str__(self):
-        return self.message
-
-SUBMESSAGE_ORDER = ["DATA", "DATA_FRAG", "DATA_BATCH", "PIGGYBACK_HEARTBEAT", "PIGGYBACK_HEARTBEAT_BATCH", "HEARTBEAT", "HEARTBEAT_BATCH", "ACKNACK", "GAP", "UNREGISTER_DISPOSE"]
+SUBMESSAGE_ORDER = ["DATA", "DATA_FRAG", "DATA_BATCH", "PIGGYBACK_HEARTBEAT",
+                    "PIGGYBACK_HEARTBEAT_BATCH", "HEARTBEAT", "HEARTBEAT_BATCH",
+                    "ACKNACK", "REPAIR", "GAP", "UNREGISTER_DISPOSE"]
 
 def return_all_matches(regex, string):
     """
@@ -30,13 +18,13 @@ def return_all_matches(regex, string):
 
 def extract_pcap_data(pcap_file, fields, display_filter=None, max_frames=None):
     """
-    Calls tshark to extract specified fields from a pcap file and returns a list of dictionaries.
+    Calls tshark to extract specified fields from a pcap file and returns a list of PCAPFrame objects.
 
     :param pcap_file: Path to the pcap file
-    :param fields: Set of fields to extract (e.g., ['_ws.col.Info', '_ws.col.Protocol'])
+    :param fields: Set of fields to extract (e.g., ['_ws_col_Info', '_ws.col.Protocol'])
     :param display_filter: Optional display filter (e.g., 'http')
     :param max_frames: Optional limit on number of packets
-    :return: List of dictionaries containing the extracted field values
+    :return: List of PCAPFrame objects containing the extracted field values
     """
 
     fields = list(fields)  # Ensure fields is a list for tshark command
@@ -60,14 +48,14 @@ def extract_pcap_data(pcap_file, fields, display_filter=None, max_frames=None):
             # If the output is empty, raise an exception
             raise InvalidPCAPDataException("tshark returned no RTPS frames")
 
-        # Split each line into columns and create a list of dictionaries
-        data = []
+        # Split each line into columns and create a list of PCAPFrame objects
+        frames = []
         for line in frame_data:
             values = line.split('\t')
             record = {field: value for field, value in zip(fields, values)}
-            data.append(record)
+            frames.append(PCAPFrame(**record))  # Create a PCAPFrame object for each record
 
-        return data
+        return frames
     except subprocess.CalledProcessError as e:
         print("Error running tshark:", e.stderr)
         return []  # Return an empty list in case of an error
@@ -82,11 +70,23 @@ def get_unique_topics(pcap_data):
     unique_topics = set()
 
     for record in pcap_data:
-        info_column = record.get('_ws.col.Info')  # Get the '_ws.col.Info' field from the dictionary
+        info_column = record._ws_col_Info  # Get the '_ws_col_Info' field from the dictionary
         if info_column and pd.notnull(info_column):  # Check for non-null values
             unique_topics.update(return_all_matches(r'DATA\([rw]\)\s*->\s*([\w:/]+),?', info_column))
 
     return unique_topics
+
+def set_sequence_number(sequence_numbers, frame, sequence_number_index, gap=False):
+    sequence_number_index += 1
+    frame_seq_number = frame.seq_number[sequence_number_index]
+
+    if gap:
+        # GAPs announce the next sequence number, so decrement by 1
+        frame_seq_number -= 1
+
+    if frame_seq_number > sequence_numbers[frame.guid]:
+        sequence_numbers[frame.guid] = frame_seq_number
+    return sequence_number_index
 
 def count_user_messages(pcap_data, unique_topics):
     """
@@ -98,39 +98,54 @@ def count_user_messages(pcap_data, unique_topics):
     :param unique_topics: A set of unique topics to initialize the DataFrame.
     :return: A pandas DataFrame with columns ['Topic', 'Submessage', 'Count', 'Length'].
     """
-    frames = []  # List to store rows for the DataFrame
+    frame_stats = []  # List to store rows for the DataFrame
+    sequence_numbers = defaultdict(int)  # Dictionary to store string keys and unsigned integer values
 
     # Process the PCAP data to count messages and include lengths
-    for record in pcap_data:
-        info_column = record.get('_ws.col.Info')  # Get the '_ws.col.Info' field from the dictionary
-        udp_length = record.get('udp.length')  # Get the 'udp.length' field from the dictionary
+    for frame in pcap_data:
+        info_column = frame._ws_col_Info  # Get the '_ws_col_Info' field from the dictionary
 
         if info_column and pd.notnull(info_column):  # Check for non-null values
             # matches = return_all_matches(r',\s*(\w+)\s*->\s*([\w:]+)', info_column)
             matches = return_all_matches(r',\s*([A-Z0-9_()[\]]+)\s*->\s*([\w:]+)', info_column) # New
+            seq_num_index = 0
             for match in matches:
                 if match:
                     submessage = match[0]
                     topic = match[1]
+                    udp_length = frame.udp_length   # Get the 'udp.length' field from the dictionary
                     length = int(udp_length) if udp_length and udp_length.isdigit() else 0  # Convert length to int
 
                     if "([" in submessage:
-                        frames.append({'Topic': topic, 'Submessage': "UNREGISTER_DISPOSE", 'Count': 1, 'Length': length})
-                    elif "HEARTBEAT" in submessage and len(matches) > 1:
-                        # Subtract the length of the HEARTBEAT from the length of the previous message
-                        length = 44 if "HEARTBEAT_BATCH" == submessage else 28
-                        frames[-1]['Length'] -= length
+                        frame_stats.append({'Topic': topic, 'Submessage': "UNREGISTER_DISPOSE", 'Count': 1, 'Length': length})
+                    elif "HEARTBEAT" in submessage:
+                        # Record the sequence number
+                        seq_num_index = set_sequence_number(sequence_numbers, frame, seq_num_index)
+
+                        if len(matches) > 1:
+                            # Subtract the length of the HEARTBEAT from the length of the previous message
+                            length = 44 if "HEARTBEAT_BATCH" == submessage else 28
+                            frame_stats[-1]['Length'] -= length
+                            submessage = "PIGGYBACK_" + submessage
 
                         # Multiple matches found with a HEARTBEAT, therefore a PIGGYBACK_HEARTBEAT
-                        frames.append({'Topic': topic, 'Submessage': "PIGGYBACK_" + submessage , 'Count': 1, 'Length': length})
+                        frame_stats.append({'Topic': topic, 'Submessage': submessage, 'Count': 1, 'Length': length})
                     else:
-                        frames.append({'Topic': topic, 'Submessage': submessage, 'Count': 1, 'Length': length})
+                        if "GAP" == submessage:
+                            seq_num_index = set_sequence_number(sequence_numbers, frame, seq_num_index, gap=True)
 
-    if not frames:
+                        if "DATA" in submessage:
+                            if frame.seq_number[seq_num_index] <= sequence_numbers[frame.guid]:
+                                submessage = "REPAIR"
+
+                        frame_stats.append({'Topic': topic, 'Submessage': submessage, 'Count': 1, 'Length': length})
+                seq_num_index += 1
+
+    if not frame_stats:
         raise InvalidPCAPDataException("No RTPS user frames with associated discovery data")
 
     # Convert the rows into a DataFrame
-    df = pd.DataFrame(frames)
+    df = pd.DataFrame(frame_stats)
 
     # Aggregate the counts and lengths for each (Topic, Submessage) pair
     df = df.groupby(['Topic', 'Submessage'], as_index=False).agg({'Count': 'sum', 'Length': 'sum'})
@@ -149,5 +164,9 @@ def count_user_messages(pcap_data, unique_topics):
     # Order the Submessage column based on SUBMESSAGE_ORDER
     df['Submessage'] = pd.Categorical(df['Submessage'], categories=SUBMESSAGE_ORDER, ordered=True)
     df = df.sort_values(by=['Topic', 'Submessage']).reset_index(drop=True)
+
+    print("Sequence Numbers:")
+    for guid, seq_num in sequence_numbers.items():
+        print(f"{guid}: {seq_num}")
 
     return df

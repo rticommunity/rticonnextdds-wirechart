@@ -116,7 +116,8 @@ class PCAPStats:
             "PIGGYBACK_HEARTBEAT_BATCH": "#ffbb78",  # Light Orange
             "HEARTBEAT": "#2ca02c",  # Green
             "HEARTBEAT_BATCH": "#98df8a",  # Light Green
-            "ACKNACK": "#d62728",  # Red
+            "ACKNACK": "#ff7f7f",  # Light Red
+            "REPAIR": "#d62728",  # Red
             "GAP": "#9467bd",  # Purple
             "UNREGISTER_DISPOSE": "#8c564b",  # Brown
         }
