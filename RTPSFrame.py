@@ -116,6 +116,12 @@ class RTPSFrame:
                   f"Length: {submessage.length}, Seq Number: {submessage.seq_number}")
         print()
 
+    def list_topics(self):
+        """
+        Returns a list of unique topics from the RTPSFrame object.
+        """
+        return set(submessage.topic for submessage in self.sm_list if submessage.topic)
+
     def __repr__(self):
         """
         Returns a string representation of the RTPSFrame object.

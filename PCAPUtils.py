@@ -59,9 +59,6 @@ def extract_pcap_data(pcap_file, fields, display_filter=None, max_frames=None):
                 # print(e.message)
                 continue
 
-        for frame in frames:
-            frame.print_frame()  # Print the details of each frame
-
         return frames
     except subprocess.CalledProcessError as e:
         print("Error running tshark:", e.stderr)
