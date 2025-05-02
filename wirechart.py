@@ -1,6 +1,7 @@
 import argparse
 from PCAPUtils import *
 from RTPSFrame import *
+from RTPSCapture import *
 from PCAPStats import *
 
 def write_to_file(output_file_path, unique_topics):
@@ -19,15 +20,9 @@ def main():
     pcap_fields = set(['frame.number', 'udp.length', 'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',
                        'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader', 'rtps.sm.id', '_ws.col.Info'])
 
-    pcap_data = extract_pcap_data(args.pcap, pcap_fields, 'rtps')
-    
-    topics = set()
-
-    for frame in pcap_data:
-        topics.update(frame.list_topics())
-
-    print(f"Unique topics: {len(topics)}")
-    # unique_topics = get_unique_topics(pcap_data)
+    rtps_frames = RTPSCapture()
+    rtps_frames.extract_rtps_frames(args.pcap, pcap_fields, 'rtps')
+    rtps_frames.print_capture_summary()  # Print summary of the capture
 
     # pcap_stats = PCAPStats(count_user_messages(pcap_data, unique_topics))
     # pcap_stats.print_stats()  # Print statistics
