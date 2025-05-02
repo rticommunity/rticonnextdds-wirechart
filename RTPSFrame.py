@@ -34,6 +34,7 @@ class RTPSSubmessage():
         if self.sm_type == "GAP":
             self.seq_number -= 1
 
+        # If this is a HEARTBEAT and there are multiple submessages, this is a PIGGYBACK_HEARTBEAT
         if multiple_sm and "HEARTBEAT" in self.sm_type:
             self.sm_type = "PIGGYBACK_" + self.sm_type
 
@@ -81,9 +82,9 @@ class RTPSFrame:
         sm_list = [s.strip() for s in frame_data.get('_ws.col.Info', '').split(',')]
         seq_number_list = list(map(int, frame_data.get('rtps.sm.seqNumber', 0).split(',')))
         sm_len_list = list(map(int, frame_data.get('rtps.sm.octetsToNextHeader', 0).split(',')))
-        length = int(frame_data.get('udp.length', 0))
+        udp_length = int(frame_data.get('udp.length', 0))
 
-        seq_number_iterator = 0
+        seq_number_iterator = iter(seq_number_list)
         for sm, sm_len in zip(sm_list, sm_len_list):
             if sm in ("INFO_TS", "INFO_DST"):  # TODO: Maybe INFO_SRC too?
                 continue
@@ -92,18 +93,19 @@ class RTPSFrame:
             sm_topic = matches.group(2).strip() if matches else ''
 
             if sm in ("HEARTBEAT", "GAP"):
-                seq_number_iterator += 1
+                # HEARTBEAT and GAP have 2 sequence numbers in the list, and we want the second one
+                # so throw away the first sequence number.
+                next(seq_number_iterator)
 
             if not self.sm_list:
-                # Include full length including header in the first submessage
-                self.sm_list.append(RTPSSubmessage(sm, sm_topic, length, seq_number_list[seq_number_iterator]))
-                seq_number_iterator += 1
+                # Include full upd_length in the first submessage
+                self.sm_list.append(RTPSSubmessage(sm, sm_topic, udp_length, next(seq_number_iterator)))
 
             else:
                 # Decrease the length of the first submessage by the length of the current submessage
                 self.sm_list[0].length -= sm_len
-                self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, seq_number_list[seq_number_iterator], True))
-                seq_number_iterator += 1
+                # Indicate more than one submessage in the frame
+                self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), True))
 
     def print_frame(self):
         """
