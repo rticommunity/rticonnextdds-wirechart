@@ -50,10 +50,17 @@ def extract_pcap_data(pcap_file, fields, display_filter=None, max_frames=None):
 
         # Split each line into columns and create a list of PCAPFrame objects
         frames = []
-        for line in frame_data:
-            values = line.split('\t')
-            record = {field: value for field, value in zip(fields, values)}
-            frames.append(PCAPFrame(**record))  # Create a PCAPFrame object for each record
+        for frame in frame_data:
+            values = frame.split('\t')
+            frame = {field: value for field, value in zip(fields, values)}
+            try:
+                frames.append(PCAPFrame(frame))  # Create a PCAPFrame object for each record
+            except InvalidPCAPDataException as e:
+                # print(e.message)
+                continue
+
+        for frame in frames:
+            frame.print_frame()  # Print the details of each frame
 
         return frames
     except subprocess.CalledProcessError as e:
