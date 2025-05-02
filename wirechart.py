@@ -1,6 +1,6 @@
 import argparse
 from PCAPUtils import *
-from PCAPFrame import *
+from RTPSFrame import *
 from PCAPStats import *
 
 def write_to_file(output_file_path, unique_topics):

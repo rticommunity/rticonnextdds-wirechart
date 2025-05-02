@@ -2,7 +2,7 @@ import subprocess
 import pandas as pd
 import re
 from collections import defaultdict
-from PCAPFrame import *
+from RTPSFrame import *
 
 SUBMESSAGE_ORDER = ["DATA", "DATA_FRAG", "DATA_BATCH", "PIGGYBACK_HEARTBEAT",
                     "PIGGYBACK_HEARTBEAT_BATCH", "HEARTBEAT", "HEARTBEAT_BATCH",
@@ -18,13 +18,13 @@ def return_all_matches(regex, string):
 
 def extract_pcap_data(pcap_file, fields, display_filter=None, max_frames=None):
     """
-    Calls tshark to extract specified fields from a pcap file and returns a list of PCAPFrame objects.
+    Calls tshark to extract specified fields from a pcap file and returns a list of RTPSFrame objects.
 
     :param pcap_file: Path to the pcap file
     :param fields: Set of fields to extract (e.g., ['_ws_col_Info', '_ws.col.Protocol'])
     :param display_filter: Optional display filter (e.g., 'http')
     :param max_frames: Optional limit on number of packets
-    :return: List of PCAPFrame objects containing the extracted field values
+    :return: List of RTPSFrame objects containing the extracted field values
     """
 
     fields = list(fields)  # Ensure fields is a list for tshark command
@@ -48,13 +48,13 @@ def extract_pcap_data(pcap_file, fields, display_filter=None, max_frames=None):
             # If the output is empty, raise an exception
             raise InvalidPCAPDataException("tshark returned no RTPS frames")
 
-        # Split each line into columns and create a list of PCAPFrame objects
+        # Split each line into columns and create a list of RTPSFrame objects
         frames = []
         for frame in frame_data:
             values = frame.split('\t')
             frame = {field: value for field, value in zip(fields, values)}
             try:
-                frames.append(PCAPFrame(frame))  # Create a PCAPFrame object for each record
+                frames.append(RTPSFrame(frame))  # Create a RTPSFrame object for each record
             except InvalidPCAPDataException as e:
                 # print(e.message)
                 continue

@@ -54,14 +54,14 @@ class RTPSSubmessage():
                 # Unregister/Dispose for User Data
                 self.sm_type = SubmessageTypes.DATA_STATE.value
 
-class PCAPFrame:
+class RTPSFrame:
     """
     Represents a single frame extracted from a PCAP file.
     """
 
     def __init__(self, frame_data):
         """
-        Initializes a PCAPFrame object with dynamic attributes.
+        Initializes a RTPSFrame object with dynamic attributes.
 
         :param frame_data: Dictionary containing field names and their values.
         """
@@ -107,7 +107,7 @@ class PCAPFrame:
 
     def print_frame(self):
         """
-        Prints the details of the PCAPFrame object in a readable format.
+        Prints the details of the RTPSFrame object in a readable format.
         """
         print(f"Frame: {self.frame_number} GUID: {self.guid}")
         print(f"{" " * 2}Submessages:")
@@ -118,6 +118,6 @@ class PCAPFrame:
 
     def __repr__(self):
         """
-        Returns a string representation of the PCAPFrame object.
+        Returns a string representation of the RTPSFrame object.
         """
-        return f"PCAPFrame({', '.join(f'{key}={value}' for key, value in self.__dict__.items())})"
+        return f"RTPSFrame({', '.join(f'{key}={value}' for key, value in self.__dict__.items())})"
