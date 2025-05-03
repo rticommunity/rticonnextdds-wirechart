@@ -1,5 +1,10 @@
 import re
 from enum import IntEnum, auto
+from log_handler import logging
+
+logger = logging.getLogger(__name__)
+
+# TODO: Add logging for invalid submessage types and other exceptions
 
 class SubmessageTypes(IntEnum):
     def _generate_next_value_(name, start, count, last_values):
@@ -80,7 +85,7 @@ class RTPSSubmessage():
             raise InvalidPCAPDataException(f"Invalid submessage type: {sm_type}")
 
     def __str__(self):
-        return (f"Type: {self.sm_type}, Topic: {self.topic}, "
+        return (f"Type: {self.sm_type.name}, Topic: {self.topic}, "
                 f"Length: {self.length}, Seq Number: {self.seq_number}")
 
 class RTPSFrame:
@@ -94,13 +99,15 @@ class RTPSFrame:
 
         :param frame_data: Dictionary containing field names and their values.
         """
-        self.frame_number = frame_data.get('frame.number', 0)
+        logger.debug(f"Processing: {frame_data}")
+        self.frame_number = int(frame_data.get('frame.number', 0))
         self.sm_list = list()
         self.discovery_frame = False
 
         guid_prefix = frame_data.get('rtps.guidPrefix.src', None)
         if not guid_prefix:
             # PING frame or something similar
+            logger.info(f"Frame {self.frame_number:09}: Dumping for no GUID prefix.")
             raise InvalidPCAPDataException(f"No GUID prefix. Dumping frame {self.frame_number}.")
 
         wr_entity_id = frame_data.get('rtps.sm.wrEntityId')
@@ -137,6 +144,8 @@ class RTPSFrame:
                 # Indicate more than one submessage in the frame
                 self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), True))
 
+        logger.debug(str(self))
+
     def list_topics(self):
         """
         Returns a list of unique topics from the RTPSFrame object.
@@ -147,7 +156,9 @@ class RTPSFrame:
         return set(submessage.topic for submessage in self.sm_list if submessage.topic)
 
     def __str__(self):
-        result = [f"Frame: {self.frame_number} GUID: {self.guid}\n{" " * 2}Submessages: ({len(self.sm_list)})"]
+        result = [f"Frame: {self.frame_number:09} GUID: {self.guid}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
         for i, submessage in enumerate(self.sm_list, start=1):
             result.append(f"{" " * 4}{i} {str(submessage)}")
         return "\n".join(result)
+    
+    # TODO: Add add_submessage method to add submessages to the list

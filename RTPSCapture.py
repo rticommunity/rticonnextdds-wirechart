@@ -12,6 +12,9 @@ class RTPSCapture:
         Initializes an empty RTPSCapture object.
         """
         self.frames = []  # List to store RTPSFrame objects
+        # TODO: Check for existance of pcap file in the constructor
+        # TODO: Call extract_rtps_frames() in the constructor if a pcap file is provided
+        # TODO: Add discovery, user_data dataframes
 
     def add_frame(self, frame):
         """
