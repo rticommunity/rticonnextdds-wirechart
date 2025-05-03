@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--output', type=str, default='output', help='Specify an output file for PCAP statistics.')
     parser.add_argument('--no-gui', action='store_true', default=False, help='Disable GUI-based plotting.')
     args = parser.parse_args()
+    #TODO: Add parser arguments for start and stop frames and max frames
 
     logger.info("Starting the PCAP analysis.")
 
