@@ -1,5 +1,9 @@
 import subprocess
-from RTPSFrame import RTPSFrame, InvalidPCAPDataException
+from RTPSFrame import *
+
+from log_handler import logging
+
+logger = logging.getLogger(__name__)
 
 class RTPSCapture:
     """
@@ -65,9 +69,6 @@ class RTPSCapture:
         :param max_frames: Optional limit on number of packets
         :return: List of RTPSFrame objects containing the extracted field values
         """
-
-        fields = list(fields)  # Ensure fields is a list for tshark command
-
         cmd = ['tshark', '-r', pcap_file, '-T', 'fields']
 
         # Add each field to the command
@@ -79,12 +80,13 @@ class RTPSCapture:
         if max_frames:
             cmd.extend(['-c', str(max_frames)])
 
+        logger.info(f"Running command: {' '.join(cmd)}")
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             frame_data = result.stdout.strip().split('\n')
 
             if frame_data == ['']:
-                # If the output is empty, raise an exception
+                logger.error("tshark returned no RTPS frames")
                 raise InvalidPCAPDataException("tshark returned no RTPS frames")
 
             # Split each line into columns and create a list of RTPSFrame objects
@@ -95,6 +97,8 @@ class RTPSCapture:
                     self.add_frame(RTPSFrame(frame))  # Create a RTPSFrame object for each record
                 except InvalidPCAPDataException as e:
                     continue
+                except KeyError as e:
+                    continue
         except subprocess.CalledProcessError as e:
-            print("Error running tshark:", e.stderr)
-            return []  # Return an empty list in case of an error
+            logger.error("Error running tshark.")
+            raise e

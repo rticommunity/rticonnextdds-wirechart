@@ -75,10 +75,8 @@ class RTPSSubmessage():
             else:
                 self.sm_type = SubmessageTypes[sm_type]
         except KeyError:
-            # TODO: Add logging
-            # TODO: Figure this out, caused by: Invalid submessage type: Destination unreachable (Port unreachable)
-            # raise KeyError(f"Invalid submessage type: {sm_type}")
-            pass
+            logger.info(f"Invalid submessage type: {sm_type}.  Dumping frame.")
+            raise KeyError(f"Invalid submessage: {sm_type}")
 
         if self.sm_type is None:
             #  TODO: Add logging

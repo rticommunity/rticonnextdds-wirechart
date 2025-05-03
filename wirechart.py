@@ -22,7 +22,8 @@ def main():
 
     logger.info("Starting the PCAP analysis.")
 
-    pcap_fields = set(['frame.number', 'udp.length', 'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',
+    # tshark seems to return commands in a hierarchy, i.e. frame -> udp -> rtps so order matters
+    pcap_fields = list(['frame.number', 'udp.length', 'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',
                        'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader', 'rtps.sm.id', '_ws.col.Info'])
 
     rtps_frames = RTPSCapture()
