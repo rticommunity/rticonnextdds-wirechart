@@ -1,12 +1,24 @@
 import re
-from enum import Enum
+from enum import IntEnum, auto
 
-class SubmessageTypes(Enum):
-    DATA_P = "PARTICIPANT_DISCOVERY"
-    DATA_RW = "ENDPOINT_DISCOVERY"
-    DISCOVERY_STATE = "DISCOVERY_STATE"
-    DATA = "DATA"
-    DATA_STATE = "DATA_STATE"
+class SubmessageTypes(IntEnum):
+    def _generate_next_value_(name, start, count, last_values):
+        return count  # Start from 0
+
+    DATA_P = auto()
+    DATA_RW = auto()
+    DISCOVERY_STATE = auto()
+    DATA = auto()
+    DATA_FRAG = auto()
+    DATA_BATCH = auto()
+    PIGGYBACK_HEARTBEAT = auto()
+    PIGGYBACK_HEARTBEAT_BATCH = auto()
+    HEARTBEAT = auto()
+    HEARTBEAT_BATCH = auto()
+    ACKNACK = auto()
+    REPAIR = auto()
+    GAP = auto()
+    DATA_STATE = auto()
 
 class InvalidPCAPDataException(Exception):
     """Exception raised for invalid PCAP data."""
@@ -25,35 +37,51 @@ class InvalidPCAPDataException(Exception):
 
 class RTPSSubmessage():
     def __init__(self, sm_type, topic, length, seq_number, multiple_sm=False):
-        self.sm_type = sm_type
+        self.sm_type = None
         self.topic = topic
         self.length = length
         self.seq_number = seq_number
-        self.discovery_frame = False
         # GAPs announce the next sequence number, so decrement by 1
         if self.sm_type == "GAP":
             self.seq_number -= 1
 
-        # If this is a HEARTBEAT and there are multiple submessages, this is a PIGGYBACK_HEARTBEAT
-        if multiple_sm and "HEARTBEAT" in self.sm_type:
-            self.sm_type = "PIGGYBACK_" + self.sm_type
-
         # Check for a state submessage type
-        if "DATA" in self.sm_type:
-            if self.sm_type == "DATA":
-                self.sm_type = SubmessageTypes.DATA.value
-            elif self.sm_type == "DATA(p)":
-                self.discovery_frame = True
-                self.sm_type = SubmessageTypes.DATA_P.value
-            elif self.sm_type in ("DATA(r)", "DATA(w)"):
-                self.discovery_frame = True
-                self.sm_type = SubmessageTypes.DATA_RW.value
-            elif re.search(r'DATA\([pwr]\[UD]\)', self.sm_type):
-                # Unregister/Dispose for Discovery Data
-                self.sm_type = SubmessageTypes.DISCOVERY_STATE.value
-            elif "([" in self.sm_type:
-                # Unregister/Dispose for User Data
-                self.sm_type = SubmessageTypes.DATA_STATE.value
+        try:
+            # If this is a HEARTBEAT and there are multiple submessages, this is a PIGGYBACK_HEARTBEAT
+            if multiple_sm and "HEARTBEAT" in sm_type:
+                self.sm_type = SubmessageTypes["PIGGYBACK_" + sm_type]
+
+            if "DATA" in sm_type:
+                if sm_type == "DATA":
+                    self.sm_type = SubmessageTypes.DATA
+                elif sm_type == "DATA(p)":
+                    self.sm_type = SubmessageTypes.DATA_P
+                elif sm_type in ("DATA(r)", "DATA(w)"):
+                    self.sm_type = SubmessageTypes.DATA_RW
+                elif re.search(r'DATA\([pwr]\[UD]\)', sm_type):
+                    # Unregister/Dispose for Discovery Data
+                    self.sm_type = SubmessageTypes.DISCOVERY_STATE
+                elif "([" in sm_type:
+                    # Unregister/Dispose for User Data
+                    self.sm_type = SubmessageTypes.DATA_STATE
+                else:
+                    #TODO: Add logging
+                    raise InvalidPCAPDataException(f"Invalid submessage type: {sm_type}")
+            else:
+                self.sm_type = SubmessageTypes[sm_type]
+        except KeyError:
+            # TODO: Add logging
+            # TODO: Figure this out, caused by: Invalid submessage type: Destination unreachable (Port unreachable)
+            # raise KeyError(f"Invalid submessage type: {sm_type}")
+            pass
+
+        if not self.sm_type:
+            #  TODO: Add logging
+            raise InvalidPCAPDataException(f"Invalid submessage type: {sm_type}")
+
+    def __str__(self):
+        return (f"Type: {self.sm_type}, Topic: {self.topic}, "
+                f"Length: {self.length}, Seq Number: {self.seq_number}")
 
 class RTPSFrame:
     """
@@ -67,8 +95,8 @@ class RTPSFrame:
         :param frame_data: Dictionary containing field names and their values.
         """
         self.frame_number = frame_data.get('frame.number', 0)
-
         self.sm_list = list()
+        self.discovery_frame = False
 
         guid_prefix = frame_data.get('rtps.guidPrefix.src', None)
         if not guid_prefix:
@@ -78,6 +106,8 @@ class RTPSFrame:
         wr_entity_id = frame_data.get('rtps.sm.wrEntityId')
         match = re.match(r'0x([0-9A-Fa-f]+)', wr_entity_id)
         self.guid = guid_prefix + match.group(1)
+        if int(match.group(1), 16) in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}:
+            self.discovery_frame = True
 
         sm_list = [s.strip() for s in frame_data.get('_ws.col.Info', '').split(',')]
         seq_number_list = list(map(int, frame_data.get('rtps.sm.seqNumber', 0).split(',')))
@@ -107,25 +137,17 @@ class RTPSFrame:
                 # Indicate more than one submessage in the frame
                 self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), True))
 
-    def print_frame(self):
-        """
-        Prints the details of the RTPSFrame object in a readable format.
-        """
-        print(f"Frame: {self.frame_number} GUID: {self.guid}")
-        print(f"{" " * 2}Submessages:")
-        for i, submessage in enumerate(self.sm_list, start=1):
-            print(f"{" " * 4}{i}. Type: {submessage.sm_type}, Topic: {submessage.topic}, "
-                  f"Length: {submessage.length}, Seq Number: {submessage.seq_number}")
-        print()
-
     def list_topics(self):
         """
         Returns a list of unique topics from the RTPSFrame object.
         """
+        if not self.discovery_frame:
+            return set()
+
         return set(submessage.topic for submessage in self.sm_list if submessage.topic)
 
-    def __repr__(self):
-        """
-        Returns a string representation of the RTPSFrame object.
-        """
-        return f"RTPSFrame({', '.join(f'{key}={value}' for key, value in self.__dict__.items())})"
+    def __str__(self):
+        result = [f"Frame: {self.frame_number} GUID: {self.guid}\n{" " * 2}Submessages: ({len(self.sm_list)})"]
+        for i, submessage in enumerate(self.sm_list, start=1):
+            result.append(f"{" " * 4}{i} {str(submessage)}")
+        return "\n".join(result)

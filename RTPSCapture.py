@@ -1,5 +1,5 @@
 import subprocess
-from RTPSFrame import *
+from RTPSFrame import RTPSFrame, InvalidPCAPDataException
 
 class RTPSCapture:
     """
@@ -50,7 +50,7 @@ class RTPSCapture:
         Prints the details of all frames in the capture.
         """
         for frame in self.frames:
-            frame.print_frame()
+            print(frame, end="\n\n")
 
     def extract_rtps_frames(self, pcap_file, fields, display_filter=None, max_frames=None):
         """
