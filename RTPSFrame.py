@@ -80,7 +80,7 @@ class RTPSSubmessage():
             # raise KeyError(f"Invalid submessage type: {sm_type}")
             pass
 
-        if not self.sm_type:
+        if self.sm_type is None:
             #  TODO: Add logging
             raise InvalidPCAPDataException(f"Invalid submessage type: {sm_type}")
 
