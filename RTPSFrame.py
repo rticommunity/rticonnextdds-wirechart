@@ -42,6 +42,10 @@ class InvalidPCAPDataException(Exception):
 
 class RTPSSubmessage():
     def __init__(self, sm_type, topic, length, seq_number, multiple_sm=False):
+        if any(term in sm_type.lower() for term in ("port", "ping")):
+            logger.debug(f"Routing frame: {sm_type}.")
+            raise InvalidPCAPDataException(f"Routing frame: {sm_type}.")
+
         self.sm_type = None
         self.topic = topic
         self.length = length
@@ -69,17 +73,15 @@ class RTPSSubmessage():
                 elif "([" in sm_type:
                     # Unregister/Dispose for User Data
                     self.sm_type = SubmessageTypes.DATA_STATE
-                else:
-                    #TODO: Add logging
-                    raise InvalidPCAPDataException(f"Invalid submessage type: {sm_type}")
+                # else caught below
             else:
                 self.sm_type = SubmessageTypes[sm_type]
         except KeyError:
-            logger.info(f"Invalid submessage type: {sm_type}.  Dumping frame.")
+            logger.error(f"Invalid submessage type: {sm_type}.  Dumping frame.")
             raise KeyError(f"Invalid submessage: {sm_type}")
 
         if self.sm_type is None:
-            #  TODO: Add logging
+            logger.error(f"Invalid submessage type: {sm_type}")
             raise InvalidPCAPDataException(f"Invalid submessage type: {sm_type}")
 
     def __str__(self):
@@ -132,15 +134,19 @@ class RTPSFrame:
                 # so throw away the first sequence number.
                 next(seq_number_iterator)
 
-            if not self.sm_list:
-                # Include full upd_length in the first submessage
-                self.sm_list.append(RTPSSubmessage(sm, sm_topic, udp_length, next(seq_number_iterator)))
+            try:
+                if not self.sm_list:
+                    # Include full upd_length in the first submessage
+                    self.sm_list.append(RTPSSubmessage(sm, sm_topic, udp_length, next(seq_number_iterator)))
 
-            else:
-                # Decrease the length of the first submessage by the length of the current submessage
-                self.sm_list[0].length -= sm_len
-                # Indicate more than one submessage in the frame
-                self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), True))
+                else:
+                    # Decrease the length of the first submessage by the length of the current submessage
+                    self.sm_list[0].length -= sm_len
+                    # Indicate more than one submessage in the frame
+                    self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), True))
+            except (InvalidPCAPDataException, KeyError) as e:
+                logger.info(f"Frame {self.frame_number:09}: {e}")
+                raise e
 
         logger.debug(str(self))
 
