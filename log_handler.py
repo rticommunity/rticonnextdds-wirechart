@@ -20,7 +20,7 @@ def configure_root_logger(log_file='output/wirechart.log'):
         fh.setLevel(logging.DEBUG)
 
         # Formatter
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - Line %(lineno)04d - %(message)s')
         ch.setFormatter(formatter)
         fh.setFormatter(formatter)
 
