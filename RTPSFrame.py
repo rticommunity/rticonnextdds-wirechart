@@ -41,7 +41,6 @@ class InvalidPCAPDataException(Exception):
 class RTPSSubmessage():
     def __init__(self, sm_type, topic, length, seq_number, multiple_sm=False):
         if any(term in sm_type.lower() for term in ("port", "ping")):
-            logger.debug(f"Routing frame: {sm_type}.")
             raise InvalidPCAPDataException(f"Routing frame: {sm_type}.")
 
         self.sm_type = None
@@ -75,7 +74,7 @@ class RTPSSubmessage():
             else:
                 self.sm_type = SubmessageTypes[sm_type]
         except KeyError:
-            logger.error(f"Invalid submessage type: {sm_type}.  Dumping frame.")
+            logger.error(f"Invalid submessage type: {sm_type}.")
             raise KeyError(f"Invalid submessage: {sm_type}")
 
         if self.sm_type is None:
@@ -105,14 +104,12 @@ class RTPSFrame:
         guid_prefix = frame_data.get('rtps.guidPrefix.src', None)
         if not guid_prefix:
             # PING frame or something similar
-            logger.info(f"Frame {self.frame_number:09}: Dumping for no GUID prefix.")
-            raise InvalidPCAPDataException(f"No GUID prefix. Dumping frame {self.frame_number}.")
+            raise InvalidPCAPDataException(f"No GUID prefix.")
 
         wr_entity_id = frame_data.get('rtps.sm.wrEntityId')
         match = re.match(r'0x([0-9A-Fa-f]+)', wr_entity_id)
         self.guid = guid_prefix + match.group(1)
-        if int(match.group(1), 16) in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}:
-            self.discovery_frame = True
+        self.discovery_frame = int(match.group(1), 16) in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}
 
         sm_list = [s.strip() for s in frame_data.get('_ws.col.Info', '').split(',')]
         seq_number_list = list(map(int, frame_data.get('rtps.sm.seqNumber', 0).split(',')))
@@ -132,19 +129,15 @@ class RTPSFrame:
                 # so throw away the first sequence number.
                 next(seq_number_iterator)
 
-            try:
-                if not self.sm_list:
-                    # Include full upd_length in the first submessage
-                    self.add_submessage(RTPSSubmessage(sm, sm_topic, udp_length, next(seq_number_iterator)))
+            if not self.sm_list:
+                # Include full upd_length in the first submessage
+                self.add_submessage(RTPSSubmessage(sm, sm_topic, udp_length, next(seq_number_iterator)))
 
-                else:
-                    # Decrease the length of the first submessage by the length of the current submessage
-                    self.sm_list[0].length -= sm_len
-                    # Indicate more than one submessage in the frame
-                    self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), True))
-            except (InvalidPCAPDataException, KeyError) as e:
-                logger.info(f"Frame {self.frame_number:09}: {e}")
-                raise e
+            else:
+                # Decrease the length of the first submessage by the length of the current submessage
+                self.sm_list[0].length -= sm_len
+                # Indicate more than one submessage in the frame
+                self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), True))
 
         logger.debug(str(self))
 
@@ -182,7 +175,7 @@ class RTPSFrame:
         return set(submessage.topic for submessage in self.sm_list if submessage.topic)
 
     def __str__(self):
-        result = [f"Frame: {self.frame_number:09} GUID: {self.guid}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
+        result = [f"Frame: {self.frame_number:09} GUID: {self.guid} Discovery Frame: {self.discovery_frame}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
         for i, submessage in enumerate(self.sm_list, start=1):
             result.append(f"{" " * 4}{i} {str(submessage)}")
         return "\n".join(result) + "\n"

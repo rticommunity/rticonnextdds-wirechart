@@ -124,9 +124,8 @@ class RTPSCapture:
                 frame = {field: value for field, value in zip(fields, values)}
                 try:
                     self.add_frame(RTPSFrame(frame))  # Create a RTPSFrame object for each record
-                except InvalidPCAPDataException as e:
-                    continue
-                except KeyError as e:
+                except (InvalidPCAPDataException, KeyError) as e:
+                    logger.debug(f"Frame {int(frame['frame.number']):09d} dropped. Message: {e}")
                     continue
         except subprocess.CalledProcessError as e:
             logger.error("Error running tshark.")
