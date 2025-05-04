@@ -2,6 +2,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
 from PCAPUtils import SUBMESSAGE_ORDER
+from log_handler import logging
+
+logger = logging.getLogger(__name__)
 
 class PCAPStats:
     """
@@ -168,6 +171,6 @@ class PCAPStats:
         try:
             # Write the DataFrame to an Excel file
             self.df.to_excel(output_file, sheet_name=sheet_name, index=False)
-            print(f"DataFrame successfully written to {output_file}")
+            logger.info(f"DataFrame successfully written to {output_file} in sheet '{sheet_name}'.")
         except Exception as e:
-            print(f"An error occurred while writing the DataFrame to Excel: {e}")
+            logger.error(f"Error writing DataFrame to Excel: {e}")
