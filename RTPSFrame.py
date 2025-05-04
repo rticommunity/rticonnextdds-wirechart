@@ -127,7 +127,7 @@ class RTPSFrame:
                 continue
             matches = re.match(r'^(.*?)\s*->\s*(.*)', sm)
             sm = matches.group(1).strip() if matches else sm
-            sm_topic = matches.group(2).strip() if matches else ''
+            sm_topic = matches.group(2).strip() if matches else None
 
             if sm in ("HEARTBEAT", "GAP"):
                 # HEARTBEAT and GAP have 2 sequence numbers in the list, and we want the second one
@@ -149,6 +149,18 @@ class RTPSFrame:
                 raise e
 
         logger.debug(str(self))
+
+    def __iter__(self):
+        self._current_index = 0
+        return self
+
+    def __next__(self):
+        if self._current_index < len(self.sm_list):
+            packet = self.sm_list[self._current_index]
+            self._current_index += 1
+            return packet
+        else:
+            raise StopIteration
 
     def list_topics(self):
         """

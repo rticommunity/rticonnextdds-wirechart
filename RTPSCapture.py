@@ -21,6 +21,18 @@ class RTPSCapture:
         # TODO: Add discovery, user_data dataframes
         # TODO: Add input for start and stop frames to tshark
 
+    def __iter__(self):
+        self._current_index = 0
+        return self
+
+    def __next__(self):
+        if self._current_index < len(self.frames):
+            packet = self.frames[self._current_index]
+            self._current_index += 1
+            return packet
+        else:
+            raise StopIteration
+
     def add_frame(self, frame):
         """
         Adds an RTPSFrame object to the capture.
