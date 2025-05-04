@@ -18,17 +18,22 @@ def main():
     parser.add_argument('--pcap', type=str, required=True, help='Required argument. Specify the PCAP file.')
     parser.add_argument('--output', type=str, default='output', help='Specify an output file for PCAP statistics.')
     parser.add_argument('--no-gui', action='store_true', default=False, help='Disable GUI-based plotting.')
+    parser.add_argument('--frame-range', type=str, default=None, help='Specify a range of frames to analyze in the format START:FINISH.')
     args = parser.parse_args()
     #TODO: Add parser arguments for start and stop frames and max frames
-
+    logger.info(f"Command Arguments: {args}")
     logger.info("Starting the PCAP analysis.")
+
+    start, finish = None, None
+    if args.frame_range:
+        start, finish = parse_range(args.frame_range)
 
     # tshark seems to return commands in a hierarchy, i.e. frame -> udp -> rtps so order matters
     pcap_fields = list(['frame.number', 'udp.length', 'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',
                        'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader', 'rtps.sm.id', '_ws.col.Info'])
 
     rtps_frames = RTPSCapture()
-    rtps_frames.extract_rtps_frames(args.pcap, pcap_fields, 'rtps')
+    rtps_frames.extract_rtps_frames(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
     rtps_frames.print_capture_summary()  # Print summary of the capture
     # rtps_frames.print_all_frames()  # Print all frames
 
@@ -45,10 +50,30 @@ def main():
     # if args.output:
     #     pcap_stats.save_to_excel(args.output, 'PCAPStats')  # Write to Excel
 
+def parse_range(value: str):
+    if ':' not in value:
+        logger.error(f"Invalid range format: {value}. Expected format is 'before:after'.  Exiting program.")
+        raise ValueError(f"Invalid range format: {value}. Expected format is 'before:after'.")
+
+    before, after = value.split(':', 1)
+
+    def parse_part(part):
+        if part == '':
+            return None
+        if part.isdigit():
+            num = int(part)
+            if num >= 0:
+                return num
+            logger.error(f"Invalid positive integer: {part}. Exiting program.")
+            raise ValueError(f"Invalid positive integer: {part}. Exiting program.")
+
+    return (parse_part(before), parse_part(after))
+
+
 if __name__ == "__main__":
     try:
         main()
     except InvalidPCAPDataException as e:
         print(f"Invalid PCAP File: {e.message}.")
-    # except Exception as e:
-    #     print(f"An error occurred: {e}")
+    except Exception as e:
+        print(f"An error occurred: {e}")

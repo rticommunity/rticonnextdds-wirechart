@@ -72,7 +72,7 @@ class RTPSCapture:
         for frame in self.frames:
             print(frame, end="\n\n")
 
-    def extract_rtps_frames(self, pcap_file, fields, display_filter=None, first_frame=None, last_frame=None, max_frames=None):
+    def extract_rtps_frames(self, pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
         """
         Calls tshark to extract specified fields from a pcap file and returns a list of RTPSFrame objects.
 
@@ -93,11 +93,11 @@ class RTPSCapture:
         if display_filter:
             filter_parts.append(f"({display_filter})")
 
-        if first_frame:
-            filter_parts.append(f"(frame.number >= {first_frame})")
+        if start_frame:
+            filter_parts.append(f"(frame.number >= {start_frame})")
 
-        if last_frame:
-            filter_parts.append(f"(frame.number <= {last_frame})")
+        if finish_frame:
+            filter_parts.append(f"(frame.number <= {finish_frame})")
 
         # Join all parts with "&&"
         full_filter = " && ".join(filter_parts)

@@ -30,13 +30,14 @@ pip install pandas matplotlib openpyxl
 ## Usage
 
 ```bash
-python3 wirechart.py [-h] --pcap /path/to/PCAP_FILE.pcap [--output /path/to/OUTPUT_FILE.xlsx] [--no-gui]
+usage: wirechart.py [-h] --pcap PCAP [--output OUTPUT] [--no-gui] [--frame-range FRAME_RANGE]
 ```
 
 ### Argument Description
 
 <pre>
---pcap      /path/to/PCAP_FILE.pcap     Required argument to specify the PCAP file.
---output    /path/to/OUTPUT_FILE.xlsx   Optional argument to specify an output file for PCAP statistics.
---no-gui                                Optional argument to limit output to only the console.
+--pcap          /path/to/PCAP_FILE.pcap     Required argument to specify the PCAP file.
+--output        /path/to/OUTPUT_FILE.xlsx   Optional argument to specify an output file for PCAP statistics.
+--no-gui                                    Optional argument to limit output to only the console.
+--frame-range   FIRST_FRAME:LAST_FRAME      Optional argument to specify the range of frames (inclusive) to analyze.
 </pre>
