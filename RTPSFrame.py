@@ -14,12 +14,12 @@ class SubmessageTypes(IntEnum):
     DATA = auto()
     DATA_FRAG = auto()
     DATA_BATCH = auto()
-    PIGGYBACK_HEARTBEAT = auto()
-    PIGGYBACK_HEARTBEAT_BATCH = auto()
+    DATA_REPAIR = auto()
     HEARTBEAT = auto()
     HEARTBEAT_BATCH = auto()
+    PIGGYBACK_HEARTBEAT = auto()
+    PIGGYBACK_HEARTBEAT_BATCH = auto()
     ACKNACK = auto()
-    REPAIR = auto()
     GAP = auto()
     DATA_STATE = auto()
 
@@ -43,20 +43,12 @@ class RTPSSubmessage():
         if any(term in sm_type.lower() for term in ("port", "ping")):
             raise InvalidPCAPDataException(f"Routing frame: {sm_type}.")
 
-        self.sm_type = None
         self.topic = topic
         self.length = length
         self.seq_number = seq_number
-        # GAPs announce the next sequence number, so decrement by 1
-        if self.sm_type == "GAP":
-            self.seq_number -= 1
 
         # Check for a state submessage type
         try:
-            # If this is a HEARTBEAT and there are multiple submessages, this is a PIGGYBACK_HEARTBEAT
-            if multiple_sm and "HEARTBEAT" in sm_type:
-                self.sm_type = SubmessageTypes["PIGGYBACK_" + sm_type]
-
             if "DATA" in sm_type:
                 if sm_type == "DATA":
                     self.sm_type = SubmessageTypes.DATA
@@ -72,14 +64,22 @@ class RTPSSubmessage():
                     self.sm_type = SubmessageTypes.DATA_STATE
                 # else caught below
             else:
-                self.sm_type = SubmessageTypes[sm_type]
+                # If this is a HEARTBEAT and there are multiple submessages, this is a PIGGYBACK_HEARTBEAT
+                if multiple_sm and "HEARTBEAT" in sm_type:
+                    self.sm_type = SubmessageTypes["PIGGYBACK_" + sm_type]
+                else:
+                    self.sm_type = SubmessageTypes[sm_type]
         except KeyError:
             logger.error(f"Invalid submessage type: {sm_type}.")
             raise KeyError(f"Invalid submessage: {sm_type}")
 
-        if self.sm_type is None:
-            logger.error(f"Invalid submessage type: {sm_type}")
-            raise InvalidPCAPDataException(f"Invalid submessage type: {sm_type}")
+        if not isinstance(self.sm_type, SubmessageTypes):
+            logger.error(f"Invalid submessage type: {self.sm_type}")
+            raise InvalidPCAPDataException(f"Invalid submessage type: {self.sm_type}")
+
+        # GAPs announce the next sequence number, so decrement by 1
+        if self.sm_type == SubmessageTypes.GAP:
+            self.seq_number -= 1
 
     def __str__(self):
         return (f"Type: {self.sm_type.name}, Topic: {self.topic}, "
