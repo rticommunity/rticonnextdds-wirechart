@@ -1,6 +1,6 @@
 import subprocess
+import os
 from RTPSFrame import *
-
 from log_handler import logging
 
 logger = logging.getLogger(__name__)
@@ -11,15 +11,17 @@ class RTPSCapture:
     Provides methods to manage and analyze the captured frames.
     """
 
-    def __init__(self):
+    def __init__(self, pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
         """
         Initializes an empty RTPSCapture object.
         """
+        if not os.path.exists(pcap_file):
+            logger.error(f"PCAP file {pcap_file} does not exist.")
+            raise FileNotFoundError(f"PCAP file {pcap_file} does not exist.")
+
         self.frames = []  # List to store RTPSFrame objects
-        # TODO: Check for existance of pcap file in the constructor
-        # TODO: Call extract_rtps_frames() in the constructor if a pcap file is provided
-        # TODO: Add discovery, user_data dataframes
-        # TODO: Add input for start and stop frames to tshark
+        # TODO: Initialize discovery, user_data dataframes
+        self._extract_rtps_frames(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
 
     def __iter__(self):
         self._current_index = 0
@@ -72,7 +74,7 @@ class RTPSCapture:
         for frame in self.frames:
             print(frame, end="\n\n")
 
-    def extract_rtps_frames(self, pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
+    def _extract_rtps_frames(self, pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
         """
         Calls tshark to extract specified fields from a pcap file and returns a list of RTPSFrame objects.
 

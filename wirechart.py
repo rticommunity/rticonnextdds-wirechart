@@ -32,8 +32,7 @@ def main():
     pcap_fields = list(['frame.number', 'udp.length', 'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',
                        'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader', 'rtps.sm.id', '_ws.col.Info'])
 
-    rtps_frames = RTPSCapture()
-    rtps_frames.extract_rtps_frames(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
+    rtps_frames = RTPSCapture(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
     rtps_frames.print_capture_summary()  # Print summary of the capture
     # rtps_frames.print_all_frames()  # Print all frames
 
