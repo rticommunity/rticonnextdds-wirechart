@@ -1,5 +1,7 @@
 import subprocess
 import os
+import pandas as pd
+from collections import defaultdict
 from RTPSFrame import *
 from log_handler import logging
 
@@ -20,7 +22,6 @@ class RTPSCapture:
             raise FileNotFoundError(f"PCAP file {pcap_file} does not exist.")
 
         self.frames = []  # List to store RTPSFrame objects
-        # TODO: Initialize discovery, user_data dataframes
         self._extract_rtps_frames(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
 
     def __iter__(self):
@@ -130,3 +131,65 @@ class RTPSCapture:
         except subprocess.CalledProcessError as e:
             logger.error("Error running tshark.")
             raise e
+
+    def analyze_capture(self):
+        """
+        Counts user messages and returns the data as a pandas DataFrame.
+        Ensures all unique topics are included, even if they have no messages.
+        Orders the submessages based on SUBMESSAGE_ORDER and includes the length.
+
+        :param pcap_data: A list of dictionaries containing the extracted PCAP data.
+        :param unique_topics: A set of unique topics to initialize the DataFrame.
+        :return: A pandas DataFrame with columns ['Topic', 'Submessage', 'Count', 'Length'].
+        """
+        frame_stats = []  # List to store rows for the DataFrame
+        sequence_numbers = defaultdict(int)  # Dictionary to store string keys and unsigned integer values
+
+        # Process the PCAP data to count messages and include lengths
+        for frame in self.frames:
+            for sm in frame:
+                if sm.sm_type in (SubmessageTypes.HEARTBEAT, SubmessageTypes.HEARTBEAT_BATCH,
+                                SubmessageTypes.PIGGYBACK_HEARTBEAT, SubmessageTypes.PIGGYBACK_HEARTBEAT_BATCH, SubmessageTypes.GAP):
+                    # Record the sequence number
+                    sequence_numbers[frame.guid] = sm.seq_number
+                elif sm.sm_type in (SubmessageTypes.DATA, SubmessageTypes.DATA_FRAG, SubmessageTypes.DATA_BATCH):
+                    if sm.seq_number < sequence_numbers[frame.guid]:
+                        logger.debug(f"Frame {frame.frame_number} determined to be a repair message.")
+                        sm.sm_type = SubmessageTypes.DATA_REPAIR
+
+                frame_stats.append({'topic': sm.topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
+
+        if not frame_stats:
+            raise InvalidPCAPDataException("No RTPS user frames with associated discovery data")
+
+        # Convert the rows into a DataFrame
+        df = pd.DataFrame(frame_stats)
+
+        # Aggregate the counts and lengths for each (Topic, Submessage) pair
+        df = df.groupby(['topic', 'sm'], as_index=False).agg({'count': 'sum', 'length': 'sum'})
+
+        # Ensure all unique topics are included in the DataFrame
+        all_rows = []
+        for topic in self.list_all_topics():
+            for sm_type in SubmessageTypes:
+                if not ((df['topic'] == topic) & (df['sm'] == sm_type.name)).any():
+                    all_rows.append({'topic': topic, 'sm': sm_type.name, 'count': 0, 'length': 0})
+
+        # Add missing rows with a count of 0 and length of 0
+        if all_rows:
+            df = pd.concat([df, pd.DataFrame(all_rows)], ignore_index=True)
+
+        # df['sm'] = df['sm'].apply(lambda x: x.name if isinstance(x, SubmessageTypes) else str(x))
+
+        # Order the Submessage column based on SubmessageTypes
+        # Create an ordered categorical column using enum member names
+        df['sm'] = pd.Categorical(
+            df['sm'],
+            categories=[member.name for member in SubmessageTypes],
+            ordered=True
+        )
+
+        # Sort and reset index
+        df = df.sort_values(by=['topic', 'sm']).reset_index(drop=True)
+
+        return df
