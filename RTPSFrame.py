@@ -23,6 +23,13 @@ class SubmessageTypes(IntEnum):
     GAP = auto()
     DATA_STATE = auto()
 
+    @classmethod
+    def subset(cls, start = DATA_P, end = DATA_STATE):
+        """
+        Returns a subset of the enum members between start and end.
+        """
+        return [member for member in cls if start <= member.value <= end]
+
 class InvalidPCAPDataException(Exception):
     """Exception raised for invalid PCAP data."""
 
@@ -172,7 +179,7 @@ class RTPSFrame:
         if not self.discovery_frame:
             return set()
 
-        return set(submessage.topic for submessage in self.sm_list if submessage.topic)
+        return set(sm.topic for sm in self.sm_list if sm.topic is not None)
 
     def __str__(self):
         result = [f"Frame: {self.frame_number:09} GUID: {self.guid} Discovery Frame: {self.discovery_frame}\n{" " * 2}Submessages ({len(self.sm_list)}):"]

@@ -148,6 +148,7 @@ class RTPSCapture:
         # Process the PCAP data to count messages and include lengths
         for frame in self.frames:
             for sm in frame:
+                topic = sm.topic
                 if sm.sm_type in (SubmessageTypes.HEARTBEAT, SubmessageTypes.HEARTBEAT_BATCH,
                                 SubmessageTypes.PIGGYBACK_HEARTBEAT, SubmessageTypes.PIGGYBACK_HEARTBEAT_BATCH, SubmessageTypes.GAP):
                     # Record the sequence number
@@ -156,8 +157,9 @@ class RTPSCapture:
                     if sm.seq_number < sequence_numbers[frame.guid]:
                         logger.debug(f"Frame {frame.frame_number} determined to be a repair message.")
                         sm.sm_type = SubmessageTypes.DATA_REPAIR
-
-                frame_stats.append({'topic': sm.topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
+                elif sm.sm_type in (SubmessageTypes.DATA_P, SubmessageTypes.DATA_RW, SubmessageTypes.DISCOVERY_STATE):
+                    topic = "DISCOVERY"
+                frame_stats.append({'topic': topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
 
         if not frame_stats:
             raise InvalidPCAPDataException("No RTPS user frames with associated discovery data")
@@ -171,7 +173,7 @@ class RTPSCapture:
         # Ensure all unique topics are included in the DataFrame
         all_rows = []
         for topic in self.list_all_topics():
-            for sm_type in SubmessageTypes:
+            for sm_type in SubmessageTypes.subset(start = SubmessageTypes.DATA):
                 if not ((df['topic'] == topic) & (df['sm'] == sm_type.name)).any():
                     all_rows.append({'topic': topic, 'sm': sm_type.name, 'count': 0, 'length': 0})
 
