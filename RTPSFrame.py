@@ -4,8 +4,6 @@ from log_handler import logging
 
 logger = logging.getLogger(__name__)
 
-# TODO: Add logging for invalid submessage types and other exceptions
-
 class SubmessageTypes(IntEnum):
     def _generate_next_value_(name, start, count, last_values):
         return count  # Start from 0
@@ -137,7 +135,7 @@ class RTPSFrame:
             try:
                 if not self.sm_list:
                     # Include full upd_length in the first submessage
-                    self.sm_list.append(RTPSSubmessage(sm, sm_topic, udp_length, next(seq_number_iterator)))
+                    self.add_submessage(RTPSSubmessage(sm, sm_topic, udp_length, next(seq_number_iterator)))
 
                 else:
                     # Decrease the length of the first submessage by the length of the current submessage
@@ -162,6 +160,18 @@ class RTPSFrame:
         else:
             raise StopIteration
 
+    def add_submessage(self, sm):
+        """
+        Adds an RTPSSubmessage object to the frame.
+
+        :param frame: An RTPSSubmessage object to add.
+        """
+        if isinstance(sm, RTPSSubmessage):
+            self.sm_list.append(sm)
+        else:
+            logger.error(f"Invalid submessage type: {sm}.")
+            raise TypeError("Only RTPSFrame objects can be added to RTPSCapture.")
+
     def list_topics(self):
         """
         Returns a list of unique topics from the RTPSFrame object.
@@ -175,6 +185,4 @@ class RTPSFrame:
         result = [f"Frame: {self.frame_number:09} GUID: {self.guid}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
         for i, submessage in enumerate(self.sm_list, start=1):
             result.append(f"{" " * 4}{i} {str(submessage)}")
-        return "\n".join(result)
-    
-    # TODO: Add add_submessage method to add submessages to the list
+        return "\n".join(result) + "\n"

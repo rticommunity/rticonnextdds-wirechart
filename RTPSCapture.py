@@ -72,7 +72,7 @@ class RTPSCapture:
         Prints the details of all frames in the capture.
         """
         for frame in self.frames:
-            print(frame, end="\n\n")
+            print(frame)
 
     def _extract_rtps_frames(self, pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
         """
@@ -107,7 +107,6 @@ class RTPSCapture:
         if full_filter:
             cmd.extend(['-Y', full_filter])
         if max_frames:
-            # TODO: Test max frames
             cmd.extend(['-c', str(max_frames)])
 
         logger.info(f"Running command: {' '.join(cmd)}")
