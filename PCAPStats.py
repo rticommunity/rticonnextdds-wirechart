@@ -85,6 +85,7 @@ class PCAPStats:
         """
         self._plot_statistics(metric='length', include_discovery=include_discovery)
 
+    # TODO: Ensure correct order of submessages in the plot
     def _plot_statistics(self, metric='count', include_discovery=False):
         """
         Plots a stacked bar chart of submessage counts or lengths by topic.
@@ -112,6 +113,10 @@ class PCAPStats:
 
         # Pivot the DataFrame to prepare for plotting
         pivot_df = df.pivot(index='topic', columns='sm', values=metric).fillna(0)
+
+        # Ensure the columns (submessages) are ordered based on SubmessageTypes
+        submessage_order = SubmessageTypes.subset_names()  # Get the desired order of submessages
+        pivot_df = pivot_df.reindex(columns=submessage_order, fill_value=0)
 
         # Filter out topics with no submessages (all values are zero)
         pivot_df = pivot_df[(pivot_df.sum(axis=1) > 0)]
@@ -143,7 +148,7 @@ class PCAPStats:
             "GAP": "#c49c94",                           # Rose Brown
             "DATA_STATE": "#393b79",                    # Navy Blue
         }
-        colors = [color_mapping[submsg] for submsg in SubmessageTypes.subset_names()]
+        colors = [color_mapping[submsg] for submsg in submessage_order]
 
         # Plot the stacked bar chart with consistent colors
         ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13), color=colors)
@@ -159,13 +164,13 @@ class PCAPStats:
         ax.legend(
             filtered_handles,
             [f"{label} ({filtered_totals[label]:,} {units})" for label in filtered_labels],
-            title='sm'
+            title='Submessage Types'
         )
 
         # Set axis labels and title
         ax.set_xlabel(f'Topics ({df["topic"].nunique():,})')
-        ax.set_ylabel(f"{metric} ({df[metric].sum():,} {units})")
-        ax.set_title(f"Submessage {metric} by Topic ({units})")
+        ax.set_ylabel(f"{metric.capitalize()} ({df[metric].sum():,} {units})")
+        ax.set_title(f"Submessage {metric.capitalize()} by Topic ({units})")
 
         # Update x-axis labels to include total metric values
         x_labels = [f"{topic} ({int(total_metric_by_topic[topic]):,})" for topic in pivot_df.index]
