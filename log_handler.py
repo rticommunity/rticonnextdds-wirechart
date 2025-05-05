@@ -17,7 +17,7 @@ def configure_root_logger(log_file='output/wirechart.log'):
 
         # File handler
         fh = logging.FileHandler(log_file, mode='w')
-        fh.setLevel(logging.DEBUG)
+        fh.setLevel(logging.INFO)
 
         # Formatter
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - Line %(lineno)04d - %(message)s')

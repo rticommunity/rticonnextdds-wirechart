@@ -4,6 +4,7 @@ from matplotlib.ticker import StrMethodFormatter
 from log_handler import logging
 from RTPSFrame import SubmessageTypes
 from RTPSCapture import DISCOVERY_TOPIC
+from wirechart import create_output_path
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ class PCAPStats:
 
     def print_stats(self):
         """
-        Prints statistics about the PCAP data, including total messages, 
+        Prints statistics about the PCAP data, including total messages,
         messages by topic, and messages by submessage type.
         """
         # Calculate total messages
@@ -76,14 +77,14 @@ class PCAPStats:
 
     def plot_stats_by_frame_count(self, include_discovery=False):
         self._plot_statistics(metric='count', include_discovery=include_discovery)
-    
+
     def plot_stats_by_frame_length(self, include_discovery=False):
         """
         Plots a stacked bar chart of submessage lengths by topic.
         :param include_discovery: If True, includes discovery submessages in the plot.
         """
         self._plot_statistics(metric='length', include_discovery=include_discovery)
-    
+
     def _plot_statistics(self, metric='count', include_discovery=False):
         """
         Plots a stacked bar chart of submessage counts or lengths by topic.
@@ -178,7 +179,7 @@ class PCAPStats:
         plt.tight_layout()
         plt.show()
 
-    def save_to_excel(self, output_file, sheet_name="Sheet1"):
+    def save_to_excel(self, pcap_file, output_path, sheet_name="Sheet1"):
         """
         Writes a pandas DataFrame to an Excel file.
 
@@ -187,8 +188,8 @@ class PCAPStats:
         :param sheet_name: The name of the sheet in the Excel file (default is "Sheet1").
         """
         try:
-            # Write the DataFrame to an Excel file
-            self.df.to_excel(output_file, sheet_name=sheet_name, index=False)
-            logger.info(f"DataFrame successfully written to {output_file} in sheet '{sheet_name}'.")
+            filename = create_output_path(pcap_file, output_path, 'xlsx', 'stats')
+            self.df.to_excel(filename, sheet_name=sheet_name, index=False)
+            logger.info(f"DataFrame successfully written to {filename} in sheet '{sheet_name}'.")
         except Exception as e:
             logger.error(f"Error writing DataFrame to Excel: {e}")

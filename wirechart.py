@@ -6,8 +6,8 @@ from PCAPStats import *
 from log_handler import logging, configure_root_logger
 
 logger = logging.getLogger(__name__)
-configure_root_logger()
 
+# TODO: What's this?
 def write_to_file(output_file_path, unique_topics):
     with open(output_file_path, 'w', encoding='utf-8') as outfile:
         for value in sorted(unique_topics):
@@ -19,7 +19,10 @@ def main():
     parser.add_argument('--output', type=str, default='output', help='Specify an output file for PCAP statistics.')
     parser.add_argument('--no-gui', action='store_true', default=False, help='Disable GUI-based plotting.')
     parser.add_argument('--frame-range', type=str, default=None, help='Specify a range of frames to analyze in the format START:FINISH.')
+    parser.add_argument('--plot-discovery', action='store_true', default=False, help='Include discovery frames in the plot.')
     args = parser.parse_args()
+    # Configure the logger
+    configure_root_logger(create_output_path(args.pcap, args.output, 'log'))
     #TODO: Add parser arguments for start and stop frames and max frames
     logger.info(f"Command Arguments: {args}")
     logger.info("Starting the PCAP analysis.")
@@ -40,12 +43,12 @@ def main():
 
     # Plot statistics only if GUI is enabled
     if not args.no_gui:
-        stats.plot_stats_by_frame_count()  # Plot by frame count
-        stats.plot_stats_by_frame_length()  # Plot by frame length
+        stats.plot_stats_by_frame_count(args.plot_discovery)  # Plot by frame count
+        stats.plot_stats_by_frame_length(args.plot_discovery)  # Plot by frame length
 
     # Write the DataFrame to an Excel file if an output path is provided
     if args.output:
-        stats.save_to_excel(args.output, 'PCAPStats')  # Write to Excel
+        stats.save_to_excel(args.pcap, args.output, 'PCAPStats')  # Write to Excel
 
 def parse_range(value: str):
     if ':' not in value:
@@ -66,6 +69,15 @@ def parse_range(value: str):
 
     return (parse_part(before), parse_part(after))
 
+# Check for existence of the output path
+def create_output_path(pcap_file, output_path, extension, description=None):
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    # Create filename based on pcap_file
+    filename = os.path.splitext(os.path.basename(pcap_file))[0]  # get filename without extension
+    suffix = f"_{description}" if description else ""
+    return os.path.join(output_path, f"{filename}{suffix}.{extension}")
 
 if __name__ == "__main__":
     try:
