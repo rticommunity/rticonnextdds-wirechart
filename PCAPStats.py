@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
 from log_handler import logging
 from RTPSFrame import SubmessageTypes
+from RTPSCapture import DISCOVERY_TOPIC
 
 logger = logging.getLogger(__name__)
 
@@ -73,17 +74,22 @@ class PCAPStats:
                 print(f"{" " * 4}{submsg}: {length:,} bytes")
         print()
 
-    def plot_stats_by_frame_count(self):
-        self._plot_statistics(metric='count')
+    def plot_stats_by_frame_count(self, include_discovery=False):
+        self._plot_statistics(metric='count', include_discovery=include_discovery)
     
-    def plot_stats_by_frame_length(self):
-        self._plot_statistics(metric='length')
+    def plot_stats_by_frame_length(self, include_discovery=False):
+        """
+        Plots a stacked bar chart of submessage lengths by topic.
+        :param include_discovery: If True, includes discovery submessages in the plot.
+        """
+        self._plot_statistics(metric='length', include_discovery=include_discovery)
     
-    def _plot_statistics(self, metric='count'):
+    def _plot_statistics(self, metric='count', include_discovery=False):
         """
         Plots a stacked bar chart of submessage counts or lengths by topic.
 
         :param metric: The column to plot, either 'count' or 'length'.
+        :param include_discovery: If False, excludes the "DISCOVERY" topic from the plot.
         """
         if metric not in ['count', 'length']:
             raise ValueError("Invalid metric. Choose either 'count' or 'length'.")
@@ -91,8 +97,13 @@ class PCAPStats:
         # Define units based on the metric
         units = "messages" if metric == 'count' else "bytes"
 
-        # Ensure all submessages in SUBMESSAGE_ORDER are included, even if missing
-        df = self.df.set_index(['topic', 'sm']).unstack(fill_value=0).stack(future_stack=True).reset_index()
+        # Filter out the "DISCOVERY" topic if include_discovery is False
+        df = self.df.copy()
+        if not include_discovery:
+            df = df[df['topic'] != DISCOVERY_TOPIC]
+
+        # Ensure all submessages in SubmessageTypes are included, even if missing
+        df = df.set_index(['topic', 'sm']).unstack(fill_value=0).stack(future_stack=True).reset_index()
 
         # Calculate total messages or lengths per topic and sort topics by total value
         df['TotalMetric'] = df.groupby('topic')[metric].transform('sum')
@@ -151,8 +162,8 @@ class PCAPStats:
         )
 
         # Set axis labels and title
-        ax.set_xlabel(f'Topics ({self.df['topic'].nunique():,})')
-        ax.set_ylabel(f"{metric} ({self.df[metric].sum():,} {units})")
+        ax.set_xlabel(f'Topics ({df["topic"].nunique():,})')
+        ax.set_ylabel(f"{metric} ({df[metric].sum():,} {units})")
         ax.set_title(f"Submessage {metric} by Topic ({units})")
 
         # Update x-axis labels to include total metric values

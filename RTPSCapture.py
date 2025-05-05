@@ -7,6 +7,8 @@ from log_handler import logging
 
 logger = logging.getLogger(__name__)
 
+DISCOVERY_TOPIC = "DISCOVERY"
+
 class RTPSCapture:
     """
     Represents a collection of RTPSFrame objects extracted from a PCAP file.
@@ -154,7 +156,7 @@ class RTPSCapture:
             for sm in frame:
                 topic = sm.topic
                 if frame.discovery_frame:
-                    topic = "DISCOVERY"
+                    topic = DISCOVERY_TOPIC
                 # TODO: Verify not to do this with GAP
                 if sm.sm_type in (SubmessageTypes.HEARTBEAT, SubmessageTypes.HEARTBEAT_BATCH,
                                 SubmessageTypes.PIGGYBACK_HEARTBEAT, SubmessageTypes.PIGGYBACK_HEARTBEAT_BATCH):
@@ -186,7 +188,7 @@ class RTPSCapture:
             return missing_list
         
         all_rows = []
-        all_rows.extend(include_missing_topics_and_sm(df, {"DISCOVERY"}, SubmessageTypes.DATA_P, SubmessageTypes.DISCOVERY_STATE))
+        all_rows.extend(include_missing_topics_and_sm(df, {DISCOVERY_TOPIC}, SubmessageTypes.DATA_P, SubmessageTypes.DISCOVERY_STATE))
         all_rows.extend(include_missing_topics_and_sm(df, self.list_all_topics(), SubmessageTypes.DATA, SubmessageTypes.DATA_STATE))
 
         # Add missing rows with a count of 0 and length of 0
