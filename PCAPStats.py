@@ -190,6 +190,6 @@ class PCAPStats:
         try:
             filename = create_output_path(pcap_file, output_path, 'xlsx', 'stats')
             self.df.to_excel(filename, sheet_name=sheet_name, index=False)
-            logger.info(f"DataFrame successfully written to {filename} in sheet '{sheet_name}'.")
+            logger.always(f"DataFrame successfully written to {filename} in sheet '{sheet_name}'.")
         except Exception as e:
             logger.error(f"Error writing DataFrame to Excel: {e}")

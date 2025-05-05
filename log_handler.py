@@ -1,6 +1,11 @@
 import logging
 import os
 
+ALWAYS = logging.CRITICAL + 10
+
+# Add the custom level name to the logging module
+logging.addLevelName(ALWAYS, "ALWAYS")
+
 # Configure the logger
 def configure_root_logger(log_file='output/wirechart.log'):
     log_dir = os.path.dirname(log_file)
@@ -17,13 +22,21 @@ def configure_root_logger(log_file='output/wirechart.log'):
 
         # File handler
         fh = logging.FileHandler(log_file, mode='w')
-        fh.setLevel(logging.INFO)
+        fh.setLevel(logging.DEBUG)
 
         # Formatter
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - Line %(lineno)04d - %(message)s')
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         ch.setFormatter(formatter)
         fh.setFormatter(formatter)
 
         # Add handlers to root logger
         root_logger.addHandler(ch)
         root_logger.addHandler(fh)
+
+# Define the custom log function
+def always(self, message, *args, **kws):
+    if self.isEnabledFor(ALWAYS):
+        self._log(ALWAYS, message, args, **kws)
+
+# Add the custom function to the Logger class
+logging.Logger.always = always

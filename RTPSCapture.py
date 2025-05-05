@@ -112,12 +112,12 @@ class RTPSCapture:
         if max_frames:
             cmd.extend(['-c', str(max_frames)])
 
-        logger.info(f"Running command: {' '.join(cmd)}")
+        logger.debug(f"Running command: {' '.join(cmd)}")
         try:
+            logger.always("Reading data from from pcap file...")
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             frame_data = result.stdout.strip().split('\n')
-
-            logger.info(f"tshark returned {len(frame_data)} frames")
+            logger.always(f"tshark returned {len(frame_data)} frames")
 
             if frame_data == ['']:
                 raise InvalidPCAPDataException("tshark returned no RTPS frames")
@@ -140,7 +140,7 @@ class RTPSCapture:
                 # Print progress every 10%
                 if (i + 1) % progress_interval == 0 or (i + 1) == total_frames:
                     percent = ((i + 1) * 100) // total_frames
-                    print(f"Processing {percent}% complete")
+                    logger.always(f"Processing {percent}% complete")
         except subprocess.CalledProcessError as e:
             logger.error("Error running tshark.")
             raise e
@@ -193,7 +193,7 @@ class RTPSCapture:
                     if not ((df['topic'] == topic) & (df['sm'] == sm_type.name)).any():
                         missing_list.append({'topic': topic, 'sm': sm_type.name, 'count': 0, 'length': 0})
             return missing_list
-        
+
         all_rows = []
         all_rows.extend(include_missing_topics_and_sm(df, {DISCOVERY_TOPIC}, SubmessageTypes.DATA_P, SubmessageTypes.DISCOVERY_STATE))
         all_rows.extend(include_missing_topics_and_sm(df, self.list_all_topics(), SubmessageTypes.DATA, SubmessageTypes.DATA_STATE))
@@ -207,8 +207,7 @@ class RTPSCapture:
         df['sm'] = pd.Categorical(
             df['sm'],
             categories=[member.name for member in SubmessageTypes],
-            ordered=True
-        )
+            ordered=True)
 
         # Sort and reset index
         df = df.sort_values(by=['topic', 'sm']).reset_index(drop=True)

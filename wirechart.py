@@ -5,7 +5,7 @@ from RTPSCapture import *
 from PCAPStats import *
 from log_handler import logging, configure_root_logger
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Wirechart')
 
 # TODO: What's this?
 def write_to_file(output_file_path, unique_topics):
@@ -20,12 +20,13 @@ def main():
     parser.add_argument('--no-gui', action='store_true', default=False, help='Disable GUI-based plotting.')
     parser.add_argument('--frame-range', type=str, default=None, help='Specify a range of frames to analyze in the format START:FINISH.')
     parser.add_argument('--plot-discovery', action='store_true', default=False, help='Include discovery frames in the plot.')
+    # TODO: Command option for log or linear display
     args = parser.parse_args()
     # Configure the logger
     configure_root_logger(create_output_path(args.pcap, args.output, 'log'))
-    #TODO: Add parser arguments for start and stop frames and max frames
-    logger.info(f"Command Arguments: {args}")
-    logger.info("Starting the PCAP analysis.")
+    
+    logger.debug(f"Command Arguments: {args}")
+    logger.always("Starting the PCAP analysis.")
 
     start, finish = None, None
     if args.frame_range:
