@@ -1,7 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
-from PCAPUtils import SUBMESSAGE_ORDER
 from log_handler import logging
 from RTPSFrame import SubmessageTypes
 
@@ -75,22 +74,22 @@ class PCAPStats:
         print()
 
     def plot_stats_by_frame_count(self):
-        self._plot_statistics(metric="Count")
+        self._plot_statistics(metric='count')
     
     def plot_stats_by_frame_length(self):
-        self._plot_statistics(metric="Length")
+        self._plot_statistics(metric='length')
     
-    def _plot_statistics(self, metric="Count"):
+    def _plot_statistics(self, metric='count'):
         """
         Plots a stacked bar chart of submessage counts or lengths by topic.
 
-        :param metric: The column to plot, either "Count" or "Length".
+        :param metric: The column to plot, either 'count' or 'length'.
         """
-        if metric not in ["Count", "Length"]:
+        if metric not in ['count', 'length']:
             raise ValueError("Invalid metric. Choose either 'count' or 'length'.")
 
         # Define units based on the metric
-        units = "messages" if metric == "Count" else "bytes"
+        units = "messages" if metric == 'count' else "bytes"
 
         # Ensure all submessages in SUBMESSAGE_ORDER are included, even if missing
         df = self.df.set_index(['topic', 'sm']).unstack(fill_value=0).stack(future_stack=True).reset_index()
@@ -115,19 +114,24 @@ class PCAPStats:
 
         # Define a consistent color mapping for submessages
         color_mapping = {
-            "DATA": "#1f77b4",  # Blue
-            "DATA_FRAG": "#aec7e8",  # Light Blue
-            "DATA_BATCH": "#add8e6",  # Light Blue
-            "PIGGYBACK_HEARTBEAT": "#ff7f0e",  # Orange
-            "PIGGYBACK_HEARTBEAT_BATCH": "#ffbb78",  # Light Orange
-            "HEARTBEAT": "#2ca02c",  # Green
-            "HEARTBEAT_BATCH": "#98df8a",  # Light Green
-            "ACKNACK": "#ff7f7f",  # Light Red
-            "REPAIR": "#d62728",  # Red
-            "GAP": "#9467bd",  # Purple
-            "UNREGISTER_DISPOSE": "#8c564b",  # Brown
+            "DATA_P": "#ff7f0e",                        # Orange
+            "DATA_RW": "#2ca02c",                       # Green
+            "DISCOVERY_HEARTBEAT": "#1f77b4",           # Blue
+            "DISCOVERY_ACKNACK": "#9467bd",             # Purple
+            "DISCOVERY_STATE": "#d62728",               # Red
+            "DATA": "#8c564b",                          # Brown
+            "DATA_FRAG": "#17becf",                     # Teal
+            "DATA_BATCH": "#ff7f7f",                    # Light Red
+            "DATA_REPAIR": "#7f7f7f",                   # Gray
+            "HEARTBEAT": "#aec7e8",                     # Light Blue
+            "HEARTBEAT_BATCH": "#ffbb78",               # Light Orange
+            "PIGGYBACK_HEARTBEAT": "#98df8a",           # Light Green
+            "PIGGYBACK_HEARTBEAT_BATCH": "#bcbd22",     # Olive
+            "ACKNACK": "#e377c2",                       # Pink
+            "GAP": "#c49c94",                           # Rose Brown
+            "DATA_STATE": "#393b79",                    # Navy Blue
         }
-        colors = [color_mapping[submsg] for submsg in SUBMESSAGE_ORDER]
+        colors = [color_mapping[submsg] for submsg in SubmessageTypes.subset_names()]
 
         # Plot the stacked bar chart with consistent colors
         ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13), color=colors)
@@ -147,7 +151,7 @@ class PCAPStats:
         )
 
         # Set axis labels and title
-        ax.set_xlabel(f'Topics ({self.df["Topic"].nunique():,})')
+        ax.set_xlabel(f'Topics ({self.df['topic'].nunique():,})')
         ax.set_ylabel(f"{metric} ({self.df[metric].sum():,} {units})")
         ax.set_title(f"Submessage {metric} by Topic ({units})")
 

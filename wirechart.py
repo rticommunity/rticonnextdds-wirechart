@@ -33,21 +33,19 @@ def main():
                        'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader', 'rtps.sm.id', '_ws.col.Info'])
 
     rtps_frames = RTPSCapture(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
-    rtps_frames.print_capture_summary()  # Print summary of the capture
-    # rtps_frames.print_all_frames()  # Print all frames
+    # rtps_frames.print_capture_summary()  # Print summary of the capture
+    stats = PCAPStats(rtps_frames.analyze_capture())  # Analyze the capture
+    stats.print_stats()  # Print statistics
+    stats.print_stats_in_bytes()  # Print statistics in bytes
 
-    # pcap_stats = PCAPStats(count_user_messages(pcap_data, unique_topics))
-    # pcap_stats.print_stats()  # Print statistics
-    # pcap_stats.print_stats_in_bytes()  # Print statistics in bytes
+    # Plot statistics only if GUI is enabled
+    if not args.no_gui:
+        stats.plot_stats_by_frame_count()  # Plot by frame count
+        stats.plot_stats_by_frame_length()  # Plot by frame length
 
-    # # Plot statistics only if GUI is enabled
-    # if not args.no_gui:
-    #     pcap_stats.plot_stats_by_frame_count()  # Plot by frame count
-    #     pcap_stats.plot_stats_by_frame_length()  # Plot by frame length
-
-    # # Write the DataFrame to an Excel file if an output path is provided
-    # if args.output:
-    #     pcap_stats.save_to_excel(args.output, 'PCAPStats')  # Write to Excel
+    # Write the DataFrame to an Excel file if an output path is provided
+    if args.output:
+        stats.save_to_excel(args.output, 'PCAPStats')  # Write to Excel
 
 def parse_range(value: str):
     if ':' not in value:
@@ -74,5 +72,5 @@ if __name__ == "__main__":
         main()
     except InvalidPCAPDataException as e:
         print(f"Invalid PCAP File: {e.message}.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    # except Exception as e:
+    #     print(f"An error occurred: {e}")
