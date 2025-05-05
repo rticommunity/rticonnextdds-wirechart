@@ -105,7 +105,7 @@ class PCAPStats:
             df = df[df['topic'] != DISCOVERY_TOPIC]
 
         # Ensure all submessages in SubmessageTypes are included, even if missing
-        df = df.set_index(['topic', 'sm']).unstack(fill_value=0).stack(future_stack=True).reset_index()
+        df = df.set_index(['topic', 'sm']).unstack(fill_value=0).stack().reset_index()
 
         # Calculate total messages or lengths per topic and sort topics by total value
         df['TotalMetric'] = df.groupby('topic')[metric].transform('sum')
@@ -115,7 +115,8 @@ class PCAPStats:
         pivot_df = df.pivot(index='topic', columns='sm', values=metric).fillna(0)
 
         # Ensure the columns (submessages) are ordered based on SubmessageTypes
-        submessage_order = SubmessageTypes.subset_names()  # Get the desired order of submessages
+        submessage_order = SubmessageTypes.subset_names(
+            start=SubmessageTypes.DATA_P if include_discovery else SubmessageTypes.DATA)  # Get the desired order of submessages
         pivot_df = pivot_df.reindex(columns=submessage_order, fill_value=0)
 
         # Filter out topics with no submessages (all values are zero)
@@ -153,9 +154,9 @@ class PCAPStats:
         # Plot the stacked bar chart with consistent colors
         ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13), color=colors)
 
-        # Add totals to the legend, filtering out submessages with zero totals
+        # Add totals to the legend, filtering out submessages not in submessage_order
         submessage_totals = self.df.groupby('sm', observed=False)[metric].sum()
-        filtered_totals = {label: total for label, total in submessage_totals.items() if total > 0}  # Filter nonzero totals
+        filtered_totals = {label: total for label, total in submessage_totals.items() if label in submessage_order and total > 0}
         handles, labels = ax.get_legend_handles_labels()
         filtered_handles_labels = [
             (handle, label) for handle, label in zip(handles, labels) if label in filtered_totals
@@ -168,7 +169,10 @@ class PCAPStats:
         )
 
         # Set axis labels and title
-        ax.set_xlabel(f'Topics ({df["topic"].nunique():,})')
+        topic_count = df['topic'].nunique() - int(include_discovery)
+        topic_label = f"Topics ({topic_count:,}" + (" plus Discovery)" if include_discovery else ")")
+
+        ax.set_xlabel(topic_label)
         ax.set_ylabel(f"{metric.capitalize()} ({df[metric].sum():,} {units})")
         ax.set_title(f"Submessage {metric.capitalize()} by Topic ({units})")
 
