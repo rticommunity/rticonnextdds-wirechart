@@ -10,6 +10,8 @@ class SubmessageTypes(IntEnum):
 
     DATA_P = auto()
     DATA_RW = auto()
+    DISCOVERY_HEARTBEAT = auto()
+    DISCOVERY_ACKNACK = auto()
     DISCOVERY_STATE = auto()
     DATA = auto()
     DATA_FRAG = auto()
@@ -46,7 +48,7 @@ class InvalidPCAPDataException(Exception):
         return self.message
 
 class RTPSSubmessage():
-    def __init__(self, sm_type, topic, length, seq_number, multiple_sm=False):
+    def __init__(self, sm_type, topic, length, seq_number, discovery_frame, multiple_sm=False):
         if any(term in sm_type.lower() for term in ("port", "ping")):
             raise InvalidPCAPDataException(f"Routing frame: {sm_type}.")
 
@@ -74,6 +76,8 @@ class RTPSSubmessage():
                 # If this is a HEARTBEAT and there are multiple submessages, this is a PIGGYBACK_HEARTBEAT
                 if multiple_sm and "HEARTBEAT" in sm_type:
                     self.sm_type = SubmessageTypes["PIGGYBACK_" + sm_type]
+                elif discovery_frame and sm_type in ("HEARTBEAT", "ACKNACK"):
+                    self.sm_type = SubmessageTypes["DISCOVERY_" + sm_type]
                 else:
                     self.sm_type = SubmessageTypes[sm_type]
         except KeyError:
@@ -138,13 +142,13 @@ class RTPSFrame:
 
             if not self.sm_list:
                 # Include full upd_length in the first submessage
-                self.add_submessage(RTPSSubmessage(sm, sm_topic, udp_length, next(seq_number_iterator)))
+                self.add_submessage(RTPSSubmessage(sm, sm_topic, udp_length, next(seq_number_iterator), self.discovery_frame))
 
             else:
                 # Decrease the length of the first submessage by the length of the current submessage
                 self.sm_list[0].length -= sm_len
                 # Indicate more than one submessage in the frame
-                self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), True))
+                self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), self.discovery_frame, True))
 
         logger.debug(str(self))
 
