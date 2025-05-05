@@ -31,6 +31,13 @@ class SubmessageTypes(IntEnum):
         Returns a subset of the enum members between start and end.
         """
         return [member for member in cls if start <= member.value <= end]
+    
+    @classmethod
+    def subset_names(cls, start = DATA_P, end = DATA_STATE):
+        """
+        Returns a list of names of the enum members between start and end.
+        """
+        return [member.name for member in cls if start <= member.value <= end]
 
 class InvalidPCAPDataException(Exception):
     """Exception raised for invalid PCAP data."""

@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
 from PCAPUtils import SUBMESSAGE_ORDER
 from log_handler import logging
+from RTPSFrame import SubmessageTypes
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ class PCAPStats:
         """
         Initializes the PCAPStats object with a pandas DataFrame.
 
-        :param df: A pandas DataFrame with columns ['Topic', 'Submessage', 'Count'].
+        :param df: A pandas DataFrame with columns ['topic', 'sm', 'count'].
         """
         self.df = df
 
@@ -25,49 +26,51 @@ class PCAPStats:
         messages by topic, and messages by submessage type.
         """
         # Calculate total messages
-        total_messages = self.df['Count'].sum()
+        total_messages = self.df['count'].sum()
         print(f"Total number of messages: {total_messages}")
 
         # Calculate total messages by topic and sort in descending order
-        total_messages_by_topic = self.df.groupby('Topic')['Count'].sum().sort_values(ascending=False)
+        total_messages_by_topic = self.df.groupby('topic')['count'].sum().sort_values(ascending=False)
         print(f"{" " * 2}Total messages by topic:")
         for topic, count in total_messages_by_topic.items():
             print(f"{" " * 4}{topic}: {count}")
 
         # Calculate counts for each submessage type
-        submessage_counts = self.df.groupby('Submessage', observed=False)['Count'].sum()
+        submessage_counts = self.df.groupby('sm', observed=False)['count'].sum()
         print(f"{" " * 2}Submessage counts:")
-        for submsg in SUBMESSAGE_ORDER:
+        for submsg in SubmessageTypes.subset_names():
             if submsg in submessage_counts:
                 print(f"{" " * 4}{submsg}: {submessage_counts[submsg]}")
         for submsg, count in submessage_counts.items():
-            if submsg not in SUBMESSAGE_ORDER:
+            if submsg not in SubmessageTypes.subset_names():
                 print(f"  {submsg}: {count}")
         print()
 
+    # TODO: Add logic to print by count and length
     def print_stats_in_bytes(self):
         """
         Prints statistics about the PCAP data in bytes, including total message lengths,
         lengths by topic, and lengths by submessage type.
         """
         # Calculate total message length
-        total_length = self.df['Length'].sum()
+        total_length = self.df['length'].sum()
         print(f"Total message length: {total_length:,} bytes")
 
         # Calculate total message length by topic and sort in descending order
-        total_length_by_topic = self.df.groupby('Topic')['Length'].sum().sort_values(ascending=False)
+        total_length_by_topic = self.df.groupby('topic')['length'].sum().sort_values(ascending=False)
         print(f"{" " * 2}Total message length by topic:")
         for topic, length in total_length_by_topic.items():
             print(f"{" " * 4}{topic}: {length:,} bytes")
 
         # Calculate total lengths for each submessage type
-        submessage_lengths = self.df.groupby('Submessage', observed=False)['Length'].sum()
+        submessage_lengths = self.df.groupby('sm', observed=False)['length'].sum()
         print(f"{" " * 2}Submessage lengths:")
-        for submsg in SUBMESSAGE_ORDER:
+        # Get all submessage types
+        for submsg in SubmessageTypes.subset_names():
             if submsg in submessage_lengths:
                 print(f"{" " * 4}{submsg}: {submessage_lengths[submsg]:,} bytes")
         for submsg, length in submessage_lengths.items():
-            if submsg not in SUBMESSAGE_ORDER:
+            if submsg not in SubmessageTypes.subset_names():
                 print(f"{" " * 4}{submsg}: {length:,} bytes")
         print()
 
@@ -84,20 +87,20 @@ class PCAPStats:
         :param metric: The column to plot, either "Count" or "Length".
         """
         if metric not in ["Count", "Length"]:
-            raise ValueError("Invalid metric. Choose either 'Count' or 'Length'.")
+            raise ValueError("Invalid metric. Choose either 'count' or 'length'.")
 
         # Define units based on the metric
         units = "messages" if metric == "Count" else "bytes"
 
         # Ensure all submessages in SUBMESSAGE_ORDER are included, even if missing
-        df = self.df.set_index(['Topic', 'Submessage']).unstack(fill_value=0).stack(future_stack=True).reset_index()
+        df = self.df.set_index(['topic', 'sm']).unstack(fill_value=0).stack(future_stack=True).reset_index()
 
         # Calculate total messages or lengths per topic and sort topics by total value
-        df['TotalMetric'] = df.groupby('Topic')[metric].transform('sum')
+        df['TotalMetric'] = df.groupby('topic')[metric].transform('sum')
         df = df.sort_values(by='TotalMetric', ascending=False)
 
         # Pivot the DataFrame to prepare for plotting
-        pivot_df = df.pivot(index='Topic', columns='Submessage', values=metric).fillna(0)
+        pivot_df = df.pivot(index='topic', columns='sm', values=metric).fillna(0)
 
         # Filter out topics with no submessages (all values are zero)
         pivot_df = pivot_df[(pivot_df.sum(axis=1) > 0)]
@@ -130,7 +133,7 @@ class PCAPStats:
         ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13), color=colors)
 
         # Add totals to the legend, filtering out submessages with zero totals
-        submessage_totals = self.df.groupby('Submessage', observed=False)[metric].sum()
+        submessage_totals = self.df.groupby('sm', observed=False)[metric].sum()
         filtered_totals = {label: total for label, total in submessage_totals.items() if total > 0}  # Filter nonzero totals
         handles, labels = ax.get_legend_handles_labels()
         filtered_handles_labels = [
@@ -140,7 +143,7 @@ class PCAPStats:
         ax.legend(
             filtered_handles,
             [f"{label} ({filtered_totals[label]:,} {units})" for label in filtered_labels],
-            title='Submessage'
+            title='sm'
         )
 
         # Set axis labels and title

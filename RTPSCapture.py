@@ -186,10 +186,6 @@ class RTPSCapture:
             return missing_list
         
         all_rows = []
-        # for topic in self.list_all_topics():
-        #     for sm_type in SubmessageTypes.subset(start = SubmessageTypes.DATA):
-        #         if not ((df['topic'] == topic) & (df['sm'] == sm_type.name)).any():
-        #             all_rows.append({'topic': topic, 'sm': sm_type.name, 'count': 0, 'length': 0})
         all_rows.extend(include_missing_topics_and_sm(df, {"DISCOVERY"}, SubmessageTypes.DATA_P, SubmessageTypes.DISCOVERY_STATE))
         all_rows.extend(include_missing_topics_and_sm(df, self.list_all_topics(), SubmessageTypes.DATA, SubmessageTypes.DATA_STATE))
 
