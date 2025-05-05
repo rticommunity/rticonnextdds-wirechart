@@ -123,8 +123,11 @@ class RTPSCapture:
                 raise InvalidPCAPDataException("tshark returned no RTPS frames")
 
             # Split each line into columns and create a list of RTPSFrame objects
-            for frame in frame_data:
-                values = frame.split('\t')
+            total_frames = len(frame_data)
+            progress_interval = max(total_frames // 10, 1)  # Avoid division by zero for small datasets
+
+            for i, raw_frame in enumerate(frame_data):
+                values = raw_frame.split('\t')
                 frame = {field: value for field, value in zip(fields, values)}
                 try:
                     self.add_frame(RTPSFrame(frame))  # Create a RTPSFrame object for each record
@@ -134,6 +137,10 @@ class RTPSCapture:
                 except KeyError as e:
                     logger.debug(f"Frame {int(frame['frame.number']):09d} dropped. Message: {e}")
                     continue
+                # Print progress every 10%
+                if (i + 1) % progress_interval == 0 or (i + 1) == total_frames:
+                    percent = ((i + 1) * 100) // total_frames
+                    print(f"Processing {percent}% complete")
         except subprocess.CalledProcessError as e:
             logger.error("Error running tshark.")
             raise e
