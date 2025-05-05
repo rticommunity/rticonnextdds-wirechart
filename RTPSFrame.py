@@ -35,13 +35,13 @@ class SubmessageTypes(IntEnum):
 class InvalidPCAPDataException(Exception):
     """Exception raised for invalid PCAP data."""
 
-    def __init__(self, message):
+    def __init__(self, message, log_level=logging.DEBUG):
         """
-        Initializes the exception with a message and an optional PCAP file.
-
         :param message: The error message.
+        :param log_level: Logging level from logging module (e.g., logging.WARNING).
         """
         self.message = message
+        self.log_level = log_level
         super().__init__(self.message)
 
     def __str__(self):
@@ -109,8 +109,12 @@ class RTPSFrame:
         """
         logger.debug(f"Processing: {frame_data}")
         self.frame_number = int(frame_data.get('frame.number', 0))
+        info_column = frame_data.get('_ws.col.Info', '')
         self.sm_list = list()
         self.discovery_frame = False
+
+        if "Malformed Packet" in info_column:
+            raise InvalidPCAPDataException(f"Malformed Packet: {info_column}.", log_level=logging.WARNING)
 
         guid_prefix = frame_data.get('rtps.guidPrefix.src', None)
         if not guid_prefix:
@@ -122,7 +126,7 @@ class RTPSFrame:
         self.guid = guid_prefix + match.group(1)
         self.discovery_frame = int(match.group(1), 16) in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}
 
-        sm_list = [s.strip() for s in frame_data.get('_ws.col.Info', '').split(',')]
+        sm_list = [s.strip() for s in info_column.split(',')]
         seq_number_list = list(map(int, frame_data.get('rtps.sm.seqNumber', 0).split(',')))
         sm_len_list = list(map(int, frame_data.get('rtps.sm.octetsToNextHeader', 0).split(',')))
         udp_length = int(frame_data.get('udp.length', 0))

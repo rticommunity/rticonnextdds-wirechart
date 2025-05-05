@@ -115,8 +115,9 @@ class RTPSCapture:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             frame_data = result.stdout.strip().split('\n')
 
+            logger.info(f"tshark returned {len(frame_data)} frames")
+
             if frame_data == ['']:
-                logger.error("tshark returned no RTPS frames")
                 raise InvalidPCAPDataException("tshark returned no RTPS frames")
 
             # Split each line into columns and create a list of RTPSFrame objects
@@ -125,7 +126,10 @@ class RTPSCapture:
                 frame = {field: value for field, value in zip(fields, values)}
                 try:
                     self.add_frame(RTPSFrame(frame))  # Create a RTPSFrame object for each record
-                except (InvalidPCAPDataException, KeyError) as e:
+                except InvalidPCAPDataException as e:
+                    logger.log(e.log_level, f"Frame {int(frame['frame.number']):09d} dropped. Message: {e}")
+                    continue
+                except KeyError as e:
                     logger.debug(f"Frame {int(frame['frame.number']):09d} dropped. Message: {e}")
                     continue
         except subprocess.CalledProcessError as e:
