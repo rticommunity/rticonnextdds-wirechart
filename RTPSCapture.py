@@ -157,7 +157,7 @@ class RTPSCapture:
                     if sm.seq_number < sequence_numbers[frame.guid]:
                         logger.debug(f"Frame {frame.frame_number} determined to be a repair message.")
                         sm.sm_type = SubmessageTypes.DATA_REPAIR
-                elif sm.sm_type in (SubmessageTypes.DATA_P, SubmessageTypes.DATA_RW, SubmessageTypes.DISCOVERY_STATE):
+                elif frame.discovery_frame:
                     topic = "DISCOVERY"
                 frame_stats.append({'topic': topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
 
@@ -171,17 +171,25 @@ class RTPSCapture:
         df = df.groupby(['topic', 'sm'], as_index=False).agg({'count': 'sum', 'length': 'sum'})
 
         # Ensure all unique topics are included in the DataFrame
+        def include_missing_topics_and_sm(df, all_topics, sm_start, sm_end):
+            missing_list = []
+            for topic in all_topics:
+                for sm_type in SubmessageTypes.subset(start = sm_start, end = sm_end):
+                    if not ((df['topic'] == topic) & (df['sm'] == sm_type.name)).any():
+                        missing_list.append({'topic': topic, 'sm': sm_type.name, 'count': 0, 'length': 0})
+            return missing_list
+        
         all_rows = []
-        for topic in self.list_all_topics():
-            for sm_type in SubmessageTypes.subset(start = SubmessageTypes.DATA):
-                if not ((df['topic'] == topic) & (df['sm'] == sm_type.name)).any():
-                    all_rows.append({'topic': topic, 'sm': sm_type.name, 'count': 0, 'length': 0})
+        # for topic in self.list_all_topics():
+        #     for sm_type in SubmessageTypes.subset(start = SubmessageTypes.DATA):
+        #         if not ((df['topic'] == topic) & (df['sm'] == sm_type.name)).any():
+        #             all_rows.append({'topic': topic, 'sm': sm_type.name, 'count': 0, 'length': 0})
+        all_rows.extend(include_missing_topics_and_sm(df, {"DISCOVERY"}, SubmessageTypes.DATA_P, SubmessageTypes.DISCOVERY_STATE))
+        all_rows.extend(include_missing_topics_and_sm(df, self.list_all_topics(), SubmessageTypes.DATA, SubmessageTypes.DATA_STATE))
 
         # Add missing rows with a count of 0 and length of 0
         if all_rows:
             df = pd.concat([df, pd.DataFrame(all_rows)], ignore_index=True)
-
-        # df['sm'] = df['sm'].apply(lambda x: x.name if isinstance(x, SubmessageTypes) else str(x))
 
         # Order the Submessage column based on SubmessageTypes
         # Create an ordered categorical column using enum member names
