@@ -105,7 +105,7 @@ class PCAPStats:
             df = df[df['topic'] != DISCOVERY_TOPIC]
 
         # Ensure all submessages in SubmessageTypes are included, even if missing
-        df = df.set_index(['topic', 'sm']).unstack(fill_value=0).stack().reset_index()
+        df = df.set_index(['topic', 'sm']).unstack(fill_value=0).stack(future_stack=True).reset_index()
 
         # Calculate total messages or lengths per topic and sort topics by total value
         df['TotalMetric'] = df.groupby('topic')[metric].transform('sum')
@@ -134,6 +134,7 @@ class PCAPStats:
         color_mapping = {
             "DATA_P": "#ff7f0e",                        # Orange
             "DATA_RW": "#2ca02c",                       # Green
+            "DISCOVERY_REPAIR": "#ffbb78",              # Light Orange
             "DISCOVERY_HEARTBEAT": "#1f77b4",           # Blue
             "DISCOVERY_ACKNACK": "#9467bd",             # Purple
             "DISCOVERY_STATE": "#d62728",               # Red

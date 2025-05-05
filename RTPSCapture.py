@@ -171,6 +171,7 @@ class RTPSCapture:
                     sequence_numbers[frame.guid] = sm.seq_number
                 elif sm.sm_type in (SubmessageTypes.DATA, SubmessageTypes.DATA_FRAG, SubmessageTypes.DATA_BATCH):
                     # TODO: Verify <= and not < is correct
+                    # TODO: Discovery repairs?
                     if sm.seq_number <= sequence_numbers[frame.guid]:
                         logger.debug(f"Frame {frame.frame_number} determined to be a repair message.")
                         sm.sm_type = SubmessageTypes.DATA_REPAIR

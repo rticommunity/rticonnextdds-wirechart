@@ -10,6 +10,7 @@ class SubmessageTypes(IntEnum):
 
     DATA_P = auto()
     DATA_RW = auto()
+    DISCOVERY_REPAIR = auto()
     DISCOVERY_HEARTBEAT = auto()
     DISCOVERY_ACKNACK = auto()
     DISCOVERY_STATE = auto()
