@@ -167,13 +167,12 @@ class RTPSCapture:
                 # TODO: Verify not to do this with GAP
                 if sm.sm_type in (SubmessageTypes.HEARTBEAT, SubmessageTypes.HEARTBEAT_BATCH,
                                 SubmessageTypes.PIGGYBACK_HEARTBEAT, SubmessageTypes.PIGGYBACK_HEARTBEAT_BATCH):
-                    # Record the sequence number
                     sequence_numbers[frame.guid] = sm.seq_number
                 elif sm.sm_type in (SubmessageTypes.DATA, SubmessageTypes.DATA_FRAG, SubmessageTypes.DATA_BATCH):
-                    # TODO: Verify <= and not < is correct
                     # TODO: Discovery repairs?
+                    # TODO: Durability repairs?
                     if sm.seq_number <= sequence_numbers[frame.guid]:
-                        logger.debug(f"Frame {frame.frame_number} determined to be a repair message.")
+                        logger.info(f"Frame {frame.frame_number} determined to be a repair.")
                         sm.sm_type = SubmessageTypes.DATA_REPAIR
                 frame_stats.append({'topic': topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
 
