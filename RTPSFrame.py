@@ -121,6 +121,7 @@ class RTPSFrame:
         self.frame_number = int(frame_data.get('frame.number', 0))
         info_column = frame_data.get('_ws.col.Info', '')
         self.sm_list = list()
+        self.guid_src, self.guid_dst, entity = None, None, None
         self.discovery_frame = False
 
         if "Malformed Packet" in info_column:
@@ -135,7 +136,7 @@ class RTPSFrame:
             guid = guid_prefix + entity_id
             return int(guid, 16), int(entity_id, 16)
 
-        self.guid, entity_id = create_guid(frame_data.get('rtps.guidPrefix.src', None), frame_data.get('rtps.sm.wrEntityId', None))
+        self.guid_src, entity_id = create_guid(frame_data.get('rtps.guidPrefix.src', None), frame_data.get('rtps.sm.wrEntityId', None))
         self.discovery_frame = entity_id in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}
 
         sm_list = [s.strip() for s in info_column.split(',')]
@@ -202,7 +203,7 @@ class RTPSFrame:
         return set(sm.topic for sm in self.sm_list if sm.topic is not None)
 
     def __str__(self):
-        result = [f"Frame: {self.frame_number:09} GUID: {self.guid} Discovery Frame: {self.discovery_frame}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
+        result = [f"Frame: {self.frame_number:09} GUID: {self.guid_src} Discovery Frame: {self.discovery_frame}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
         for i, submessage in enumerate(self.sm_list, start=1):
             result.append(f"{" " * 4}{i} {str(submessage)}")
         return "\n".join(result) + "\n"
