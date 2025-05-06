@@ -126,15 +126,17 @@ class RTPSFrame:
         if "Malformed Packet" in info_column:
             raise InvalidPCAPDataException(f"Malformed Packet: {info_column}.", log_level=logging.WARNING)
 
-        guid_prefix = frame_data.get('rtps.guidPrefix.src', None)
-        if not guid_prefix:
-            # PING frame or something similar
-            raise InvalidPCAPDataException(f"No GUID prefix.")
+        def create_guid(guid_prefix, entity_id_str):
+            if not guid_prefix:
+                raise InvalidPCAPDataException(f"No GUID prefix.")
 
-        wr_entity_id = frame_data.get('rtps.sm.wrEntityId')
-        match = re.match(r'0x([0-9A-Fa-f]+)', wr_entity_id)
-        self.guid = guid_prefix + match.group(1)
-        self.discovery_frame = int(match.group(1), 16) in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}
+            match = re.match(r'0x([0-9A-Fa-f]+)', entity_id_str)
+            entity_id = match.group(1)
+            guid = guid_prefix + entity_id
+            return int(guid, 16), int(entity_id, 16)
+
+        self.guid, entity_id = create_guid(frame_data.get('rtps.guidPrefix.src', None), frame_data.get('rtps.sm.wrEntityId', None))
+        self.discovery_frame = entity_id in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}
 
         sm_list = [s.strip() for s in info_column.split(',')]
         seq_number_list = list(map(int, frame_data.get('rtps.sm.seqNumber', 0).split(',')))
