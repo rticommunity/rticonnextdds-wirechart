@@ -12,6 +12,7 @@ class SubmessageTypes(IntEnum):
     DATA_RW = auto()
     DISCOVERY_REPAIR = auto()
     DISCOVERY_HEARTBEAT = auto()
+    DISCOVERY_PIGGYBACK_HEARTBEAT = auto()
     DISCOVERY_ACKNACK = auto()
     DISCOVERY_STATE = auto()
     DATA = auto()
@@ -32,7 +33,7 @@ class SubmessageTypes(IntEnum):
         Returns a subset of the enum members between start and end.
         """
         return [member for member in cls if start <= member.value <= end]
-    
+
     @classmethod
     def subset_names(cls, start = DATA_P, end = DATA_STATE):
         """
@@ -64,6 +65,7 @@ class RTPSSubmessage():
         self.length = length
         self.seq_number = seq_number
 
+        #  TODO: Handle user data that doens't have a topic
         # Check for a state submessage type
         try:
             if "DATA" in sm_type:
@@ -83,11 +85,11 @@ class RTPSSubmessage():
             else:
                 # If this is a HEARTBEAT and there are multiple submessages, this is a PIGGYBACK_HEARTBEAT
                 if multiple_sm and "HEARTBEAT" in sm_type:
-                    self.sm_type = SubmessageTypes["PIGGYBACK_" + sm_type]
-                elif discovery_frame and sm_type in ("HEARTBEAT", "ACKNACK"):
-                    self.sm_type = SubmessageTypes["DISCOVERY_" + sm_type]
-                else:
-                    self.sm_type = SubmessageTypes[sm_type]
+                    sm_type = "PIGGYBACK_" + sm_type
+                if discovery_frame and ("HEARTBEAT" in sm_type or "ACKNACK" in sm_type):
+                    sm_type = "DISCOVERY_" + sm_type
+
+                self.sm_type = SubmessageTypes[sm_type]
         except KeyError:
             logger.error(f"Invalid submessage type: {sm_type}.")
             raise KeyError(f"Invalid submessage: {sm_type}")
