@@ -130,30 +130,7 @@ class PCAPStats:
         total_metric_by_topic = pivot_df['TotalMetric']
         pivot_df = pivot_df.drop(columns=['TotalMetric'])  # Remove the helper column
 
-        # Define a consistent color mapping for submessages
-        color_mapping = {
-            "DATA_P": "#ff7f0e",                        # Orange
-            "DATA_RW": "#2ca02c",                       # Green
-            "DISCOVERY_REPAIR": "#ffbb78",              # Light Orange
-            "DISCOVERY_HEARTBEAT": "#1f77b4",           # Blue
-            "DISCOVERY_ACKNACK": "#9467bd",             # Purple
-            "DISCOVERY_STATE": "#d62728",               # Red
-            "DATA": "#8c564b",                          # Brown
-            "DATA_FRAG": "#17becf",                     # Teal
-            "DATA_BATCH": "#ff7f7f",                    # Light Red
-            "DATA_REPAIR": "#7f7f7f",                   # Gray
-            "HEARTBEAT": "#aec7e8",                     # Light Blue
-            "HEARTBEAT_BATCH": "#ffbb78",               # Light Orange
-            "PIGGYBACK_HEARTBEAT": "#98df8a",           # Light Green
-            "PIGGYBACK_HEARTBEAT_BATCH": "#bcbd22",     # Olive
-            "ACKNACK": "#e377c2",                       # Pink
-            "GAP": "#c49c94",                           # Rose Brown
-            "DATA_STATE": "#393b79",                    # Navy Blue
-        }
-        colors = [color_mapping[submsg] for submsg in submessage_order]
-
-        # Plot the stacked bar chart with consistent colors
-        ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13), color=colors)
+        ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13))
 
         # Add totals to the legend, filtering out submessages not in submessage_order
         submessage_totals = self.df.groupby('sm', observed=False)[metric].sum()
