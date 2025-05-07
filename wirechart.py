@@ -36,7 +36,8 @@ def main():
     pcap_fields = list(['frame.number', 'udp.length',
                         'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',        # Writer GUID
                         'rtps.guidPrefix.dst', 'rtps.sm.rdEntityId',        # Reader GUID
-                        'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader', 'rtps.sm.id', '_ws.col.Info'])
+                        'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader',
+                        'rtps.sm.id', '_ws.col.Info'])
 
     rtps_frames = RTPSCapture(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
     # rtps_frames.print_capture_summary()  # Print summary of the capture
@@ -49,9 +50,7 @@ def main():
         stats.plot_stats_by_frame_count(args.plot_discovery)  # Plot by frame count
         stats.plot_stats_by_frame_length(args.plot_discovery)  # Plot by frame length
 
-    # Write the DataFrame to an Excel file if an output path is provided
-    if args.output:
-        stats.save_to_excel(args.pcap, args.output, 'PCAPStats')  # Write to Excel
+    stats.save_to_excel(args.pcap, args.output, 'PCAPStats')  # Write to Excel
 
 def parse_range(value: str):
     if ':' not in value:
