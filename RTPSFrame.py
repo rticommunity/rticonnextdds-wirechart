@@ -126,8 +126,8 @@ class RTPSFrame:
         def create_guid(frame_data, sm_id):
             def none_if_zero(value):
                 return None if value == 0 else value
-            guid_prefix_src = frame_data.get('rtps.guidPrefix.src')
-            guid_prefix_dst = frame_data.get('rtps.guidPrefix.dst')
+            guid_prefix_src = frame_data.get('rtps.guidPrefix.src').split(',')[0]
+            guid_prefix_dst = frame_data.get('rtps.guidPrefix.dst').split(',')[0]
             wr_entity_id, _ = get_entity_id(frame_data.get('rtps.sm.wrEntityId'))
             rd_entity_id, _ = get_entity_id(frame_data.get('rtps.sm.rdEntityId'))
 
