@@ -58,13 +58,13 @@ class InvalidPCAPDataException(Exception):
         return self.message
 
 class RTPSSubmessage():
-    def __init__(self, sm_type, topic, length, seq_number, discovery_frame, multiple_sm=False):
+    def __init__(self, sm_type, topic, length, seq_number_tuple, discovery_frame, multiple_sm=False):
         if any(term in sm_type.lower() for term in ("port", "ping")):
             raise InvalidPCAPDataException(f"Routing frame: {sm_type}.")
 
         self.topic = topic
         self.length = length
-        self.seq_number = seq_number
+        self.seq_num_tuple = seq_number_tuple
 
         #  TODO: Handle user data that doens't have a topic
         # Check for a state submessage type
@@ -99,13 +99,14 @@ class RTPSSubmessage():
             logger.error(f"Invalid submessage type: {self.sm_type}")
             raise InvalidPCAPDataException(f"Invalid submessage type: {self.sm_type}")
 
+        # TODO: Maybe remove this check
         # GAPs announce the next sequence number, so decrement by 1
-        if self.sm_type == SubmessageTypes.GAP:
-            self.seq_number -= 1
+        # if self.sm_type == SubmessageTypes.GAP:
+        #     self.seq_number -= 1
 
     def __str__(self):
         return (f"Type: {self.sm_type.name}, Topic: {self.topic}, "
-                f"Length: {self.length}, Seq Number: {self.seq_number}")
+                f"Length: {self.length}, Seq Number: {self.seq_num_tuple}")
 
 class RTPSFrame:
     """
@@ -166,21 +167,24 @@ class RTPSFrame:
             matches = re.match(r'^(.*?)\s*->\s*(.*)', sm)
             sm = matches.group(1).strip() if matches else sm
             sm_topic = matches.group(2).strip() if matches else None
+            seq_num_tuple = ()
 
             if sm in ("HEARTBEAT", "GAP"):
-                # HEARTBEAT and GAP have 2 sequence numbers in the list, and we want the second one
-                # so throw away the first sequence number.
-                next(seq_number_iterator)
+                # HEARTBEAT and GAP have 2 sequence numbers in the list
+                seq_num_tuple = (next(seq_number_iterator), next(seq_number_iterator))
+            else:
+                # For all other submessages, we only get one sequence number
+                seq_num_tuple = (next(seq_number_iterator),)
 
             if not self.sm_list:
                 # Include full upd_length in the first submessage
-                self.add_submessage(RTPSSubmessage(sm, sm_topic, udp_length, next(seq_number_iterator), self.discovery_frame))
+                self.add_submessage(RTPSSubmessage(sm, sm_topic, udp_length, seq_num_tuple, self.discovery_frame))
 
             else:
                 # Decrease the length of the first submessage by the length of the current submessage
                 self.sm_list[0].length -= sm_len
                 # Indicate more than one submessage in the frame
-                self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), self.discovery_frame, True))
+                self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, seq_num_tuple, self.discovery_frame, True))
 
         self.guid_src, self.guid_dst = create_guid(frame_data, self.sm_list[-1].sm_type)
 

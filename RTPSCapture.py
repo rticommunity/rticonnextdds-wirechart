@@ -169,12 +169,12 @@ class RTPSCapture:
                 guid_key = (frame.guid_src, frame.guid_dst)
                 if sm.sm_type in (SubmessageTypes.HEARTBEAT, SubmessageTypes.HEARTBEAT_BATCH,
                                 SubmessageTypes.PIGGYBACK_HEARTBEAT, SubmessageTypes.PIGGYBACK_HEARTBEAT_BATCH):
-                    sequence_numbers[guid_key[0]] = sm.seq_number
+                    sequence_numbers[guid_key[0]] = sm.seq_num_tuple[1]
                 elif sm.sm_type in (SubmessageTypes.DATA, SubmessageTypes.DATA_FRAG, SubmessageTypes.DATA_BATCH):
                     # TODO: Discovery repairs?
                     # TODO: Durability repairs?
-                    if sm.seq_number <= sequence_numbers[guid_key[0]]:
-                        if sm.seq_number <= durability_repairs[guid_key]:
+                    if sm.seq_num_tuple[0] <= sequence_numbers[guid_key[0]]:
+                        if sm.seq_num_tuple[0] <= durability_repairs[guid_key]:
                             logger.info(f"Frame {frame.frame_number} determined to be a durability repair.")
                             sm.sm_type = SubmessageTypes.DATA_DURABILITY_REPAIR
                         else:
@@ -182,7 +182,7 @@ class RTPSCapture:
                             sm.sm_type = SubmessageTypes.DATA_REPAIR
                 # TODO: Add support for Discovery repairs?
                 elif sm.sm_type == SubmessageTypes.ACKNACK:
-                    if sm.seq_number > 0 and guid_key not in durability_repairs:
+                    if sm.seq_num_tuple[0] > 0 and guid_key not in durability_repairs:
                         # Only add this for the first non-zero ACKNACK
                         durability_repairs[guid_key] = sequence_numbers[guid_key[0]]
 
