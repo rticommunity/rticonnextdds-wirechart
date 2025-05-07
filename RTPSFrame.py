@@ -19,6 +19,7 @@ class SubmessageTypes(IntEnum):
     DATA_FRAG = auto()
     DATA_BATCH = auto()
     DATA_REPAIR = auto()
+    DATA_DURABILITY_REPAIR = auto()
     HEARTBEAT = auto()
     HEARTBEAT_BATCH = auto()
     PIGGYBACK_HEARTBEAT = auto()
@@ -166,6 +167,17 @@ class RTPSFrame:
                 self.sm_list[0].length -= sm_len
                 # Indicate more than one submessage in the frame
                 self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), self.discovery_frame, True))
+
+        # Heartbeats are always the last submessage
+        if self.sm_list[-1] in (SubmessageTypes.DISCOVERY_HEARTBEAT, SubmessageTypes.DISCOVERY_PIGGYBACK_HEARTBEAT,
+                    SubmessageTypes.HEARTBEAT, SubmessageTypes.HEARTBEAT_BATCH,
+                    SubmessageTypes.PIGGYBACK_HEARTBEAT, SubmessageTypes.PIGGYBACK_HEARTBEAT_BATCH):
+            try:
+                self.guid_dst, = create_guid(frame_data.get('rtps.guidPrefix.dst', None), frame_data.get('rtps.sm.rdEntityId', None))
+            except Exception as e:
+                # Shouldn't happen.  Log and raise
+                logger.error(f"Error creating destination GUID: {e}")
+                raise Exception(e)
 
         logger.debug(str(self))
 

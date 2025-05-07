@@ -33,8 +33,10 @@ def main():
         start, finish = parse_range(args.frame_range)
 
     # tshark seems to return commands in a hierarchy, i.e. frame -> udp -> rtps so order matters
-    pcap_fields = list(['frame.number', 'udp.length', 'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',
-                       'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader', 'rtps.sm.id', '_ws.col.Info'])
+    pcap_fields = list(['frame.number', 'udp.length',
+                        'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',        # Writer GUID
+                        'rtps.guidPrefix.dst', 'rtps.sm.rdEntityId',        # Reader GUID
+                        'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader', 'rtps.sm.id', '_ws.col.Info'])
 
     rtps_frames = RTPSCapture(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
     # rtps_frames.print_capture_summary()  # Print summary of the capture
@@ -83,7 +85,5 @@ def create_output_path(pcap_file, output_path, extension, description=None):
 if __name__ == "__main__":
     try:
         main()
-    except InvalidPCAPDataException as e:
-        print(f"Invalid PCAP File: {e.message}.")
-    # except Exception as e:
-    #     print(f"An error occurred: {e}")
+    except Exception as e:
+        logger.always(f"Unhandled Exception: {e}")
