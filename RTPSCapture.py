@@ -157,6 +157,7 @@ class RTPSCapture:
         """
         frame_stats = []  # List to store rows for the DataFrame
         sequence_numbers = defaultdict(int)  # Dictionary to store string keys and unsigned integer values
+        durability_repairs = defaultdict(int) # Dictionary to keep track of sequence numbers for durability repairs
 
         # Process the PCAP data to count messages and include lengths
         for frame in self.frames:
@@ -165,15 +166,26 @@ class RTPSCapture:
                 if frame.discovery_frame:
                     topic = DISCOVERY_TOPIC
                 # TODO: Verify not to do this with GAP
+                guid_key = (frame.guid_src, frame.guid_dst)
                 if sm.sm_type in (SubmessageTypes.HEARTBEAT, SubmessageTypes.HEARTBEAT_BATCH,
                                 SubmessageTypes.PIGGYBACK_HEARTBEAT, SubmessageTypes.PIGGYBACK_HEARTBEAT_BATCH):
-                    sequence_numbers[frame.guid_src] = sm.seq_number
+                    sequence_numbers[guid_key[0]] = sm.seq_number
                 elif sm.sm_type in (SubmessageTypes.DATA, SubmessageTypes.DATA_FRAG, SubmessageTypes.DATA_BATCH):
                     # TODO: Discovery repairs?
                     # TODO: Durability repairs?
-                    if sm.seq_number <= sequence_numbers[frame.guid_src]:
-                        logger.info(f"Frame {frame.frame_number} determined to be a repair.")
-                        sm.sm_type = SubmessageTypes.DATA_REPAIR
+                    if sm.seq_number <= sequence_numbers[guid_key[0]]:
+                        if sm.seq_number <= durability_repairs[guid_key]:
+                            logger.info(f"Frame {frame.frame_number} determined to be a durability repair.")
+                            sm.sm_type = SubmessageTypes.DATA_DURABILITY_REPAIR
+                        else:
+                            logger.info(f"Frame {frame.frame_number} determined to be a repair.")
+                            sm.sm_type = SubmessageTypes.DATA_REPAIR
+                # TODO: Add support for Discovery repairs?
+                elif sm.sm_type == SubmessageTypes.ACKNACK:
+                    if sm.seq_number > 0 and guid_key not in durability_repairs:
+                        # Only add this for the first non-zero ACKNACK
+                        durability_repairs[guid_key] = sequence_numbers[guid_key[0]]
+
                 frame_stats.append({'topic': topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
 
         if not frame_stats:

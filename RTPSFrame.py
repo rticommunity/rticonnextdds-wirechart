@@ -118,6 +118,26 @@ class RTPSFrame:
 
         :param frame_data: Dictionary containing field names and their values.
         """
+        def get_entity_id(entity_id_str):
+            match = re.match(r'0x([0-9A-Fa-f]+)', entity_id_str)
+            entity_id = match.group(1)
+            return entity_id, int(entity_id, 16)
+        def create_guid(frame_data, sm_id):
+            def none_if_zero(value):
+                return None if value == 0 else value
+            guid_prefix_src = frame_data.get('rtps.guidPrefix.src')
+            guid_prefix_dst = frame_data.get('rtps.guidPrefix.dst')
+            wr_entity_id, _ = get_entity_id(frame_data.get('rtps.sm.wrEntityId'))
+            rd_entity_id, _ = get_entity_id(frame_data.get('rtps.sm.rdEntityId'))
+
+            if sm_id == SubmessageTypes.ACKNACK:
+                guid_src = guid_prefix_dst + wr_entity_id
+                guid_dst = guid_prefix_src + rd_entity_id
+            else:
+                guid_src = guid_prefix_src + wr_entity_id
+                guid_dst = guid_prefix_dst + rd_entity_id
+            return none_if_zero(int(guid_src, 16)), none_if_zero(int(guid_dst, 16))
+
         logger.debug(f"Processing: {frame_data}")
         self.frame_number = int(frame_data.get('frame.number', 0))
         info_column = frame_data.get('_ws.col.Info', '')
@@ -125,19 +145,13 @@ class RTPSFrame:
         self.guid_src, self.guid_dst, entity = None, None, None
         self.discovery_frame = False
 
+        if not frame_data.get('rtps.guidPrefix.src', None):
+                raise InvalidPCAPDataException(f"No GUID prefix.")
+
         if "Malformed Packet" in info_column:
             raise InvalidPCAPDataException(f"Malformed Packet: {info_column}.", log_level=logging.WARNING)
 
-        def create_guid(guid_prefix, entity_id_str):
-            if not guid_prefix:
-                raise InvalidPCAPDataException(f"No GUID prefix.")
-
-            match = re.match(r'0x([0-9A-Fa-f]+)', entity_id_str)
-            entity_id = match.group(1)
-            guid = guid_prefix + entity_id
-            return int(guid, 16), int(entity_id, 16)
-
-        self.guid_src, entity_id = create_guid(frame_data.get('rtps.guidPrefix.src', None), frame_data.get('rtps.sm.wrEntityId', None))
+        _ , entity_id = get_entity_id(frame_data.get('rtps.sm.wrEntityId', None))
         self.discovery_frame = entity_id in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}
 
         sm_list = [s.strip() for s in info_column.split(',')]
@@ -168,16 +182,7 @@ class RTPSFrame:
                 # Indicate more than one submessage in the frame
                 self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, next(seq_number_iterator), self.discovery_frame, True))
 
-        # Heartbeats are always the last submessage
-        if self.sm_list[-1] in (SubmessageTypes.DISCOVERY_HEARTBEAT, SubmessageTypes.DISCOVERY_PIGGYBACK_HEARTBEAT,
-                    SubmessageTypes.HEARTBEAT, SubmessageTypes.HEARTBEAT_BATCH,
-                    SubmessageTypes.PIGGYBACK_HEARTBEAT, SubmessageTypes.PIGGYBACK_HEARTBEAT_BATCH):
-            try:
-                self.guid_dst, = create_guid(frame_data.get('rtps.guidPrefix.dst', None), frame_data.get('rtps.sm.rdEntityId', None))
-            except Exception as e:
-                # Shouldn't happen.  Log and raise
-                logger.error(f"Error creating destination GUID: {e}")
-                raise Exception(e)
+        self.guid_src, self.guid_dst = create_guid(frame_data, self.sm_list[-1].sm_type)
 
         logger.debug(str(self))
 
@@ -215,7 +220,7 @@ class RTPSFrame:
         return set(sm.topic for sm in self.sm_list if sm.topic is not None)
 
     def __str__(self):
-        result = [f"Frame: {self.frame_number:09} GUID: {self.guid_src} Discovery Frame: {self.discovery_frame}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
+        result = [f"Frame: {self.frame_number:09} GUID_SRC: {self.guid_src} GUID_DST: {self.guid_dst} Discovery Frame: {self.discovery_frame}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
         for i, submessage in enumerate(self.sm_list, start=1):
             result.append(f"{" " * 4}{i} {str(submessage)}")
         return "\n".join(result) + "\n"
