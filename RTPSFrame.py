@@ -60,7 +60,9 @@ class InvalidPCAPDataException(Exception):
 class RTPSSubmessage():
     def __init__(self, sm_type, topic, length, seq_number_tuple, discovery_frame, multiple_sm=False):
         if any(term in sm_type.lower() for term in ("port", "ping")):
-            raise InvalidPCAPDataException(f"Routing frame: {sm_type}.")
+            raise InvalidPCAPDataException(f"Routing frame: {sm_type}.", logging.INFO)
+        if not discovery_frame and not topic:
+            raise InvalidPCAPDataException(f"No discovery data.", logging.WARNING)
 
         self.topic = topic
         self.length = length
@@ -97,6 +99,8 @@ class RTPSSubmessage():
 
         if not isinstance(self.sm_type, SubmessageTypes):
             logger.error(f"Invalid submessage type: {self.sm_type}")
+            raise InvalidPCAPDataException(f"Invalid submessage type: {self.sm_type}.", logging.ERROR)
+
     def seq_num(self):
         """
         Returns the sequence number of the submessage.
@@ -144,13 +148,16 @@ class RTPSFrame:
 
         :param frame_data: Dictionary containing field names and their values.
         """
+        def none_if_zero(value):
+                return None if value == 0 else value
         def get_entity_id(entity_id_str):
             match = re.match(r'0x([0-9A-Fa-f]+)', entity_id_str)
-            entity_id = match.group(1)
-            return entity_id, int(entity_id, 16)
+            if match:
+                entity_id = match.group(1) or '0'
+                return entity_id, int(entity_id, 16)
+            else:
+                return None, None
         def create_guid(frame_data, sm_id):
-            def none_if_zero(value):
-                return None if value == 0 else value
             guid_prefix_src = frame_data.get('rtps.guidPrefix.src').split(',')[0]
             guid_prefix_dst = frame_data.get('rtps.guidPrefix.dst').split(',')[0]
             wr_entity_id, _ = get_entity_id(frame_data.get('rtps.sm.wrEntityId'))
@@ -172,12 +179,16 @@ class RTPSFrame:
         self.discovery_frame = False
 
         if not frame_data.get('rtps.guidPrefix.src', None):
-                raise InvalidPCAPDataException(f"No GUID prefix.")
+                raise InvalidPCAPDataException(f"No GUID prefix.", logging.INFO)
 
         if "Malformed Packet" in info_column:
             raise InvalidPCAPDataException(f"Malformed Packet: {info_column}.", log_level=logging.WARNING)
 
-        _ , entity_id = get_entity_id(frame_data.get('rtps.sm.wrEntityId', None))
+        entity_id_str , entity_id = get_entity_id(frame_data.get('rtps.sm.wrEntityId', None))
+        if entity_id is None:
+            raise InvalidPCAPDataException(f"Invalid Entity ID: {entity_id_str}", logging.WARNING)
+        if entity_id in (0x00020087, 0x00020082):
+            raise InvalidPCAPDataException(f"Service Request Frame.", logging.INFO)
         self.discovery_frame = entity_id in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}
 
         sm_list = [s.strip() for s in info_column.split(',')]

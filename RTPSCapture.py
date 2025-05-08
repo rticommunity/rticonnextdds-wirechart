@@ -161,7 +161,9 @@ class RTPSCapture:
         :param unique_topics: A set of unique topics to initialize the DataFrame.
         :return: A pandas DataFrame with columns ['Topic', 'Submessage', 'Count', 'Length'].
         """
-        frame_stats = []  # List to store rows for the DataFrame
+
+        logger.always("Analyzing capture data...")
+
         sequence_numbers = defaultdict(int)  # Dictionary to store string keys and unsigned integer values
         durability_repairs = defaultdict(int) # Dictionary to keep track of sequence numbers for durability repairs
 
