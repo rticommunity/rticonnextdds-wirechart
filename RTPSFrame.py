@@ -97,12 +97,37 @@ class RTPSSubmessage():
 
         if not isinstance(self.sm_type, SubmessageTypes):
             logger.error(f"Invalid submessage type: {self.sm_type}")
-            raise InvalidPCAPDataException(f"Invalid submessage type: {self.sm_type}")
+    def seq_num(self):
+        """
+        Returns the sequence number of the submessage.
+        If the submessage type is GAP, returns None."""
+        if self.sm_type == SubmessageTypes.GAP:
+            return None
+        elif "HEARTBEAT" in self.sm_type.name:
+            # SN stored as (first available SN, last available SN)
+            return self.seq_num_tuple[1]
+        else:
+            # SN stored as (SN)
+            return self.seq_num_tuple[0]
 
-        # TODO: Maybe remove this check
-        # GAPs announce the next sequence number, so decrement by 1
-        # if self.sm_type == SubmessageTypes.GAP:
-        #     self.seq_number -= 1
+    def first_available_seq_num(self):
+        """
+        Returns the first available sequence number of the submessage.
+        If the submessage type is not HEARTBEAT, returns None."""
+        if "HEARTBEAT" in self.sm_type.name:
+            # SN stored as (first available SN, last available SN)
+            return self.seq_num_tuple[0]
+        else:
+            return None
+
+    def gap(self):
+        """
+        Returns the gap sequence numbers of the submessage.
+        If the submessage type is not GAP, returns None."""
+        # GAP sequence numbers stored as (first available SN, last available SN)
+        if self.sm_type == SubmessageTypes.GAP:
+            return self.seq_num_tuple[0], self.seq_num_tuple[1]
+        return None, None
 
     def __str__(self):
         return (f"Type: {self.sm_type.name}, Topic: {self.topic}, "
