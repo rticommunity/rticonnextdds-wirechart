@@ -15,6 +15,10 @@ class FrameClassification(IntEnum):
     REPAIR = 1
     DURABLE_REPAIR = 2
 
+class GUIDKey(IntEnum):
+    GUID_SRC = 0
+    GUID_DST = 1
+
 class RTPSCapture:
     """
     Represents a collection of RTPSFrame objects extracted from a PCAP file.
@@ -178,11 +182,16 @@ class RTPSCapture:
                 # TODO: Verify not to do this with GAP
                 guid_key = (frame.guid_src, frame.guid_dst)
                 if "HEARTBEAT" in sm.sm_type.name:
-                    sequence_numbers[guid_key[0]] = sm.seq_num()
+                    # Not all submessages have a DST GUID, so we must only use the SRC GUID to key
+                    # the SN dictionary.  Since the SN of a writer is not dependent on the reader,
+                    # this approach is valid.
+                    sequence_numbers[guid_key[GUIDKey.GUID_SRC]] = sm.seq_num()
                 elif sm.sm_type in (SubmessageTypes.DATA, SubmessageTypes.DATA_FRAG, SubmessageTypes.DATA_BATCH):
                     # TODO: Discovery repairs?
                     # TODO: Durability repairs?
-                    if sm.seq_num() <= sequence_numbers[guid_key[0]]:
+                    # Check if this submessage is some form of a repair
+                    if sm.seq_num() <= sequence_numbers[guid_key[GUIDKey.GUID_SRC]]:
+                        # If this is a repair, there will be a GUID_DST, and we can key on the entire GUID_KEY
                         if sm.seq_num() <= durability_repairs[guid_key]:
                             sm.sm_type = SubmessageTypes.DATA_DURABILITY_REPAIR
                             frame_classification = FrameClassification.DURABLE_REPAIR
@@ -191,9 +200,12 @@ class RTPSCapture:
                             frame_classification = FrameClassification.REPAIR
                 # TODO: Add support for Discovery repairs?
                 elif sm.sm_type == SubmessageTypes.ACKNACK:
+                    # Record the writer SN when the first non-zero ACKNACK is received.  All repairs with
+                    # a SN less than or equal to this number are considered durability repairs while all
+                    # repairs after this SN are considered standard repairs.
                     if sm.seq_num() > 0 and guid_key not in durability_repairs:
                         # Only add this for the first non-zero ACKNACK
-                        durability_repairs[guid_key] = sequence_numbers[guid_key[0]]
+                        durability_repairs[guid_key] = sequence_numbers[guid_key[GUIDKey.GUID_SRC]]
 
                 frame_list.append({'topic': topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
 

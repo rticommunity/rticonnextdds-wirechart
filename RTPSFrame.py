@@ -151,7 +151,7 @@ class RTPSFrame:
         def none_if_zero(value):
                 return None if value == 0 else value
         def get_entity_id(entity_id_str):
-            match = re.match(r'0x([0-9A-Fa-f]+)', entity_id_str)
+            match = re.match(r'0x([0-9A-Fa-f]+)', entity_id_str.split(',')[0])
             if match:
                 entity_id = match.group(1) or '0'
                 return entity_id, int(entity_id, 16)
@@ -164,6 +164,7 @@ class RTPSFrame:
             rd_entity_id, _ = get_entity_id(frame_data.get('rtps.sm.rdEntityId'))
 
             if sm_id == SubmessageTypes.ACKNACK:
+                # ACKNACKs reverse the GUID_prefixes but keep the entity IDs constant
                 guid_src = guid_prefix_dst + wr_entity_id
                 guid_dst = guid_prefix_src + rd_entity_id
             else:
