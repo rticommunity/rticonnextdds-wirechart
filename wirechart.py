@@ -8,12 +8,6 @@ from log_handler import logging, configure_root_logger
 
 logger = logging.getLogger('Wirechart')
 
-# TODO: What's this?
-def write_to_file(output_file_path, unique_topics):
-    with open(output_file_path, 'w', encoding='utf-8') as outfile:
-        for value in sorted(unique_topics):
-            outfile.write(value + '\n')
-
 def main():
     parser = argparse.ArgumentParser(description="Extract unique topics from a pcap file.")
     parser.add_argument('--pcap', type=str, required=True, help='Required argument. Specify the PCAP file.')
@@ -96,4 +90,4 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        logger.always(f"Unhandled Exception: {e}")
+        logger.error(e)

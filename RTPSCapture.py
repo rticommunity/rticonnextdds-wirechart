@@ -142,10 +142,10 @@ class RTPSCapture:
                 try:
                     self.add_frame(RTPSFrame(frame))  # Create a RTPSFrame object for each record
                 except InvalidPCAPDataException as e:
-                    logger.log(e.log_level, f"Frame {int(frame['frame.number']):09d} dropped. Message: {e}")
+                    logger.log(e.log_level, f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
                     continue
                 except KeyError as e:
-                    logger.debug(f"Frame {int(frame['frame.number']):09d} dropped. Message: {e}")
+                    logger.debug(f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
                     continue
                 # Print progress every 10%
                 if (i + 1) % progress_interval == 0 or (i + 1) == total_frames:
@@ -175,6 +175,10 @@ class RTPSCapture:
         # Process the PCAP data to count messages and include lengths
         for frame in self.frames:
             frame_classification = FrameClassification.STANDARD_FRAME
+            if frame.guid_src is None:
+                logger.error(f"Frame {frame.frame_number} has no GUID source. Exiting.")
+                # TODO: Could maybe continue here, but exiting for now
+                raise InvalidPCAPDataException(f"Frame {frame.frame_number} has no GUID source. Exiting.")
             for sm in frame:
                 topic = sm.topic
                 if frame.discovery_frame:
