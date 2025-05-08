@@ -1,4 +1,5 @@
 import argparse
+import subprocess
 from PCAPUtils import *
 from RTPSFrame import *
 from RTPSCapture import *
@@ -24,8 +25,9 @@ def main():
     args = parser.parse_args()
     # Configure the logger
     configure_root_logger(create_output_path(args.pcap, args.output, 'log'))
-    
+
     logger.debug(f"Command Arguments: {args}")
+    get_tshark_version()
     logger.always("Starting the PCAP analysis.")
 
     start, finish = None, None
@@ -80,6 +82,15 @@ def create_output_path(pcap_file, output_path, extension, description=None):
     filename = os.path.splitext(os.path.basename(pcap_file))[0]  # get filename without extension
     suffix = f"_{description}" if description else ""
     return os.path.join(output_path, f"{filename}{suffix}.{extension}")
+
+def get_tshark_version():
+    try:
+        output = subprocess.check_output(["tshark", "--version"], stderr=subprocess.STDOUT, text=True)
+        logger.always(output.splitlines()[0])
+    except FileNotFoundError:
+        logger.error("Error: tshark is not installed.")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error running tshark: {e.output.strip()}")
 
 if __name__ == "__main__":
     try:
