@@ -14,7 +14,7 @@ def main():
     parser.add_argument('--output', type=str, default='output', help='Specify an output file for PCAP statistics.')
     parser.add_argument('--no-gui', action='store_true', default=False, help='Disable GUI-based plotting.')
     parser.add_argument('--frame-range', type=str, default=None, help='Specify a range of frames to analyze in the format START:FINISH.')
-    parser.add_argument('--plot-discovery', action='store_true', default=False, help='Include discovery frames in the plot.')
+    # parser.add_argument('--plot-discovery', action='store_true', default=False, help='Include discovery frames in the plot.')
     # TODO: Command option for log or linear display
     args = parser.parse_args()
     # Configure the logger
@@ -36,17 +36,72 @@ def main():
                         'rtps.sm.id', '_ws.col.Info'])
 
     rtps_frames = RTPSCapture(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
-    # rtps_frames.print_capture_summary()  # Print summary of the capture
+    rtps_frames.print_capture_summary()  # Print summary of the capture
     stats = PCAPStats(rtps_frames.analyze_capture())  # Analyze the capture
-    stats.print_stats()  # Print statistics
-    stats.print_stats_in_bytes()  # Print statistics in bytes
 
-    # Plot statistics only if GUI is enabled
-    if not args.no_gui:
-        stats.plot_stats_by_frame_count(args.plot_discovery)  # Plot by frame count
-        stats.plot_stats_by_frame_length(args.plot_discovery)  # Plot by frame length
+    scale = PlotScale.LINEAR  # Default scale
+    plot_discovery = False
+    while True:
+        print("\n--- Menu ---")
+        print("0. Print Statistics")
+        print("1. Plot Message Count")
+        print("2. Plot Message Size")
+        print("3. Change Scale")
+        print("4. Include Discovery Frames")
+        print("5. Save to Excel")
+        print("6. Exit")
 
-    stats.save_to_excel(args.pcap, args.output, 'PCAPStats')  # Write to Excel
+        choice = input("Enter your choice (1-6): ")
+        logger.debug(f"User choice: {choice}")
+
+        match choice:
+            case '0':
+                stats.print_stats()  # Print statistics
+                stats.print_stats_in_bytes()  # Print statistics in bytes
+            case '1':
+                if not args.no_gui:
+                    stats.plot_stats_by_frame_count(plot_discovery, scale)  # Plot by frame count
+            case '2':
+                # Plot Bytes
+                if not args.no_gui:
+                    stats.plot_stats_by_frame_length(plot_discovery, scale)  # Plot by frame length
+            case '3':
+                print("\n-- Change Scale --")
+                print("a. Linear")
+                print("b. Logarithmic")
+                sub_choice = input("Choose scale (a/b): ")
+                logger.debug(f"User scale choice: {sub_choice}")
+                match sub_choice.lower():
+                    case 'a':
+                        scale = PlotScale.LINEAR
+                        print("Scale set to Linear.")
+                    case 'b':
+                        scale = PlotScale.LOGARITHMIC
+                        print("Scale set to Logarithmic.")
+                    case _:
+                        print("Invalid scale choice.")
+            case '4':
+                print("\n-- Include Discovery Data --")
+                print("a. No")
+                print("b. Yes")
+                sub_choice = input("Choose option (a/b): ")
+                logger.debug(f"User discovery choice: {sub_choice}")
+                match sub_choice.lower():
+                    case 'a':
+                        plot_discovery = False
+                        print("Discovery frames excluded from the plot.")
+                    case 'b':
+                        plot_discovery = True
+                        print("Discovery frames included in the plot.")
+                    case _:
+                        print("Invalid choice.")
+            case '5':
+                stats.save_to_excel(args.pcap, args.output, 'PCAPStats')  # Write to Excel
+            case '6':
+                print("Exiting program.")
+                break
+            case _:
+                print("Invalid input. Please enter a number between 0 and 6.")
 
 def parse_range(value: str):
     if ':' not in value:

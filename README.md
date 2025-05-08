@@ -30,7 +30,7 @@ pip install pandas matplotlib openpyxl
 ## Usage
 
 ```bash
-usage: wirechart.py [-h] --pcap PCAP [--output OUTPUT] [--no-gui] [--frame-range FRAME_RANGE] [--plot-discovery]
+usage: wirechart.py [-h] --pcap PCAP [--output OUTPUT] [--no-gui] [--frame-range FRAME_RANGE]
 ```
 
 ### Argument Description
@@ -40,5 +40,4 @@ usage: wirechart.py [-h] --pcap PCAP [--output OUTPUT] [--no-gui] [--frame-range
 --output            /path/to/output_dir         Optional argument to specify an output path for statistics and logs.  Default is 'output'.
 --no-gui                                        Optional argument to limit output to only the console.
 --frame-range       FIRST_FRAME:LAST_FRAME      Optional argument to specify the range of frames (inclusive) to analyze.
---plot-discovery                                Optional argument to include discovery statistics in data plots.
 </pre>

@@ -1,10 +1,15 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.ticker import StrMethodFormatter
+from enum import Enum
 from log_handler import logging
 from RTPSFrame import SubmessageTypes
 from RTPSCapture import DISCOVERY_TOPIC
 from wirechart import create_output_path
+
+class PlotScale(Enum):
+    LINEAR = 'linear'
+    LOGARITHMIC = 'log'
 
 logger = logging.getLogger(__name__)
 
@@ -75,18 +80,14 @@ class PCAPStats:
                 print(f"{" " * 4}{submsg}: {length:,} bytes")
         print()
 
-    def plot_stats_by_frame_count(self, include_discovery=False):
-        self._plot_statistics(metric='count', include_discovery=include_discovery)
+    def plot_stats_by_frame_count(self, include_discovery=False, scale=PlotScale.LINEAR):
+        self._plot_statistics(metric='count', include_discovery=include_discovery, scale=scale)
 
-    def plot_stats_by_frame_length(self, include_discovery=False):
-        """
-        Plots a stacked bar chart of submessage lengths by topic.
-        :param include_discovery: If True, includes discovery submessages in the plot.
-        """
-        self._plot_statistics(metric='length', include_discovery=include_discovery)
+    def plot_stats_by_frame_length(self, include_discovery=False, scale=PlotScale.LINEAR):
+        self._plot_statistics(metric='length', include_discovery=include_discovery, scale=scale)
 
     # TODO: Ensure correct order of submessages in the plot
-    def _plot_statistics(self, metric='count', include_discovery=False):
+    def _plot_statistics(self, metric='count', include_discovery=False, scale=PlotScale.LINEAR):
         """
         Plots a stacked bar chart of submessage counts or lengths by topic.
 
@@ -158,6 +159,8 @@ class PCAPStats:
         x_labels = [f"{topic} ({int(total_metric_by_topic[topic]):,})" for topic in pivot_df.index]
         ax.set_xticks(range(len(pivot_df.index)))
         ax.set_xticklabels(x_labels, rotation=90, ha='center')
+
+        ax.set_yscale(scale.value)  # Set the y-axis scale (linear or logarithmic)
 
         # Disable scientific notation and format y-axis tick marks with commas
         ax.get_yaxis().set_major_formatter(StrMethodFormatter('{x:,.0f}'))
