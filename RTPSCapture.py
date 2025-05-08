@@ -4,10 +4,16 @@ import pandas as pd
 from collections import defaultdict
 from RTPSFrame import *
 from log_handler import logging
+from enum import IntEnum
 
 logger = logging.getLogger(__name__)
 
 DISCOVERY_TOPIC = "DISCOVERY"
+
+class FrameClassification(IntEnum):
+    STANDARD_FRAME = 0
+    REPAIR = 1
+    DURABLE_REPAIR = 2
 
 class RTPSCapture:
     """
@@ -161,6 +167,7 @@ class RTPSCapture:
 
         # Process the PCAP data to count messages and include lengths
         for frame in self.frames:
+            frame_classification = FrameClassification.STANDARD_FRAME
             for sm in frame:
                 topic = sm.topic
                 if frame.discovery_frame:
@@ -174,20 +181,22 @@ class RTPSCapture:
                     # TODO: Durability repairs?
                     if sm.seq_num() <= sequence_numbers[guid_key[0]]:
                         if sm.seq_num() <= durability_repairs[guid_key]:
-                            logger.info(f"Frame {frame.frame_number} determined to be a durability repair.")
                             sm.sm_type = SubmessageTypes.DATA_DURABILITY_REPAIR
+                            frame_classification = FrameClassification.DURABLE_REPAIR
                         else:
-                            logger.info(f"Frame {frame.frame_number} determined to be a repair.")
                             sm.sm_type = SubmessageTypes.DATA_REPAIR
+                            frame_classification = FrameClassification.REPAIR
                 # TODO: Add support for Discovery repairs?
                 elif sm.sm_type == SubmessageTypes.ACKNACK:
                     if sm.seq_num() > 0 and guid_key not in durability_repairs:
                         # Only add this for the first non-zero ACKNACK
                         durability_repairs[guid_key] = sequence_numbers[guid_key[0]]
 
-                frame_stats.append({'topic': topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
+            if frame_classification > FrameClassification.STANDARD_FRAME:
+                logger.info(f"Frame {frame.frame_number} classified as {frame_classification.name}.")
 
-        if not frame_stats:
+            if frame_class > FrameClassification.STANDARD_FRAME:
+                logger.info(f"Frame {frame.frame_number} classified as {frame_class.name}.")
             raise InvalidPCAPDataException("No RTPS user frames with associated discovery data")
 
         # Convert the rows into a DataFrame
