@@ -164,6 +164,7 @@ class RTPSCapture:
 
         logger.always("Analyzing capture data...")
 
+        frame_list = []  # List to store rows for the DataFrame
         sequence_numbers = defaultdict(int)  # Dictionary to store string keys and unsigned integer values
         durability_repairs = defaultdict(int) # Dictionary to keep track of sequence numbers for durability repairs
 
@@ -194,15 +195,16 @@ class RTPSCapture:
                         # Only add this for the first non-zero ACKNACK
                         durability_repairs[guid_key] = sequence_numbers[guid_key[0]]
 
+                frame_list.append({'topic': topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
+
             if frame_classification > FrameClassification.STANDARD_FRAME:
                 logger.info(f"Frame {frame.frame_number} classified as {frame_classification.name}.")
 
-            if frame_class > FrameClassification.STANDARD_FRAME:
-                logger.info(f"Frame {frame.frame_number} classified as {frame_class.name}.")
+        if not any(frame.get('topic') != 'DISCOVERY' for frame in frame_list):
             raise InvalidPCAPDataException("No RTPS user frames with associated discovery data")
 
         # Convert the rows into a DataFrame
-        df = pd.DataFrame(frame_stats)
+        df = pd.DataFrame(frame_list)
 
         # Aggregate the counts and lengths for each (Topic, Submessage) pair
         df = df.groupby(['topic', 'sm'], as_index=False).agg({'count': 'sum', 'length': 'sum'})
