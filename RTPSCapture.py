@@ -289,7 +289,20 @@ class RTPSCapture:
 
         return df
 
-    def plot_topic_graph(self, topic = None):
+    def plot_multi_topic_graph(self):
+        topic_node_counts = {
+            topic: len(set([n for edge in edges for n in edge]))
+            for topic, edges in self.graph_edges.items()
+        }
+        top_topics = sorted(topic_node_counts, key=topic_node_counts.get, reverse=True)[:6]
+
+        _ , axs = plt.subplots(2, 3, figsize=(18, 14))
+        for i, topic in enumerate(top_topics):
+            self.plot_topic_graph(topic=topic, ax=axs.flatten()[i])
+        plt.tight_layout()
+        plt.show()
+
+    def plot_topic_graph(self, topic = None, ax = None):
         """
         Draws a directed graph using edges provided in a set of tuples.
         Labels the first node in each tuple as 'DW' and the second as 'DR'.
@@ -301,9 +314,12 @@ class RTPSCapture:
 
         # TODO: Maybe remove this?
         # If not topic is provided, use the one with the most edges
+
+        ax_none = (ax is None)
+
         if not topic:
             topic = max(self.graph_edges, key=lambda k: len(self.graph_edges[k]))
-        
+
         G = nx.DiGraph()
         G.add_edges_from(self.graph_edges[topic])
 
@@ -313,7 +329,7 @@ class RTPSCapture:
         # Define a color map for start nodes (sources)
         source_colors = {}
         color_palette = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'magenta',
-                         'gold', 'teal', 'coral', 'olive', 'darkgreen', 'deepskyblue', 'mediumorchid']
+                        'gold', 'teal', 'coral', 'olive', 'darkgreen', 'deepskyblue', 'mediumorchid']
         color_index = 0
 
         edge_colors = []
@@ -326,26 +342,28 @@ class RTPSCapture:
                 color_index += 1
             edge_colors.append(source_colors[src])
 
-        # Draw nodes
-        plt.figure(figsize=(14, 10))
-        nx.draw_networkx_nodes(G, pos, node_size=2000, node_color='lightblue', edgecolors='black')
+        # If no Axes passed, create a new figure and axes
+        if ax_none:
+            fig, ax = plt.subplots(figsize=(14, 10))
 
-        # Draw custom-labeled nodes
-        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12, font_weight='bold')
-
-        # Draw edges with individual colors
+        # Draw graph using the correct Axes
+        nx.draw_networkx_nodes(G, pos, ax=ax, node_size=2000, node_color='lightblue', edgecolors='black')
+        nx.draw_networkx_labels(G, pos, ax=ax, labels=node_labels, font_size=12, font_weight='bold')
         nx.draw_networkx_edges(
             G,
             pos,
+            ax=ax,
             edgelist=list(self.graph_edges[topic]),
             edge_color=edge_colors,
             arrowstyle='-|>',
             arrowsize=20,
-            width=1,  # ← Add width
-            node_size=2000  # ← Important for arrow positioning
+            width=1,
+            node_size=2000
         )
 
-        plt.title(f"Topic: {topic}", fontsize=14)
-        plt.axis('off')
-        plt.tight_layout()
-        plt.show()
+        ax.set_title(f"Topic: {topic}", fontsize=14)
+        ax.axis('off')
+
+        if ax_none:
+            plt.tight_layout()
+            plt.show()

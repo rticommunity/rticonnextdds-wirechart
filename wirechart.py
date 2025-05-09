@@ -38,7 +38,6 @@ def main():
     rtps_frames = RTPSCapture(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
     rtps_frames.print_capture_summary()  # Print summary of the capture
     stats = PCAPStats(rtps_frames.analyze_capture())  # Analyze the capture
-    rtps_frames.plot_topic_graph()  # Print topic graph
 
     scale = PlotScale.LINEAR  # Default scale
     plot_discovery = False
@@ -47,12 +46,13 @@ def main():
         print("0. Print Statistics")
         print("1. Plot Message Count")
         print("2. Plot Message Size")
-        print("3. Change Scale")
-        print("4. Include Discovery Frames")
-        print("5. Save to Excel")
-        print("6. Exit")
+        print("3. Plot Node Graph")
+        print("4. Change Scale")
+        print("5. Include Discovery Frames")
+        print("6. Save to Excel")
+        print("7. Exit")
 
-        choice = input("Enter your choice (1-6): ")
+        choice = input("Enter your choice (1-7): ")
         logger.debug(f"User choice: {choice}")
 
         match choice:
@@ -67,6 +67,10 @@ def main():
                 if not args.no_gui:
                     stats.plot_stats_by_frame_length(plot_discovery, scale)  # Plot by frame length
             case '3':
+                # Plot Node Graph
+                if not args.no_gui:
+                    rtps_frames.plot_multi_topic_graph()
+            case '4':
                 print("\n-- Change Scale --")
                 print("a. Linear")
                 print("b. Logarithmic")
@@ -81,7 +85,7 @@ def main():
                         print("Scale set to Logarithmic.")
                     case _:
                         print("Invalid scale choice.")
-            case '4':
+            case '5':
                 print("\n-- Include Discovery Data --")
                 print("a. No")
                 print("b. Yes")
@@ -96,13 +100,13 @@ def main():
                         print("Discovery frames included in the plot.")
                     case _:
                         print("Invalid choice.")
-            case '5':
-                stats.save_to_excel(args.pcap, args.output, 'PCAPStats')  # Write to Excel
             case '6':
+                stats.save_to_excel(args.pcap, args.output, 'PCAPStats')  # Write to Excel
+            case '7':
                 print("Exiting program.")
                 break
             case _:
-                print("Invalid input. Please enter a number between 0 and 6.")
+                print("Invalid input. Please enter a number between 0 and 7.")
 
 def parse_range(value: str):
     if ':' not in value:
