@@ -2,6 +2,8 @@ import subprocess
 import os
 import pandas as pd
 from collections import defaultdict
+import networkx as nx
+import matplotlib.pyplot as plt
 from RTPSFrame import *
 from log_handler import logging
 from enum import IntEnum
@@ -34,6 +36,7 @@ class RTPSCapture:
             raise FileNotFoundError(f"PCAP file {pcap_file} does not exist.")
 
         self.frames = []  # List to store RTPSFrame objects
+        self.graph_edges = defaultdict(set)
         self._extract_rtps_frames(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
 
     def __iter__(self):
@@ -204,12 +207,14 @@ class RTPSCapture:
                 logger.error(f"Frame {frame.frame_number} has no GUID source. Exiting.")
                 # TODO: Could maybe continue here, but exiting for now
                 raise InvalidPCAPDataException(f"Frame {frame.frame_number} has no GUID source. Exiting.")
+            guid_key = (frame.guid_src, frame.guid_dst)
             for sm in frame:
                 topic = sm.topic
+                if not frame.discovery_frame and all(x is not None for x in guid_key):
+                    self.graph_edges[topic].add(guid_key)
                 if frame.discovery_frame:
                     topic = DISCOVERY_TOPIC
                 # TODO: Verify not to do this with GAP
-                guid_key = (frame.guid_src, frame.guid_dst)
                 if "HEARTBEAT" in sm.sm_type.name:
                     # Not all submessages have a DST GUID, so we must only use the SRC GUID to key
                     # the SN dictionary.  Since the SN of a writer is not dependent on the reader,
@@ -278,3 +283,47 @@ class RTPSCapture:
         df = df.sort_values(by=['topic', 'sm']).reset_index(drop=True)
 
         return df
+
+    def plot_topic_graph(self):
+        """
+        Draws a directed graph using edges provided in a set of tuples.
+        Labels the first node in each tuple as 'DW' and the second as 'DR'.
+
+        Parameters:
+            edge_tuples (set): Set of (source, target) tuples
+        """
+        G = nx.DiGraph()
+        G.add_edges_from(self.graph_edges['Square'])
+
+        # Create node labels: source → "DW", destination → "DR"
+        node_labels = {}
+        for src, dst in self.graph_edges['Square']:
+            node_labels[src] = "DW"
+            node_labels[dst] = "DR"
+
+        # Layout
+        pos = nx.spring_layout(G, k=3, iterations=100, seed=42)
+
+        # Draw the base graph
+        plt.figure(figsize=(8, 6))
+        nx.draw(
+            G,
+            pos,
+            with_labels=False,  # We'll manually apply labels
+            node_color="lightblue",
+            node_size=2000,
+            arrows=True,
+            arrowstyle="-|>",
+            arrowsize=20,
+        )
+
+        # Draw custom labels
+        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12, font_weight="bold")
+
+        plt.title("Directed Graph with Custom Node Labels")
+        plt.axis("off")
+        plt.show()
+
+
+
+
