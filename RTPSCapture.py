@@ -210,6 +210,11 @@ class RTPSCapture:
             guid_key = (frame.guid_src, frame.guid_dst)
             for sm in frame:
                 topic = sm.topic
+                # TODO: This method doesn't work for best effort.  A better approach would be to:
+                # 1. Differentiate between DATA(w) and DATA(r)s when creating Frame/SMs
+                # 2. For DATA(w) SMs, save guid_key to graph_edges[topic]
+                # 3. Test with square_best_effort.pcapng
+                # 4. May need to understand better, this approach may not be correct
                 if not frame.discovery_frame and all(x is not None for x in guid_key):
                     self.graph_edges[topic].add(guid_key)
                 if frame.discovery_frame:
@@ -284,7 +289,7 @@ class RTPSCapture:
 
         return df
 
-    def plot_topic_graph(self):
+    def plot_topic_graph(self, topic = None):
         """
         Draws a directed graph using edges provided in a set of tuples.
         Labels the first node in each tuple as 'DW' and the second as 'DR'.
@@ -292,38 +297,55 @@ class RTPSCapture:
         Parameters:
             edge_tuples (set): Set of (source, target) tuples
         """
-        G = nx.DiGraph()
-        G.add_edges_from(self.graph_edges['Square'])
+        # TODO: Make this a hierarchical graph so that all writers are on the left and all readers are on the right
 
-        # Create node labels: source → "DW", destination → "DR"
-        node_labels = {}
-        for src, dst in self.graph_edges['Square']:
-            node_labels[src] = "DW"
-            node_labels[dst] = "DR"
+        # TODO: Maybe remove this?
+        # If not topic is provided, use the one with the most edges
+        if not topic:
+            topic = max(self.graph_edges, key=lambda k: len(self.graph_edges[k]))
+        
+        G = nx.DiGraph()
+        G.add_edges_from(self.graph_edges[topic])
 
         # Layout
-        pos = nx.spring_layout(G, k=3, iterations=100, seed=42)
+        pos = nx.spring_layout(G, k=4, iterations=100, seed=42)
 
-        # Draw the base graph
-        plt.figure(figsize=(8, 6))
-        nx.draw(
+        # Define a color map for start nodes (sources)
+        source_colors = {}
+        color_palette = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'magenta',
+                         'gold', 'teal', 'coral', 'olive', 'darkgreen', 'deepskyblue', 'mediumorchid']
+        color_index = 0
+
+        edge_colors = []
+        node_labels = {}
+        for src, dst in self.graph_edges[topic]:
+            node_labels[src] = "DW"
+            node_labels[dst] = "DR"
+            if src not in source_colors:
+                source_colors[src] = color_palette[color_index % len(color_palette)]
+                color_index += 1
+            edge_colors.append(source_colors[src])
+
+        # Draw nodes
+        plt.figure(figsize=(14, 10))
+        nx.draw_networkx_nodes(G, pos, node_size=2000, node_color='lightblue', edgecolors='black')
+
+        # Draw custom-labeled nodes
+        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12, font_weight='bold')
+
+        # Draw edges with individual colors
+        nx.draw_networkx_edges(
             G,
             pos,
-            with_labels=False,  # We'll manually apply labels
-            node_color="lightblue",
-            node_size=2000,
-            arrows=True,
-            arrowstyle="-|>",
+            edgelist=list(self.graph_edges[topic]),
+            edge_color=edge_colors,
+            arrowstyle='-|>',
             arrowsize=20,
+            width=1,  # ← Add width
+            node_size=2000  # ← Important for arrow positioning
         )
 
-        # Draw custom labels
-        nx.draw_networkx_labels(G, pos, labels=node_labels, font_size=12, font_weight="bold")
-
-        plt.title("Directed Graph with Custom Node Labels")
-        plt.axis("off")
+        plt.title(f"Topic: {topic}", fontsize=14)
+        plt.axis('off')
+        plt.tight_layout()
         plt.show()
-
-
-
-

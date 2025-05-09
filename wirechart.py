@@ -38,6 +38,7 @@ def main():
     rtps_frames = RTPSCapture(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
     rtps_frames.print_capture_summary()  # Print summary of the capture
     stats = PCAPStats(rtps_frames.analyze_capture())  # Analyze the capture
+    rtps_frames.plot_topic_graph()  # Print topic graph
 
     scale = PlotScale.LINEAR  # Default scale
     plot_discovery = False
