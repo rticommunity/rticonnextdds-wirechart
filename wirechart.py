@@ -125,7 +125,13 @@ def parse_range(value: str):
             logger.error(f"Invalid positive integer: {part}. Exiting program.")
             raise ValueError(f"Invalid positive integer: {part}. Exiting program.")
 
-    return (parse_part(before), parse_part(after))
+    before = parse_part(before)
+    after = parse_part(after)
+    if before is not None and after is not None and before > after:
+        logger.error(f"Invalid range: {value}. 'before' must be less than or equal to 'after'. Exiting program.")
+        raise ValueError(f"Invalid range: {value}. 'before' must be less than or equal to 'after'. Exiting program.")
+
+    return before, after
 
 # Check for existence of the output path
 def create_output_path(pcap_file, output_path, extension, description=None):
