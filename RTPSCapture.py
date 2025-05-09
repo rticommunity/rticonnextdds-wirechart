@@ -70,11 +70,36 @@ class RTPSCapture:
             topics.update(frame.list_topics())
         return topics
 
+    def count_participants(self):
+        participants = set()
+        for frame in self.frames:
+            if frame.discovery_frame:
+                participants.add(frame.guid_prefix_and_entity_id()[0])
+        return len(participants)
+
+    def count_writers_and_readers(self, include_builtin=False):
+        """
+        Returns a tuple containing the number of writers and readers in the capture.
+
+        :return: A tuple (num_writers, num_readers).
+        """
+        writers = set()
+        readers = set()
+        for frame in self.frames:
+            if include_builtin or not frame.discovery_frame:
+                writers.add(frame.guid_src)
+                if frame.guid_dst:
+                    readers.add(frame.guid_dst)
+        return len(writers), len(readers)
+
     def print_capture_summary(self):
         """
         Prints a summary of the RTPSCapture, including the number of frames and unique topics.
         """
         print(f"Total Frames: {len(self.frames)}")
+        print(f"Total Participants: {self.count_participants()}")
+        num_writers, num_readers = self.count_writers_and_readers()
+        print(f"Total Writers: {num_writers} and Readers: {num_readers}")
         print(f"Unique Topics: {len(self.list_all_topics())}")
         print("Topics:")
         for topic in sorted(self.list_all_topics()):

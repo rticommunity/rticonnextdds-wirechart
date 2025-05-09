@@ -260,6 +260,19 @@ class RTPSFrame:
 
         return set(sm.topic for sm in self.sm_list if sm.topic is not None)
 
+    def guid_prefix_and_entity_id(self):
+        bitmask_32 = (1 << 32) - 1
+        return (self.guid_src >> 32), self.guid_src & bitmask_32
+
+    def contains_submessage(self, sm_type):
+        """
+        Checks if the frame contains a specific submessage type.
+
+        :param sm_type: The submessage type to check for.
+        :return: True if the submessage type is present, False otherwise.
+        """
+        return any(sm.sm_type == sm_type for sm in self.sm_list)
+
     def __str__(self):
         result = [f"Frame: {self.frame_number:09} GUID_SRC: {self.guid_src} GUID_DST: {self.guid_dst} Discovery Frame: {self.discovery_frame}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
         for i, submessage in enumerate(self.sm_list, start=1):
