@@ -1,10 +1,22 @@
 import argparse
 import subprocess
+from enum import Enum
 from PCAPUtils import *
 from RTPSFrame import *
 from RTPSCapture import *
 from PCAPStats import *
 from log_handler import logging, configure_root_logger
+
+class MenuOption(Enum):
+    PRINT_STATS = '0'
+    PLOT_COUNT = '1'
+    PLOT_SIZE = '2'
+    PLOT_GRAPH = '3'
+    CHANGE_SCALE = '4'
+    TOGGLE_DISCOVERY = '5'
+    SAVE_EXCEL = '6'
+    EXIT = '7'
+    INVALID = 'invalid'  # For clarity
 
 logger = logging.getLogger('Wirechart')
 
@@ -42,71 +54,95 @@ def main():
     scale = PlotScale.LINEAR  # Default scale
     plot_discovery = False
     while True:
-        print("\n--- Menu ---")
-        print("0. Print Statistics")
-        print("1. Plot Message Count")
-        print("2. Plot Message Size")
-        print("3. Plot Node Graph")
-        print("4. Change Scale")
-        print("5. Include Discovery Frames")
-        print("6. Save to Excel")
-        print("7. Exit")
+        menu_choice, scale, plot_discovery, topic = get_user_menu_choice(scale, plot_discovery, logger)
 
-        choice = input("Enter your choice (1-7): ")
-        logger.debug(f"User choice: {choice}")
-
-        match choice:
-            case '0':
-                stats.print_stats()  # Print statistics
-                stats.print_stats_in_bytes()  # Print statistics in bytes
-            case '1':
+        match menu_choice:
+            case MenuOption.PRINT_STATS:
+                stats.print_stats()
+                stats.print_stats_in_bytes()
+            case MenuOption.PLOT_COUNT:
                 if not args.no_gui:
-                    stats.plot_stats_by_frame_count(plot_discovery, scale)  # Plot by frame count
-            case '2':
-                # Plot Bytes
+                    stats.plot_stats_by_frame_count(plot_discovery, scale)
+            case MenuOption.PLOT_SIZE:
                 if not args.no_gui:
-                    stats.plot_stats_by_frame_length(plot_discovery, scale)  # Plot by frame length
-            case '3':
-                # Plot Node Graph
+                    stats.plot_stats_by_frame_length(plot_discovery, scale)
+            case MenuOption.PLOT_GRAPH:
                 if not args.no_gui:
-                    rtps_frames.plot_multi_topic_graph()
-            case '4':
-                print("\n-- Change Scale --")
-                print("a. Linear")
-                print("b. Logarithmic")
-                sub_choice = input("Choose scale (a/b): ")
-                logger.debug(f"User scale choice: {sub_choice}")
-                match sub_choice.lower():
-                    case 'a':
-                        scale = PlotScale.LINEAR
-                        print("Scale set to Linear.")
-                    case 'b':
-                        scale = PlotScale.LOGARITHMIC
-                        print("Scale set to Logarithmic.")
-                    case _:
-                        print("Invalid scale choice.")
-            case '5':
-                print("\n-- Include Discovery Data --")
-                print("a. No")
-                print("b. Yes")
-                sub_choice = input("Choose option (a/b): ")
-                logger.debug(f"User discovery choice: {sub_choice}")
-                match sub_choice.lower():
-                    case 'a':
-                        plot_discovery = False
-                        print("Discovery frames excluded from the plot.")
-                    case 'b':
-                        plot_discovery = True
-                        print("Discovery frames included in the plot.")
-                    case _:
-                        print("Invalid choice.")
-            case '6':
-                stats.save_to_excel(args.pcap, args.output, 'PCAPStats')  # Write to Excel
-            case '7':
+                    if topic:
+                        rtps_frames.plot_topic_graph(topic=topic)
+                    else:
+                        rtps_frames.plot_multi_topic_graph()
+            case MenuOption.SAVE_EXCEL:
+                stats.save_to_excel(args.pcap, args.output, 'PCAPStats')
+            case MenuOption.EXIT:
                 print("Exiting program.")
                 break
+            case (MenuOption.INVALID |
+                  MenuOption.CHANGE_SCALE |
+                  MenuOption.TOGGLE_DISCOVERY):
+                continue
             case _:
-                print("Invalid input. Please enter a number between 0 and 7.")
+                print("Unrecognized option.")
+
+def get_user_menu_choice(scale, plot_discovery, logger) -> tuple[MenuOption, object, bool]:
+    print("\n--- Menu ---")
+    print("0. Print Statistics")
+    print("1. Plot Message Count")
+    print("2. Plot Message Size")
+    print("3. Plot Node Graph")
+    print("4. Change Scale")
+    print("5. Include Discovery Frames")
+    print("6. Save to Excel")
+    print("7. Exit")
+
+    topic = None
+
+    choice = input(f"Enter your choice (0-{MenuOption.EXIT.value}): ")
+    logger.debug(f"User choice: {choice}")
+
+    try:
+        selected_option = MenuOption(choice)
+    except ValueError:
+        print(f"Invalid input. Please enter a number between 0 and {MenuOption.EXIT.value}.")
+        return (MenuOption.INVALID, scale, plot_discovery, None)
+    if selected_option == MenuOption.PLOT_GRAPH:
+        topic = input("Enter topic to plot (leave blank to include the 6 largest topics): ").strip()
+        if topic:
+            logger.debug(f"User entered topic: {topic}")
+        else:
+            logger.debug("User chose to plot all topics.")
+    elif selected_option == MenuOption.CHANGE_SCALE:
+        print("\n-- Change Scale --")
+        print("a. Linear")
+        print("b. Logarithmic")
+        sub_choice = input("Choose scale (a/b): ")
+        logger.debug(f"User scale choice: {sub_choice}")
+        match sub_choice.lower():
+            case 'a':
+                scale = PlotScale.LINEAR
+                print("Scale set to Linear.")
+            case 'b':
+                scale = PlotScale.LOGARITHMIC
+                print("Scale set to Logarithmic.")
+            case _:
+                print("Invalid scale choice.")
+    elif selected_option == MenuOption.TOGGLE_DISCOVERY:
+        print("\n-- Include Discovery Data --")
+        print("a. No")
+        print("b. Yes")
+        sub_choice = input("Choose option (a/b): ")
+        logger.debug(f"User discovery choice: {sub_choice}")
+        match sub_choice.lower():
+            case 'a':
+                plot_discovery = False
+                print("Discovery frames excluded from the plot.")
+            case 'b':
+                plot_discovery = True
+                print("Discovery frames included in the plot.")
+            case _:
+                print("Invalid choice.")
+
+    return (selected_option, scale, plot_discovery, topic)
 
 def parse_range(value: str):
     if ':' not in value:
