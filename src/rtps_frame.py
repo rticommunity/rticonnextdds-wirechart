@@ -1,6 +1,9 @@
+# Standard Library Imports
 import re
 from enum import IntEnum, auto
-from log_handler import logging
+
+# Local Application Imports
+from src.log_handler import logging
 
 logger = logging.getLogger(__name__)
 

@@ -1,22 +1,12 @@
+# Standard Library Imports
 import argparse
 import subprocess
-from enum import Enum
-from PCAPUtils import *
-from RTPSFrame import *
-from RTPSCapture import *
-from PCAPStats import *
-from log_handler import logging, configure_root_logger
 
-class MenuOption(Enum):
-    PRINT_STATS = '0'
-    PLOT_COUNT = '1'
-    PLOT_SIZE = '2'
-    PLOT_GRAPH = '3'
-    CHANGE_SCALE = '4'
-    TOGGLE_DISCOVERY = '5'
-    SAVE_EXCEL = '6'
-    EXIT = '7'
-    INVALID = 'invalid'  # For clarity
+# Local Application Imports
+from src.log_handler import configure_root_logger, logging
+from src.menu import MenuOption, get_user_menu_choice
+from src.rtps_capture import PlotScale, RTPSCapture
+from src.shared_utils import create_output_path
 
 logger = logging.getLogger('Wirechart')
 
@@ -26,8 +16,6 @@ def main():
     parser.add_argument('--output', type=str, default='output', help='Specify an output file for PCAP statistics.')
     parser.add_argument('--no-gui', action='store_true', default=False, help='Disable GUI-based plotting.')
     parser.add_argument('--frame-range', type=str, default=None, help='Specify a range of frames to analyze in the format START:FINISH.')
-    # parser.add_argument('--plot-discovery', action='store_true', default=False, help='Include discovery frames in the plot.')
-    # TODO: Command option for log or linear display
     args = parser.parse_args()
     # Configure the logger
     configure_root_logger(create_output_path(args.pcap, args.output, 'log'))
@@ -49,23 +37,22 @@ def main():
 
     rtps_frames = RTPSCapture(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
     rtps_frames.print_capture_summary()  # Print summary of the capture
-    stats = PCAPStats(rtps_frames.analyze_capture())  # Analyze the capture
+    rtps_frames.analyze_capture()  # Analyze the capture
 
     scale = PlotScale.LINEAR  # Default scale
     plot_discovery = False
     while True:
-        menu_choice, scale, plot_discovery, topic = get_user_menu_choice(scale, plot_discovery, logger)
-
+        menu_choice, scale, plot_discovery, topic = get_user_menu_choice(scale, plot_discovery)
         match menu_choice:
             case MenuOption.PRINT_STATS:
-                stats.print_stats()
-                stats.print_stats_in_bytes()
+                rtps_frames.print_stats()
+                rtps_frames.print_stats_in_bytes()
             case MenuOption.PLOT_COUNT:
                 if not args.no_gui:
-                    stats.plot_stats_by_frame_count(plot_discovery, scale)
+                    rtps_frames.plot_stats_by_frame_count(plot_discovery, scale)
             case MenuOption.PLOT_SIZE:
                 if not args.no_gui:
-                    stats.plot_stats_by_frame_length(plot_discovery, scale)
+                    rtps_frames.plot_stats_by_frame_length(plot_discovery, scale)
             case MenuOption.PLOT_GRAPH:
                 if not args.no_gui:
                     if topic:
@@ -73,7 +60,7 @@ def main():
                     else:
                         rtps_frames.plot_multi_topic_graph()
             case MenuOption.SAVE_EXCEL:
-                stats.save_to_excel(args.pcap, args.output, 'PCAPStats')
+                rtps_frames.save_to_excel(args.pcap, args.output, 'PCAPStats')
             case MenuOption.EXIT:
                 print("Exiting program.")
                 break
@@ -83,66 +70,6 @@ def main():
                 continue
             case _:
                 print("Unrecognized option.")
-
-def get_user_menu_choice(scale, plot_discovery, logger) -> tuple[MenuOption, object, bool]:
-    print("\n--- Menu ---")
-    print("0. Print Statistics")
-    print("1. Plot Message Count")
-    print("2. Plot Message Size")
-    print("3. Plot Node Graph")
-    print("4. Change Scale")
-    print("5. Include Discovery Frames")
-    print("6. Save to Excel")
-    print("7. Exit")
-
-    topic = None
-
-    choice = input(f"Enter your choice (0-{MenuOption.EXIT.value}): ")
-    logger.debug(f"User choice: {choice}")
-
-    try:
-        selected_option = MenuOption(choice)
-    except ValueError:
-        print(f"Invalid input. Please enter a number between 0 and {MenuOption.EXIT.value}.")
-        return (MenuOption.INVALID, scale, plot_discovery, None)
-    if selected_option == MenuOption.PLOT_GRAPH:
-        topic = input("Enter topic to plot (leave blank to include the 6 largest topics): ").strip()
-        if topic:
-            logger.debug(f"User entered topic: {topic}")
-        else:
-            logger.debug("User chose to plot all topics.")
-    elif selected_option == MenuOption.CHANGE_SCALE:
-        print("\n-- Change Scale --")
-        print("a. Linear")
-        print("b. Logarithmic")
-        sub_choice = input("Choose scale (a/b): ")
-        logger.debug(f"User scale choice: {sub_choice}")
-        match sub_choice.lower():
-            case 'a':
-                scale = PlotScale.LINEAR
-                print("Scale set to Linear.")
-            case 'b':
-                scale = PlotScale.LOGARITHMIC
-                print("Scale set to Logarithmic.")
-            case _:
-                print("Invalid scale choice.")
-    elif selected_option == MenuOption.TOGGLE_DISCOVERY:
-        print("\n-- Include Discovery Data --")
-        print("a. No")
-        print("b. Yes")
-        sub_choice = input("Choose option (a/b): ")
-        logger.debug(f"User discovery choice: {sub_choice}")
-        match sub_choice.lower():
-            case 'a':
-                plot_discovery = False
-                print("Discovery frames excluded from the plot.")
-            case 'b':
-                plot_discovery = True
-                print("Discovery frames included in the plot.")
-            case _:
-                print("Invalid choice.")
-
-    return (selected_option, scale, plot_discovery, topic)
 
 def parse_range(value: str):
     if ':' not in value:
@@ -168,16 +95,6 @@ def parse_range(value: str):
         raise ValueError(f"Invalid range: {value}. 'before' must be less than or equal to 'after'. Exiting program.")
 
     return before, after
-
-# Check for existence of the output path
-def create_output_path(pcap_file, output_path, extension, description=None):
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-
-    # Create filename based on pcap_file
-    filename = os.path.splitext(os.path.basename(pcap_file))[0]  # get filename without extension
-    suffix = f"_{description}" if description else ""
-    return os.path.join(output_path, f"{filename}{suffix}.{extension}")
 
 def get_tshark_version():
     try:

@@ -1,12 +1,23 @@
-import subprocess
+# Standard Library Imports
 import os
-import pandas as pd
+import subprocess
 from collections import defaultdict
-import networkx as nx
+from enum import Enum, IntEnum
+
+# Third-Party Library Imports
 import matplotlib.pyplot as plt
-from RTPSFrame import *
-from log_handler import logging
-from enum import IntEnum
+import networkx as nx
+import pandas as pd
+from matplotlib.ticker import StrMethodFormatter
+
+# Local Application Imports
+from src.log_handler import logging
+from src.rtps_frame import InvalidPCAPDataException, RTPSFrame, SubmessageTypes
+from src.shared_utils import create_output_path
+
+class PlotScale(Enum):
+    LINEAR = 'linear'
+    LOGARITHMIC = 'log'
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +48,7 @@ class RTPSCapture:
 
         self.frames = []  # List to store RTPSFrame objects
         self.graph_edges = defaultdict(set)
+        self.df = pd.DataFrame()  # DataFrame to store analysis results
         self._extract_rtps_frames(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
 
     def __iter__(self):
@@ -255,10 +267,10 @@ class RTPSCapture:
             raise InvalidPCAPDataException("No RTPS user frames with associated discovery data")
 
         # Convert the rows into a DataFrame
-        df = pd.DataFrame(frame_list)
+        self.df = pd.DataFrame(frame_list)
 
         # Aggregate the counts and lengths for each (Topic, Submessage) pair
-        df = df.groupby(['topic', 'sm'], as_index=False).agg({'count': 'sum', 'length': 'sum'})
+        self.df = self.df.groupby(['topic', 'sm'], as_index=False).agg({'count': 'sum', 'length': 'sum'})
 
         # Ensure all unique topics are included in the DataFrame
         def include_missing_topics_and_sm(df, all_topics, sm_start, sm_end):
@@ -270,24 +282,22 @@ class RTPSCapture:
             return missing_list
 
         all_rows = []
-        all_rows.extend(include_missing_topics_and_sm(df, {DISCOVERY_TOPIC}, SubmessageTypes.DATA_P, SubmessageTypes.DISCOVERY_STATE))
-        all_rows.extend(include_missing_topics_and_sm(df, self.list_all_topics(), SubmessageTypes.DATA, SubmessageTypes.DATA_STATE))
+        all_rows.extend(include_missing_topics_and_sm(self.df, {DISCOVERY_TOPIC}, SubmessageTypes.DATA_P, SubmessageTypes.DISCOVERY_STATE))
+        all_rows.extend(include_missing_topics_and_sm(self.df, self.list_all_topics(), SubmessageTypes.DATA, SubmessageTypes.DATA_STATE))
 
         # Add missing rows with a count of 0 and length of 0
         if all_rows:
-            df = pd.concat([df, pd.DataFrame(all_rows)], ignore_index=True)
+            self.df = pd.concat([self.df, pd.DataFrame(all_rows)], ignore_index=True)
 
         # Order the Submessage column based on SubmessageTypes
         # Create an ordered categorical column using enum member names
-        df['sm'] = pd.Categorical(
-            df['sm'],
+        self.df['sm'] = pd.Categorical(
+            self.df['sm'],
             categories=[member.name for member in SubmessageTypes],
             ordered=True)
 
         # Sort and reset index
-        df = df.sort_values(by=['topic', 'sm']).reset_index(drop=True)
-
-        return df
+        self.df = self.df.sort_values(by=['topic', 'sm']).reset_index(drop=True)
 
     def plot_multi_topic_graph(self):
         topic_node_counts = {
@@ -367,3 +377,161 @@ class RTPSCapture:
         if ax_none:
             plt.tight_layout()
             plt.show()
+
+    def print_stats(self):
+        """
+        Prints statistics about the PCAP data, including total messages,
+        messages by topic, and messages by submessage type.
+        """
+        # Calculate total messages
+        total_messages = self.df['count'].sum()
+        print(f"Total number of messages: {total_messages}")
+
+        # Calculate total messages by topic and sort in descending order
+        total_messages_by_topic = self.df.groupby('topic')['count'].sum().sort_values(ascending=False)
+        print(f"{" " * 2}Total messages by topic:")
+        for topic, count in total_messages_by_topic.items():
+            print(f"{" " * 4}{topic}: {count}")
+
+        # Calculate counts for each submessage type
+        submessage_counts = self.df.groupby('sm', observed=False)['count'].sum()
+        print(f"{" " * 2}Submessage counts:")
+        for submsg in SubmessageTypes.subset_names():
+            if submsg in submessage_counts:
+                print(f"{" " * 4}{submsg}: {submessage_counts[submsg]}")
+        for submsg, count in submessage_counts.items():
+            if submsg not in SubmessageTypes.subset_names():
+                print(f"  {submsg}: {count}")
+        print()
+
+    # TODO: Add logic to print by count and length
+    def print_stats_in_bytes(self):
+        """
+        Prints statistics about the PCAP data in bytes, including total message lengths,
+        lengths by topic, and lengths by submessage type.
+        """
+        # Calculate total message length
+        total_length = self.df['length'].sum()
+        print(f"Total message length: {total_length:,} bytes")
+
+        # Calculate total message length by topic and sort in descending order
+        total_length_by_topic = self.df.groupby('topic')['length'].sum().sort_values(ascending=False)
+        print(f"{" " * 2}Total message length by topic:")
+        for topic, length in total_length_by_topic.items():
+            print(f"{" " * 4}{topic}: {length:,} bytes")
+
+        # Calculate total lengths for each submessage type
+        submessage_lengths = self.df.groupby('sm', observed=False)['length'].sum()
+        print(f"{" " * 2}Submessage lengths:")
+        # Get all submessage types
+        for submsg in SubmessageTypes.subset_names():
+            if submsg in submessage_lengths:
+                print(f"{" " * 4}{submsg}: {submessage_lengths[submsg]:,} bytes")
+        for submsg, length in submessage_lengths.items():
+            if submsg not in SubmessageTypes.subset_names():
+                print(f"{" " * 4}{submsg}: {length:,} bytes")
+        print()
+
+    def plot_stats_by_frame_count(self, include_discovery=False, scale=PlotScale.LINEAR):
+        self._plot_statistics(metric='count', include_discovery=include_discovery, scale=scale)
+
+    def plot_stats_by_frame_length(self, include_discovery=False, scale=PlotScale.LINEAR):
+        self._plot_statistics(metric='length', include_discovery=include_discovery, scale=scale)
+
+    # TODO: Ensure correct order of submessages in the plot
+    def _plot_statistics(self, metric='count', include_discovery=False, scale=PlotScale.LINEAR):
+        """
+        Plots a stacked bar chart of submessage counts or lengths by topic.
+
+        :param metric: The column to plot, either 'count' or 'length'.
+        :param include_discovery: If False, excludes the "DISCOVERY" topic from the plot.
+        """
+        if metric not in ['count', 'length']:
+            raise ValueError("Invalid metric. Choose either 'count' or 'length'.")
+
+        # Define units based on the metric
+        units = "messages" if metric == 'count' else "bytes"
+
+        # Filter out the "DISCOVERY" topic if include_discovery is False
+        df = self.df.copy()
+        if not include_discovery:
+            df = df[df['topic'] != DISCOVERY_TOPIC]
+
+        # Ensure all submessages in SubmessageTypes are included, even if missing
+        df = df.set_index(['topic', 'sm']).unstack(fill_value=0).stack(future_stack=True).reset_index()
+
+        # Calculate total messages or lengths per topic and sort topics by total value
+        df['TotalMetric'] = df.groupby('topic')[metric].transform('sum')
+        df = df.sort_values(by='TotalMetric', ascending=False)
+
+        # Pivot the DataFrame to prepare for plotting
+        pivot_df = df.pivot(index='topic', columns='sm', values=metric).fillna(0)
+
+        # Ensure the columns (submessages) are ordered based on SubmessageTypes
+        submessage_order = SubmessageTypes.subset_names(
+            start=SubmessageTypes.DATA_P if include_discovery else SubmessageTypes.DATA)  # Get the desired order of submessages
+        pivot_df = pivot_df.reindex(columns=submessage_order, fill_value=0)
+
+        # Filter out topics with no submessages (all values are zero)
+        pivot_df = pivot_df[(pivot_df.sum(axis=1) > 0)]
+
+        # Sort pivot_df by the total value of the metric (row-wise sum)
+        pivot_df['TotalMetric'] = pivot_df.sum(axis=1)
+        pivot_df = pivot_df.sort_values(by='TotalMetric', ascending=False)
+
+        # Extract total metric values for each topic
+        total_metric_by_topic = pivot_df['TotalMetric']
+        pivot_df = pivot_df.drop(columns=['TotalMetric'])  # Remove the helper column
+
+        ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13))
+
+        # Add totals to the legend, filtering out submessages not in submessage_order
+        submessage_totals = self.df.groupby('sm', observed=False)[metric].sum()
+        filtered_totals = {label: total for label, total in submessage_totals.items() if label in submessage_order and total > 0}
+        handles, labels = ax.get_legend_handles_labels()
+        filtered_handles_labels = [
+            (handle, label) for handle, label in zip(handles, labels) if label in filtered_totals
+        ]
+        filtered_handles, filtered_labels = zip(*filtered_handles_labels) if filtered_handles_labels else ([], [])
+        ax.legend(
+            filtered_handles,
+            [f"{label} ({filtered_totals[label]:,} {units})" for label in filtered_labels],
+            title='Submessage Types'
+        )
+
+        # Set axis labels and title
+        topic_count = df['topic'].nunique() - int(include_discovery)
+        topic_label = f"Topics ({topic_count:,}" + (" plus Discovery)" if include_discovery else ")")
+
+        ax.set_xlabel(topic_label)
+        ax.set_ylabel(f"{metric.capitalize()} ({df[metric].sum():,} {units})")
+        ax.set_title(f"Submessage {metric.capitalize()} by Topic ({units})")
+
+        # Update x-axis labels to include total metric values
+        x_labels = [f"{topic} ({int(total_metric_by_topic[topic]):,})" for topic in pivot_df.index]
+        ax.set_xticks(range(len(pivot_df.index)))
+        ax.set_xticklabels(x_labels, rotation=90, ha='center')
+
+        ax.set_yscale(scale.value)  # Set the y-axis scale (linear or logarithmic)
+
+        # Disable scientific notation and format y-axis tick marks with commas
+        ax.get_yaxis().set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+
+        # Adjust layout and show the plot
+        plt.tight_layout()
+        plt.show()
+
+    def save_to_excel(self, pcap_file, output_path, sheet_name="Sheet1"):
+        """
+        Writes a pandas DataFrame to an Excel file.
+
+        :param df: A pandas DataFrame to write to Excel.
+        :param output_file: The path to the output Excel file.
+        :param sheet_name: The name of the sheet in the Excel file (default is "Sheet1").
+        """
+        try:
+            filename = create_output_path(pcap_file, output_path, 'xlsx', 'stats')
+            self.df.to_excel(filename, sheet_name=sheet_name, index=False)
+            logger.always(f"DataFrame successfully written to {filename} in sheet '{sheet_name}'.")
+        except Exception as e:
+            logger.error(f"Error writing DataFrame to Excel: {e}")

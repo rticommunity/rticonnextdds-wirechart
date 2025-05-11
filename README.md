@@ -13,12 +13,13 @@ The application requires the following Python libraries:
 
 - `pandas`: For data manipulation and analysis.
 - `matplotlib`: For generating visualizations.
+- `networkx`: For creating node/edge graphs.
 - `openpyxl`: For exporting data to Excel files.
 
 Install the dependencies using:
 
 ```bash
-pip install pandas matplotlib openpyxl
+pip install pandas matplotlib networkx openpyxl
 ```
 
 ### External Tools
