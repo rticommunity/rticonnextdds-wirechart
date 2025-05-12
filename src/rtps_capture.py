@@ -93,7 +93,7 @@ class RTPSCapture:
     def count_participants(self):
         participants = set()
         for frame in self.frames:
-            if frame.discovery_frame:
+            if FrameTypes.DISCOVERY in frame.frame_type:
                 participants.add(frame.guid_prefix_and_entity_id()[0])
         return len(participants)
 
@@ -106,7 +106,7 @@ class RTPSCapture:
         writers = set()
         readers = set()
         for frame in self.frames:
-            if include_builtin or not frame.discovery_frame:
+            if include_builtin or not (FrameTypes.DISCOVERY in frame.frame_type):
                 writers.add(frame.guid_src)
                 if frame.guid_dst:
                     readers.add(frame.guid_dst)
@@ -235,7 +235,7 @@ class RTPSCapture:
                 logger.error(f"Frame {frame.frame_number} has no GUID source. Exiting.")
                 # TODO: Could maybe continue here, but exiting for now
                 raise InvalidPCAPDataException(f"Frame {frame.frame_number} has no GUID source. Exiting.")
-            if frame.frame_type == FrameTypes.ROUTING_SERVICE:
+            if FrameTypes.ROUTING_SERVICE in frame.frame_type:
                 # Add the GUID prefix to the set of Routing Service GUID prefixes
                 self.rs_guid_prefix.add(frame.guid_prefix_and_entity_id()[0])
             guid_key = (frame.guid_src, frame.guid_dst)
@@ -246,9 +246,9 @@ class RTPSCapture:
                 # 2. For DATA(w) SMs, save guid_key to graph_edges[topic]
                 # 3. Test with square_best_effort.pcapng
                 # 4. May need to understand better, this approach may not be correct
-                if not frame.discovery_frame and all(x is not None for x in guid_key):
+                if (FrameTypes.DISCOVERY not in frame.frame_type) and all(x is not None for x in guid_key):
                     self.graph_edges[topic].add(guid_key)
-                if frame.discovery_frame:
+                if FrameTypes.DISCOVERY in frame.frame_type:
                     topic = DISCOVERY_TOPIC
                 # TODO: Verify not to do this with GAP
                 if "HEARTBEAT" in sm.sm_type.name:

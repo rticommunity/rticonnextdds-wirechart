@@ -13,7 +13,7 @@
 
 # Standard Library Imports
 import re
-from enum import IntEnum, auto
+from enum import IntEnum, auto, Flag
 
 # Local Application Imports
 from src.log_handler import logging
@@ -21,10 +21,11 @@ from src.shared_utils import guid_prefix
 
 logger = logging.getLogger(__name__)
 
-class FrameTypes(IntEnum):
-    STANDARD = auto()
-    DISCOVERY = auto()
-    ROUTING_SERVICE = auto()
+class FrameTypes(Flag):
+    UNSET =             0b0000
+    USER_DATA =         0b0001
+    DISCOVERY =         0b0010
+    ROUTING_SERVICE =   0b0100
 
 class SubmessageTypes(IntEnum):
     def _generate_next_value_(name, start, count, last_values):
@@ -80,10 +81,10 @@ class InvalidPCAPDataException(Exception):
         return self.message
 
 class RTPSSubmessage():
-    def __init__(self, sm_type, topic, length, seq_number_tuple, discovery_frame, multiple_sm=False):
+    def __init__(self, sm_type, topic, length, seq_number_tuple, frame_type, multiple_sm=False):
         if any(term in sm_type.lower() for term in ("port", "ping")):
             raise InvalidPCAPDataException(f"Routing frame: {sm_type}.", logging.INFO)
-        if not discovery_frame and not topic:
+        if FrameTypes.DISCOVERY not in frame_type and not topic:
             raise InvalidPCAPDataException(f"No discovery data.", logging.WARNING)
 
         self.topic = topic
@@ -111,7 +112,7 @@ class RTPSSubmessage():
                 # If this is a HEARTBEAT and there are multiple submessages, this is a PIGGYBACK_HEARTBEAT
                 if multiple_sm and "HEARTBEAT" in sm_type:
                     sm_type = "PIGGYBACK_" + sm_type
-                if discovery_frame and ("HEARTBEAT" in sm_type or "ACKNACK" in sm_type):
+                if FrameTypes.DISCOVERY in frame_type and ("HEARTBEAT" in sm_type or "ACKNACK" in sm_type):
                     sm_type = "DISCOVERY_" + sm_type
 
                 self.sm_type = SubmessageTypes[sm_type]
@@ -198,13 +199,8 @@ class RTPSFrame:
         self.frame_number = int(frame_data.get('frame.number', 0))
         info_column = frame_data.get('_ws.col.Info', '')
         self.sm_list = list()
-        self.guid_src, self.guid_dst, entity = None, None, None
-        self.discovery_frame = False
-        self.frame_type = FrameTypes.STANDARD
-
-        if get_entity_id(frame_data.get('rtps.param.service_kind'))[1] == 0x3:
-            self.frame_type = FrameTypes.ROUTING_SERVICE
-            logger.debug(f"Routing service frame.")
+        self.guid_src, self.guid_dst, entity = None, None, None # TODO: Remove entity?
+        self.frame_type = FrameTypes.UNSET
 
         if not frame_data.get('rtps.guidPrefix.src', None):
             raise InvalidPCAPDataException(f"No GUID prefix.", logging.INFO)
@@ -217,7 +213,13 @@ class RTPSFrame:
             raise InvalidPCAPDataException(f"Invalid Entity ID: {entity_id_str}", logging.WARNING)
         if entity_id in (0x00020087, 0x00020082):
             raise InvalidPCAPDataException(f"Service Request Frame.", logging.INFO)
-        self.discovery_frame = entity_id in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}
+        if get_entity_id(frame_data.get('rtps.param.service_kind'))[1] == 0x3:
+            self.frame_type |= FrameTypes.ROUTING_SERVICE
+            logger.debug(f"Routing service frame.")
+        if entity_id in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}:
+            self.frame_type |= FrameTypes.DISCOVERY
+        else:
+            self.frame_type |= FrameTypes.USER_DATA
 
         sm_list = [s.strip() for s in info_column.split(',')]
         seq_number_list = list(map(int, frame_data.get('rtps.sm.seqNumber', 0).split(',')))
@@ -242,13 +244,13 @@ class RTPSFrame:
 
             if not self.sm_list:
                 # Include full upd_length in the first submessage
-                self.add_submessage(RTPSSubmessage(sm, sm_topic, udp_length, seq_num_tuple, self.discovery_frame))
+                self.add_submessage(RTPSSubmessage(sm, sm_topic, udp_length, seq_num_tuple, self.frame_type))
 
             else:
                 # Decrease the length of the first submessage by the length of the current submessage
                 self.sm_list[0].length -= sm_len
                 # Indicate more than one submessage in the frame
-                self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, seq_num_tuple, self.discovery_frame, True))
+                self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, seq_num_tuple, self.frame_type, True))
 
         self.guid_src, self.guid_dst = create_guid(frame_data, self.sm_list[-1].sm_type)
 
@@ -282,7 +284,7 @@ class RTPSFrame:
         """
         Returns a list of unique topics from the RTPSFrame object.
         """
-        if not self.discovery_frame:
+        if FrameTypes.DISCOVERY in self.frame_type:
             return set()
 
         return set(sm.topic for sm in self.sm_list if sm.topic is not None)
@@ -302,7 +304,7 @@ class RTPSFrame:
         return any(sm.sm_type == sm_type for sm in self.sm_list)
 
     def __str__(self):
-        result = [f"Frame: {self.frame_number:09} GUID_SRC: {guid_prefix(self.guid_src)} Discovery Frame: {self.discovery_frame} Frame Type: {self.frame_type.name}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
+        result = [f"Frame: {self.frame_number:09} GUID_SRC: {guid_prefix(self.guid_src)} Frame Type: {self.frame_type.name}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
         for i, submessage in enumerate(self.sm_list, start=1):
             result.append(f"{" " * 4}{i} {str(submessage)}")
         return "\n".join(result) + "\n"
