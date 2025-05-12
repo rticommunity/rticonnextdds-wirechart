@@ -1,5 +1,5 @@
 # Standard Library Imports
-from enum import Enum
+from enum import IntEnum, auto
 
 # Local Application Imports
 from src.log_handler import logging
@@ -7,27 +7,33 @@ from src.rtps_capture import PlotScale
 
 logger = logging.getLogger(__name__)
 
-class MenuOption(Enum):
-    PRINT_STATS = '0'
-    PLOT_COUNT = '1'
-    PLOT_SIZE = '2'
-    PLOT_GRAPH = '3'
-    CHANGE_SCALE = '4'
-    TOGGLE_DISCOVERY = '5'
-    SAVE_EXCEL = '6'
-    EXIT = '7'
-    INVALID = 'invalid'  # For clarity
+class MenuOption(IntEnum):
+    INVALID = auto(-1)  # For clarity
+    PRINT_CAPTURE_SUMMARY = auto()
+    PRINT_TOPICS = auto()
+    PRINT_STATS_COUNT = auto()
+    PRINT_STATS_BYTES = auto()
+    PLOT_BAR_CHART_COUNT = auto()
+    PLOT_BAR_CHART_BYTES = auto()
+    PLOT_TOPOLOGY_GRAPH = auto()
+    CHANGE_SCALE = auto()
+    TOGGLE_DISCOVERY = auto()
+    SAVE_EXCEL = auto()
+    EXIT = auto()
 
 def get_user_menu_choice(scale, plot_discovery) -> tuple[MenuOption, PlotScale, bool, str]:
     print("\n--- Menu ---")
-    print("0. Print Statistics")
-    print("1. Plot Message Count")
-    print("2. Plot Message Size")
-    print("3. Plot Node Graph")
-    print("4. Change Scale")
-    print("5. Include Discovery Frames")
-    print("6. Save to Excel")
-    print("7. Exit")
+    print(f"{MenuOption.PRINT_CAPTURE_SUMMARY.value}. Print Capture Summary")
+    print(f"{MenuOption.PRINT_TOPICS.value}. Print Topics")
+    print(f"{MenuOption.PRINT_STATS_COUNT.value}. Print Statistics (Count)")
+    print(f"{MenuOption.PRINT_STATS_BYTES.value}. Print Statistics (Bytes)")
+    print(f"{MenuOption.PLOT_BAR_CHART_COUNT.value}. Plot Bar Chart (Count)")
+    print(f"{MenuOption.PLOT_BAR_CHART_BYTES.value}. Plot Bar Chart (Bytes)")
+    print(f"{MenuOption.PLOT_TOPOLOGY_GRAPH.value}. Plot Topology Graph")
+    print(f"{MenuOption.CHANGE_SCALE.value}. Change Scale")
+    print(f"{MenuOption.TOGGLE_DISCOVERY.value}. Include Discovery Frames")
+    print(f"{MenuOption.SAVE_EXCEL.value}. Save to Excel")
+    print(f"{MenuOption.EXIT.value}. Exit")
 
     topic = None
 
@@ -35,11 +41,11 @@ def get_user_menu_choice(scale, plot_discovery) -> tuple[MenuOption, PlotScale, 
     logger.debug(f"User choice: {choice}")
 
     try:
-        selected_option = MenuOption(choice)
+        selected_option = MenuOption(int(choice))
     except ValueError:
         print(f"Invalid input. Please enter a number between 0 and {MenuOption.EXIT.value}.")
         return (MenuOption.INVALID, scale, plot_discovery, None)
-    if selected_option == MenuOption.PLOT_GRAPH:
+    if selected_option == MenuOption.PLOT_TOPOLOGY_GRAPH:
         topic = input("Enter topic to plot (leave blank to include the 6 largest topics): ").strip()
         if topic:
             logger.debug(f"User entered topic: {topic}")
@@ -76,4 +82,5 @@ def get_user_menu_choice(scale, plot_discovery) -> tuple[MenuOption, PlotScale, 
             case _:
                 print("Invalid choice.")
 
+    print(f"{'-' * 25}\n")
     return (selected_option, scale, plot_discovery, topic)

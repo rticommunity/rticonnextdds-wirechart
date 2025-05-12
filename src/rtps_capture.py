@@ -116,6 +116,8 @@ class RTPSCapture:
         num_writers, num_readers = self.count_writers_and_readers()
         print(f"Total Writers: {num_writers} and Readers: {num_readers}")
         print(f"Unique Topics: {len(self.list_all_topics())}")
+
+    def print_topics(self):
         print("Topics:")
         for topic in sorted(self.list_all_topics()):
             print(f"  - {topic}")
@@ -327,6 +329,10 @@ class RTPSCapture:
 
         ax_none = (ax is None)
 
+        if topic not in self.graph_edges:
+            logger.always(f"Topic '{topic}' does not have a topology graph.")
+            return
+
         if not topic:
             topic = max(self.graph_edges, key=lambda k: len(self.graph_edges[k]))
 
@@ -404,7 +410,7 @@ class RTPSCapture:
                 print(f"  {submsg}: {count}")
         print()
 
-    # TODO: Add logic to print by count and length
+    # TODO: Add logic to print by count and length in the same function
     def print_stats_in_bytes(self):
         """
         Prints statistics about the PCAP data in bytes, including total message lengths,

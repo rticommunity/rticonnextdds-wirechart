@@ -36,7 +36,6 @@ def main():
                         'rtps.sm.id', '_ws.col.Info'])
 
     rtps_frames = RTPSCapture(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
-    rtps_frames.print_capture_summary()  # Print summary of the capture
     rtps_frames.analyze_capture()  # Analyze the capture
 
     scale = PlotScale.LINEAR  # Default scale
@@ -44,16 +43,21 @@ def main():
     while True:
         menu_choice, scale, plot_discovery, topic = get_user_menu_choice(scale, plot_discovery)
         match menu_choice:
-            case MenuOption.PRINT_STATS:
+            case MenuOption.PRINT_CAPTURE_SUMMARY:
+                rtps_frames.print_capture_summary()
+            case MenuOption.PRINT_TOPICS:
+                rtps_frames.print_topics()
+            case MenuOption.PRINT_STATS_COUNT:
                 rtps_frames.print_stats()
+            case MenuOption.PRINT_STATS_BYTES:
                 rtps_frames.print_stats_in_bytes()
-            case MenuOption.PLOT_COUNT:
+            case MenuOption.PLOT_BAR_CHART_COUNT:
                 if not args.no_gui:
                     rtps_frames.plot_stats_by_frame_count(plot_discovery, scale)
-            case MenuOption.PLOT_SIZE:
+            case MenuOption.PLOT_BAR_CHART_BYTES:
                 if not args.no_gui:
                     rtps_frames.plot_stats_by_frame_length(plot_discovery, scale)
-            case MenuOption.PLOT_GRAPH:
+            case MenuOption.PLOT_TOPOLOGY_GRAPH:
                 if not args.no_gui:
                     if topic:
                         rtps_frames.plot_topic_graph(topic=topic)
