@@ -46,7 +46,7 @@ def main():
                         'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',        # Writer GUID
                         'rtps.guidPrefix.dst', 'rtps.sm.rdEntityId',        # Reader GUID
                         'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader',
-                        'rtps.sm.id', '_ws.col.Info'])
+                        'rtps.sm.id', 'rtps.param.service_kind', '_ws.col.Info'])
 
     rtps_frames = RTPSCapture(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
     rtps_frames.analyze_capture()  # Analyze the capture

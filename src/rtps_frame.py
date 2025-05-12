@@ -17,8 +17,14 @@ from enum import IntEnum, auto
 
 # Local Application Imports
 from src.log_handler import logging
+from src.shared_utils import guid_prefix
 
 logger = logging.getLogger(__name__)
+
+class FrameTypes(IntEnum):
+    STANDARD = auto()
+    DISCOVERY = auto()
+    ROUTING_SERVICE = auto()
 
 class SubmessageTypes(IntEnum):
     def _generate_next_value_(name, start, count, last_values):
@@ -165,7 +171,7 @@ class RTPSFrame:
         :param frame_data: Dictionary containing field names and their values.
         """
         def none_if_zero(value):
-                return None if value == 0 else value
+            return None if value == 0 else value
         def get_entity_id(entity_id_str):
             match = re.match(r'0x([0-9A-Fa-f]+)', entity_id_str.split(',')[0])
             if match:
@@ -194,9 +200,14 @@ class RTPSFrame:
         self.sm_list = list()
         self.guid_src, self.guid_dst, entity = None, None, None
         self.discovery_frame = False
+        self.frame_type = FrameTypes.STANDARD
+
+        if get_entity_id(frame_data.get('rtps.param.service_kind'))[1] == 0x3:
+            self.frame_type = FrameTypes.ROUTING_SERVICE
+            logger.debug(f"Routing service frame.")
 
         if not frame_data.get('rtps.guidPrefix.src', None):
-                raise InvalidPCAPDataException(f"No GUID prefix.", logging.INFO)
+            raise InvalidPCAPDataException(f"No GUID prefix.", logging.INFO)
 
         if "Malformed Packet" in info_column:
             raise InvalidPCAPDataException(f"Malformed Packet: {info_column}.", log_level=logging.WARNING)
@@ -278,7 +289,8 @@ class RTPSFrame:
 
     def guid_prefix_and_entity_id(self):
         bitmask_32 = (1 << 32) - 1
-        return (self.guid_src >> 32), self.guid_src & bitmask_32
+        return guid_prefix(self.guid_src), self.guid_src & bitmask_32
+
 
     def contains_submessage(self, sm_type):
         """
@@ -290,7 +302,7 @@ class RTPSFrame:
         return any(sm.sm_type == sm_type for sm in self.sm_list)
 
     def __str__(self):
-        result = [f"Frame: {self.frame_number:09} GUID_SRC: {self.guid_src} GUID_DST: {self.guid_dst} Discovery Frame: {self.discovery_frame}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
+        result = [f"Frame: {self.frame_number:09} GUID_SRC: {guid_prefix(self.guid_src)} Discovery Frame: {self.discovery_frame} Frame Type: {self.frame_type.name}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
         for i, submessage in enumerate(self.sm_list, start=1):
             result.append(f"{" " * 4}{i} {str(submessage)}")
         return "\n".join(result) + "\n"

@@ -25,8 +25,8 @@ from matplotlib.ticker import StrMethodFormatter
 
 # Local Application Imports
 from src.log_handler import logging
-from src.rtps_frame import InvalidPCAPDataException, RTPSFrame, SubmessageTypes
-from src.shared_utils import create_output_path
+from src.rtps_frame import InvalidPCAPDataException, RTPSFrame, SubmessageTypes, FrameTypes
+from src.shared_utils import create_output_path, guid_prefix
 
 class PlotScale(Enum):
     LINEAR = 'linear'
@@ -35,15 +35,6 @@ class PlotScale(Enum):
 logger = logging.getLogger(__name__)
 
 DISCOVERY_TOPIC = "DISCOVERY"
-
-class FrameClassification(IntEnum):
-    STANDARD_FRAME = 0
-    REPAIR = 1
-    DURABLE_REPAIR = 2
-
-class GUIDKey(IntEnum):
-    GUID_SRC = 0
-    GUID_DST = 1
 
 class RTPSCapture:
     """
@@ -61,6 +52,7 @@ class RTPSCapture:
 
         self.frames = []  # List to store RTPSFrame objects
         self.graph_edges = defaultdict(set)
+        self.rs_guid_prefix = set()
         self.df = pd.DataFrame()  # DataFrame to store analysis results
         self._extract_rtps_frames(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
 
@@ -220,6 +212,15 @@ class RTPSCapture:
         :param unique_topics: A set of unique topics to initialize the DataFrame.
         :return: A pandas DataFrame with columns ['Topic', 'Submessage', 'Count', 'Length'].
         """
+        # Declare the SendType and GUIDKey enums for local scope
+        class SendType(IntEnum):
+            STANDARD = 0
+            REPAIR = 1
+            DURABLE_REPAIR = 2
+
+        class GUIDKey(IntEnum):
+            GUID_SRC = 0
+            GUID_DST = 1
 
         logger.always("Analyzing capture data...")
 
@@ -229,11 +230,14 @@ class RTPSCapture:
 
         # Process the PCAP data to count messages and include lengths
         for frame in self.frames:
-            frame_classification = FrameClassification.STANDARD_FRAME
+            frame_classification = SendType.STANDARD
             if frame.guid_src is None:
                 logger.error(f"Frame {frame.frame_number} has no GUID source. Exiting.")
                 # TODO: Could maybe continue here, but exiting for now
                 raise InvalidPCAPDataException(f"Frame {frame.frame_number} has no GUID source. Exiting.")
+            if frame.frame_type == FrameTypes.ROUTING_SERVICE:
+                # Add the GUID prefix to the set of Routing Service GUID prefixes
+                self.rs_guid_prefix.add(frame.guid_prefix_and_entity_id()[0])
             guid_key = (frame.guid_src, frame.guid_dst)
             for sm in frame:
                 topic = sm.topic
@@ -260,10 +264,10 @@ class RTPSCapture:
                         # If this is a repair, there will be a GUID_DST, and we can key on the entire GUID_KEY
                         if sm.seq_num() <= durability_repairs[guid_key]:
                             sm.sm_type = SubmessageTypes.DATA_DURABILITY_REPAIR
-                            frame_classification = FrameClassification.DURABLE_REPAIR
+                            frame_classification = SendType.DURABLE_REPAIR
                         else:
                             sm.sm_type = SubmessageTypes.DATA_REPAIR
-                            frame_classification = FrameClassification.REPAIR
+                            frame_classification = SendType.REPAIR
                 # TODO: Add support for Discovery repairs?
                 elif sm.sm_type == SubmessageTypes.ACKNACK:
                     # Record the writer SN when the first non-zero ACKNACK is received.  All repairs with
@@ -275,7 +279,7 @@ class RTPSCapture:
 
                 frame_list.append({'topic': topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
 
-            if frame_classification > FrameClassification.STANDARD_FRAME:
+            if frame_classification > SendType.STANDARD:
                 logger.info(f"Frame {frame.frame_number} classified as {frame_classification.name}.")
 
         if not any(frame.get('topic') != 'DISCOVERY' for frame in frame_list):
@@ -365,8 +369,8 @@ class RTPSCapture:
         edge_colors = []
         node_labels = {}
         for src, dst in self.graph_edges[topic]:
-            node_labels[src] = "DW"
-            node_labels[dst] = "DR"
+            node_labels[src] = "RS" if guid_prefix(src) in self.rs_guid_prefix else "DW"
+            node_labels[dst] = "RS" if guid_prefix(dst) in self.rs_guid_prefix else "DR"
             if src not in source_colors:
                 source_colors[src] = color_palette[color_index % len(color_palette)]
                 color_index += 1
@@ -379,6 +383,8 @@ class RTPSCapture:
                 node_colors.append("lightblue")   # Color for DW nodes
             elif node_labels.get(node) == "DR":
                 node_colors.append("mistyrose")   # Color for DR nodes
+            elif node_labels.get(node) == "RS":
+                node_colors.append("lightyellow")   # Color for DR nodes
             else:
                 node_colors.append("gray")        # Fallback for undefined
 

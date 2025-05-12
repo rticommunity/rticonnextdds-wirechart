@@ -31,3 +31,6 @@ def create_output_path(pcap_file, output_path, extension, description=None):
     description_part = f"_{description}" if description else ""
     filename = f"{base_name}{description_part}.{extension}"
     return os.path.join(output_path, filename)
+
+def guid_prefix(guid):
+    return guid >> 32
