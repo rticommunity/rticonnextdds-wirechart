@@ -348,6 +348,7 @@ class RTPSCapture:
                         'gold', 'teal', 'coral', 'olive', 'darkgreen', 'deepskyblue', 'mediumorchid']
         color_index = 0
 
+        # Set node labels and edge colors
         edge_colors = []
         node_labels = {}
         for src, dst in self.graph_edges[topic]:
@@ -358,12 +359,22 @@ class RTPSCapture:
                 color_index += 1
             edge_colors.append(source_colors[src])
 
+        # Set node colors based on labels
+        node_colors = []
+        for node in G.nodes():
+            if node_labels.get(node) == "DW":
+                node_colors.append("lightblue")   # Color for DW nodes
+            elif node_labels.get(node) == "DR":
+                node_colors.append("mistyrose")   # Color for DR nodes
+            else:
+                node_colors.append("gray")        # Fallback for undefined
+
         # If no Axes passed, create a new figure and axes
         if ax_none:
             fig, ax = plt.subplots(figsize=(14, 10))
 
         # Draw graph using the correct Axes
-        nx.draw_networkx_nodes(G, pos, ax=ax, node_size=2000, node_color='lightblue', edgecolors='black')
+        nx.draw_networkx_nodes(G, pos, ax=ax, node_size=2000, node_color=node_colors, edgecolors='black')
         nx.draw_networkx_labels(G, pos, ax=ax, labels=node_labels, font_size=12, font_weight='bold')
         nx.draw_networkx_edges(
             G,

@@ -22,7 +22,7 @@ class MenuOption(IntEnum):
     EXIT = auto()
 
 def get_user_menu_choice(scale, plot_discovery) -> tuple[MenuOption, PlotScale, bool, str]:
-    print("\n--- Menu ---")
+    print(f"\n{'-' * 25}")
     print(f"{MenuOption.PRINT_CAPTURE_SUMMARY.value}. Print Capture Summary")
     print(f"{MenuOption.PRINT_TOPICS.value}. Print Topics")
     print(f"{MenuOption.PRINT_STATS_COUNT.value}. Print Statistics (Count)")
