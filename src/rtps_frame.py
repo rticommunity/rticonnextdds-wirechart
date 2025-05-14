@@ -83,6 +83,7 @@ class RTPSSubmessage():
         self.topic = topic
         self.length = length
         self.seq_num_tuple = seq_number_tuple
+        self.sm_type = None
 
         #  TODO: Handle user data that doens't have a topic
         # Check for a state submessage type
@@ -100,6 +101,10 @@ class RTPSSubmessage():
                 elif "([" in sm_type:
                     # Unregister/Dispose for User Data
                     self.sm_type = SubmessageTypes.DATA_STATE
+                elif sm_type == "DATA_BATCH":
+                    self.sm_type = SubmessageTypes.DATA_BATCH
+                elif sm_type == "DATA_FRAG":
+                    self.sm_type = SubmessageTypes.DATA_FRAG
                 # else caught below
             else:
                 # If this is a HEARTBEAT and there are multiple submessages, this is a PIGGYBACK_HEARTBEAT
@@ -131,7 +136,9 @@ class RTPSSubmessage():
         If the submessage type is GAP, returns None."""
         if self.sm_type == SubmessageTypes.GAP:
             return None
-        elif "HEARTBEAT" in self.sm_type.name:
+
+        elif self.sm_type in (SubmessageTypes.HEARTBEAT, SubmessageTypes.PIGGYBACK_HEARTBEAT,
+                              SubmessageTypes.HEARTBEAT_BATCH, SubmessageTypes.PIGGYBACK_HEARTBEAT_BATCH):
             # SN stored as (first available SN, last available SN)
             return self.seq_num_tuple[1]
         else:
@@ -233,6 +240,11 @@ class RTPSFrame:
             if sm in ("HEARTBEAT", "GAP"):
                 # HEARTBEAT and GAP have 2 sequence numbers in the list
                 seq_num_tuple = (next(seq_number_iterator), next(seq_number_iterator))
+            elif sm == "DATA_BATCH":
+                seq_num_tuple = (next(seq_number_iterator), next(seq_number_iterator))
+            elif sm == "HEARTBEAT_BATCH":
+                # HEARTBEAT_BATCH has 4 sequence numbers in the list
+                seq_num_tuple = (next(seq_number_iterator), next(seq_number_iterator), next(seq_number_iterator), next(seq_number_iterator))
             else:
                 # For all other submessages, we only get one sequence number
                 seq_num_tuple = (next(seq_number_iterator),)
