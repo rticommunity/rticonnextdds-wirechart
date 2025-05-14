@@ -229,7 +229,7 @@ class RTPSCapture:
                 # Print progress every 10%
                 if (i + 1) % progress_interval == 0 or (i + 1) == total_frames:
                     percent = ((i + 1) * 100) // total_frames
-                    logger.always(f"Processing {percent}% complete")
+                    logger.info(f"Processing {percent}% complete")
         except subprocess.CalledProcessError as e:
             logger.error("Error running tshark.")
             raise e
@@ -275,16 +275,20 @@ class RTPSCapture:
                     # Not all submessages have a DST GUID, so we must only use the SRC GUID to key
                     # the SN dictionary.  Since the SN of a writer is not dependent on the reader,
                     # this approach is valid.
-                    sequence_numbers[guid_key[GUIDKey.GUID_SRC]] = sm.seq_num()
+                    sequence_numbers[guid_key] = sm.seq_num()
                 elif sm.sm_type in (SubmessageTypes.DATA, SubmessageTypes.DATA_FRAG, SubmessageTypes.DATA_BATCH):
                     # TODO: Discovery repairs?
                     # TODO: Durability repairs?
                     # Check if this submessage is some form of a repair
-                    if sm.seq_num() <= sequence_numbers[guid_key[GUIDKey.GUID_SRC]]:
+                    # TODO: < or <= ?  Multiple interfaces requires <
+                    if sm.seq_num() <= sequence_numbers[guid_key]:
                         # If this is a repair, there will be a GUID_DST, and we can key on the entire GUID_KEY
-                        if sm.seq_num() <= durability_repairs[guid_key]:
+                        if sm.seq_num() < durability_repairs[guid_key]:
                             sm.sm_type = SubmessageTypes.DATA_DURABILITY_REPAIR
                             frame_classification = FrameClassification.DURABLE_REPAIR
+                        elif sm.seq_num() == durability_repairs[guid_key]:
+                            # This is the very first sample, do nothing
+                            pass
                         else:
                             sm.sm_type = SubmessageTypes.DATA_REPAIR
                             frame_classification = FrameClassification.REPAIR
@@ -295,7 +299,7 @@ class RTPSCapture:
                     # repairs after this SN are considered standard repairs.
                     if sm.seq_num() > 0 and guid_key not in durability_repairs:
                         # Only add this for the first non-zero ACKNACK
-                        durability_repairs[guid_key] = sequence_numbers[guid_key[GUIDKey.GUID_SRC]]
+                        durability_repairs[guid_key] = sequence_numbers[guid_key]
 
                 frame_list.append({'topic': topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
 
