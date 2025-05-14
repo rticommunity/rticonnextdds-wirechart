@@ -29,13 +29,11 @@ from src.log_handler import logging
 from src.rtps_frame import InvalidPCAPDataException, RTPSFrame, SubmessageTypes
 from src.shared_utils import create_output_path
 
-class PlotScale(Enum):
-    LINEAR = 'linear'
-    LOGARITHMIC = 'log'
-
 logger = logging.getLogger(__name__)
 
-DISCOVERY_TOPIC = "DISCOVERY"
+class PlotScale(Enum):
+    LINEAR          = 'linear'
+    LOGARITHMIC     = 'log'
 
 class FrameClassification(IntEnum):
     STANDARD_FRAME  = 0
@@ -48,13 +46,23 @@ class GUIDKey(IntEnum):
     GUID_DST        = 2
     IP_DST          = 3
 
+DISCOVERY_TOPIC = "DISCOVERY"
+
+# tshark seems to return commands in a hierarchy, i.e. frame -> udp -> rtps so order matters
+PCAP_FIELDS = list(['frame.number',
+                    'ip.src', 'ip.dst', 'udp.length',
+                    'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',        # Writer GUID
+                    'rtps.guidPrefix.dst', 'rtps.sm.rdEntityId',        # Reader GUID
+                    'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader',
+                    'rtps.sm.id', '_ws.col.Info'])
+
 class RTPSCapture:
     """
     Represents a collection of RTPSFrame objects extracted from a PCAP file.
     Provides methods to manage and analyze the captured frames.
     """
 
-    def __init__(self, pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
+    def __init__(self, pcap_file, fields=PCAP_FIELDS, display_filter='rtps', start_frame=None, finish_frame=None, max_frames=None):
         """
         Initializes an empty RTPSCapture object.
         """

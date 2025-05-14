@@ -41,15 +41,7 @@ def main():
     if args.frame_range:
         start, finish = parse_range(args.frame_range)
 
-    # tshark seems to return commands in a hierarchy, i.e. frame -> udp -> rtps so order matters
-    pcap_fields = list(['frame.number',
-                        'ip.src', 'ip.dst', 'udp.length',
-                        'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',        # Writer GUID
-                        'rtps.guidPrefix.dst', 'rtps.sm.rdEntityId',        # Reader GUID
-                        'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader',
-                        'rtps.sm.id', '_ws.col.Info'])
-
-    rtps_frames = RTPSCapture(args.pcap, pcap_fields, 'rtps', start_frame=start, finish_frame=finish)
+    rtps_frames = RTPSCapture(args.pcap, start_frame=start, finish_frame=finish)
     rtps_frames.analyze_capture()  # Analyze the capture
 
     scale = PlotScale.LINEAR  # Default scale
