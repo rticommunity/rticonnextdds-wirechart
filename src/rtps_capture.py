@@ -14,6 +14,7 @@
 # Standard Library Imports
 import os
 import subprocess
+import pickle
 from collections import defaultdict
 from enum import Enum, IntEnum
 
@@ -25,16 +26,35 @@ from matplotlib.ticker import StrMethodFormatter
 
 # Local Application Imports
 from src.log_handler import logging
-from src.rtps_frame import InvalidPCAPDataException, RTPSFrame, SubmessageTypes, FrameTypes
-from src.shared_utils import create_output_path, guid_prefix
-
-class PlotScale(Enum):
-    LINEAR = 'linear'
-    LOGARITHMIC = 'log'
+from src.rtps_frame import InvalidPCAPDataException, RTPSFrame, SubmessageTypes
+from src.shared_utils import create_output_path
 
 logger = logging.getLogger(__name__)
 
+class PlotScale(Enum):
+    LINEAR          = 'linear'
+    LOGARITHMIC     = 'log'
+
+class FrameClassification(IntEnum):
+    STANDARD_FRAME  = 0
+    REPAIR          = 1
+    DURABLE_REPAIR  = 2
+
+class GUIDKey(IntEnum):
+    GUID_SRC        = 0
+    IP_SRC          = 1
+    GUID_DST        = 2
+    IP_DST          = 3
+
 DISCOVERY_TOPIC = "DISCOVERY"
+
+# tshark seems to return commands in a hierarchy, i.e. frame -> udp -> rtps so order matters
+PCAP_FIELDS = list(['frame.number',
+                    'ip.src', 'ip.dst', 'udp.length',
+                    'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',        # Writer GUID
+                    'rtps.guidPrefix.dst', 'rtps.sm.rdEntityId',        # Reader GUID
+                    'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader',
+                    'rtps.sm.id', 'rtps.param.service_kind', '_ws.col.Info'])
 
 class RTPSCapture:
     """
@@ -42,7 +62,7 @@ class RTPSCapture:
     Provides methods to manage and analyze the captured frames.
     """
 
-    def __init__(self, pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
+    def __init__(self, pcap_file, fields=PCAP_FIELDS, display_filter='rtps', start_frame=None, finish_frame=None, max_frames=None):
         """
         Initializes an empty RTPSCapture object.
         """
@@ -67,6 +87,29 @@ class RTPSCapture:
             return packet
         else:
             raise StopIteration
+
+    def __eq__(self, value):
+        if isinstance(value, RTPSCapture):
+            return (#self.frames == value.frames and
+                    self.graph_edges == value.graph_edges and
+                    self.df.equals(value.df))
+        else:
+            return False
+
+    def partial_eq(self, value):
+        if not isinstance(value, RTPSCapture):
+            return NotImplemented
+        return (self.graph_edges == value.graph_edges and
+                self.df.equals(value.df))
+
+    def save(self, filename):
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f)
+
+    @staticmethod
+    def load(filename):
+        with open(filename, 'rb') as f:
+            return pickle.load(f)
 
     def add_frame(self, frame):
         """
@@ -197,7 +240,7 @@ class RTPSCapture:
                 # Print progress every 10%
                 if (i + 1) % progress_interval == 0 or (i + 1) == total_frames:
                     percent = ((i + 1) * 100) // total_frames
-                    logger.always(f"Processing {percent}% complete")
+                    logger.info(f"Processing {percent}% complete")
         except subprocess.CalledProcessError as e:
             logger.error("Error running tshark.")
             raise e
@@ -238,7 +281,8 @@ class RTPSCapture:
             if FrameTypes.ROUTING_SERVICE in frame.frame_type:
                 # Add the GUID prefix to the set of Routing Service GUID prefixes
                 self.rs_guid_prefix.add(frame.guid_prefix_and_entity_id()[0])
-            guid_key = (frame.guid_src, frame.guid_dst)
+            # Create a unique key using the GUIDs and IP addresses.  This is required in the event multiple interfaces are used.
+            guid_key = (frame.guid_src, frame.ip_src, frame.guid_dst, frame.ip_dst)
             for sm in frame:
                 topic = sm.topic
                 # TODO: This method doesn't work for best effort.  A better approach would be to:
@@ -246,21 +290,24 @@ class RTPSCapture:
                 # 2. For DATA(w) SMs, save guid_key to graph_edges[topic]
                 # 3. Test with square_best_effort.pcapng
                 # 4. May need to understand better, this approach may not be correct
-                if (FrameTypes.DISCOVERY not in frame.frame_type) and all(x is not None for x in guid_key):
-                    self.graph_edges[topic].add(guid_key)
-                if FrameTypes.DISCOVERY in frame.frame_type:
+                if not frame.discovery_frame and all([frame.guid_src, frame.guid_dst]):
+                    self.graph_edges[topic].add((frame.guid_src, frame.guid_dst))
+                if frame.discovery_frame:
                     topic = DISCOVERY_TOPIC
                 # TODO: Verify not to do this with GAP
                 if "HEARTBEAT" in sm.sm_type.name:
                     # Not all submessages have a DST GUID, so we must only use the SRC GUID to key
                     # the SN dictionary.  Since the SN of a writer is not dependent on the reader,
                     # this approach is valid.
-                    sequence_numbers[guid_key[GUIDKey.GUID_SRC]] = sm.seq_num()
+                    sequence_numbers[guid_key] = sm.seq_num()
                 elif sm.sm_type in (SubmessageTypes.DATA, SubmessageTypes.DATA_FRAG, SubmessageTypes.DATA_BATCH):
                     # TODO: Discovery repairs?
                     # TODO: Durability repairs?
                     # Check if this submessage is some form of a repair
-                    if sm.seq_num() <= sequence_numbers[guid_key[GUIDKey.GUID_SRC]]:
+                    if sm.seq_num() <= max(sequence_numbers[guid_key],
+                                           # Not all HEARTBEATs have a GUID_DST, so we must consider the both
+                                           # cases where the GUID_DST is None and where it is not.
+                                           sequence_numbers[guid_key[GUIDKey.GUID_SRC], guid_key[GUIDKey.IP_SRC], None, guid_key[GUIDKey.IP_DST]]):
                         # If this is a repair, there will be a GUID_DST, and we can key on the entire GUID_KEY
                         if sm.seq_num() <= durability_repairs[guid_key]:
                             sm.sm_type = SubmessageTypes.DATA_DURABILITY_REPAIR
@@ -275,7 +322,7 @@ class RTPSCapture:
                     # repairs after this SN are considered standard repairs.
                     if sm.seq_num() > 0 and guid_key not in durability_repairs:
                         # Only add this for the first non-zero ACKNACK
-                        durability_repairs[guid_key] = sequence_numbers[guid_key[GUIDKey.GUID_SRC]]
+                        durability_repairs[guid_key] = sequence_numbers[guid_key]
 
                 frame_list.append({'topic': topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
 

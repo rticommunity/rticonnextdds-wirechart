@@ -15,13 +15,15 @@
 import logging
 import os
 
-ALWAYS = logging.CRITICAL + 10
+TEST_ERROR = logging.CRITICAL + 10
+ALWAYS = TEST_ERROR + 10
 
 # Add the custom level name to the logging module
+logging.addLevelName(TEST_ERROR, "TEST_ERROR")
 logging.addLevelName(ALWAYS, "ALWAYS")
 
 # Configure the logger
-def configure_root_logger(log_file='output/wirechart.log'):
+def configure_root_logger(log_file='output/wirechart.log', console_level=logging.WARNING, file_level=logging.INFO):
     log_dir = os.path.dirname(log_file)
     if log_dir and not os.path.exists(log_dir):
         os.makedirs(log_dir)
@@ -32,11 +34,11 @@ def configure_root_logger(log_file='output/wirechart.log'):
     if not root_logger.handlers:
         # Console handler
         ch = logging.StreamHandler()
-        ch.setLevel(logging.WARNING)
+        ch.setLevel(console_level)
 
         # File handler
         fh = logging.FileHandler(log_file, mode='w')
-        fh.setLevel(logging.INFO)
+        fh.setLevel(file_level)
 
         # Formatter
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -54,3 +56,11 @@ def always(self, message, *args, **kws):
 
 # Add the custom function to the Logger class
 logging.Logger.always = always
+
+# Define the custom log function
+def test_error(self, message, *args, **kws):
+    if self.isEnabledFor(TEST_ERROR):
+        self._log(TEST_ERROR, message, args, **kws)
+
+# Add the custom function to the Logger class
+logging.Logger.test_error = test_error

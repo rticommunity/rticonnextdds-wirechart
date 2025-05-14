@@ -12,6 +12,7 @@
 ##############################################################################################
 
 # Standard Library Imports
+import ipaddress
 import re
 from enum import IntEnum, auto, Flag
 
@@ -90,6 +91,7 @@ class RTPSSubmessage():
         self.topic = topic
         self.length = length
         self.seq_num_tuple = seq_number_tuple
+        self.sm_type = None
 
         #  TODO: Handle user data that doens't have a topic
         # Check for a state submessage type
@@ -107,6 +109,10 @@ class RTPSSubmessage():
                 elif "([" in sm_type:
                     # Unregister/Dispose for User Data
                     self.sm_type = SubmessageTypes.DATA_STATE
+                elif sm_type == "DATA_BATCH":
+                    self.sm_type = SubmessageTypes.DATA_BATCH
+                elif sm_type == "DATA_FRAG":
+                    self.sm_type = SubmessageTypes.DATA_FRAG
                 # else caught below
             else:
                 # If this is a HEARTBEAT and there are multiple submessages, this is a PIGGYBACK_HEARTBEAT
@@ -124,13 +130,23 @@ class RTPSSubmessage():
             logger.error(f"Invalid submessage type: {self.sm_type}")
             raise InvalidPCAPDataException(f"Invalid submessage type: {self.sm_type}.", logging.ERROR)
 
+    def __eq__(self, other):
+        if isinstance(other, RTPSSubmessage):
+            return (self.sm_type == other.sm_type and
+                    self.topic == other.topic and
+                    self.length == other.length and
+                    self.seq_num_tuple == other.seq_num_tuple)
+        return False
+
     def seq_num(self):
         """
         Returns the sequence number of the submessage.
         If the submessage type is GAP, returns None."""
         if self.sm_type == SubmessageTypes.GAP:
             return None
-        elif "HEARTBEAT" in self.sm_type.name:
+
+        elif self.sm_type in (SubmessageTypes.HEARTBEAT, SubmessageTypes.PIGGYBACK_HEARTBEAT,
+                              SubmessageTypes.HEARTBEAT_BATCH, SubmessageTypes.PIGGYBACK_HEARTBEAT_BATCH):
             # SN stored as (first available SN, last available SN)
             return self.seq_num_tuple[1]
         else:
@@ -199,7 +215,8 @@ class RTPSFrame:
         self.frame_number = int(frame_data.get('frame.number', 0))
         info_column = frame_data.get('_ws.col.Info', '')
         self.sm_list = list()
-        self.guid_src, self.guid_dst, entity = None, None, None # TODO: Remove entity?
+        self.ip_src, self.ip_dst = None, None
+        self.guid_src, self.guid_dst = None, None
         self.frame_type = FrameTypes.UNSET
 
         if not frame_data.get('rtps.guidPrefix.src', None):
@@ -207,6 +224,14 @@ class RTPSFrame:
 
         if "Malformed Packet" in info_column:
             raise InvalidPCAPDataException(f"Malformed Packet: {info_column}.", log_level=logging.WARNING)
+
+        try:
+            self.ip_src = int(ipaddress.ip_address(frame_data.get('ip.src')))
+            self.ip_dst = int(ipaddress.ip_address(frame_data.get('ip.dst')))
+        except ValueError:
+            # TODO: This can probably be better (one try block for each command) but good enough for now.  Maybe throw here?
+            self.ip_src = None
+            self.ip_dst = None
 
         entity_id_str , entity_id = get_entity_id(frame_data.get('rtps.sm.wrEntityId', None))
         if entity_id is None:
@@ -238,6 +263,11 @@ class RTPSFrame:
             if sm in ("HEARTBEAT", "GAP"):
                 # HEARTBEAT and GAP have 2 sequence numbers in the list
                 seq_num_tuple = (next(seq_number_iterator), next(seq_number_iterator))
+            elif sm == "DATA_BATCH":
+                seq_num_tuple = (next(seq_number_iterator), next(seq_number_iterator))
+            elif sm == "HEARTBEAT_BATCH":
+                # HEARTBEAT_BATCH has 4 sequence numbers in the list
+                seq_num_tuple = (next(seq_number_iterator), next(seq_number_iterator), next(seq_number_iterator), next(seq_number_iterator))
             else:
                 # For all other submessages, we only get one sequence number
                 seq_num_tuple = (next(seq_number_iterator),)
@@ -267,6 +297,15 @@ class RTPSFrame:
             return packet
         else:
             raise StopIteration
+
+    def __eq__(self, value):
+        if isinstance(value, RTPSFrame):
+            return (self.frame_number == value.frame_number and
+                    self.guid_src == value.guid_src and
+                    self.guid_dst == value.guid_dst and
+                    self.sm_list == value.sm_list and
+                    self.discovery_frame == value.discovery_frame)
+        return False
 
     def add_submessage(self, sm):
         """
