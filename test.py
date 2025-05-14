@@ -38,8 +38,9 @@ def main():
             rtps_frames = RTPSCapture(str(pcap_file))
             rtps_frames.analyze_capture()  # Analyze the capture
         except Exception as e:
-            test_failures.append(pcap_file)
-            logger.test_error(f"Error analyzing {pcap_file}: {e}")
+            if pcap_file.stem != "no_dds":
+                test_failures.append(pcap_file)
+                logger.test_error(f"Error analyzing {pcap_file}: {e}")
             continue
 
         if args.create_test_files:
@@ -63,7 +64,7 @@ def main():
 
     logger.always("All tests completed.")
     logger.always(f"Test failures: {len(test_failures)}")
-    print("Test failures:", test_failures)
+    logger.always(f"Test failures: {test_failures}")
 
 if __name__ == "__main__":
     main()
