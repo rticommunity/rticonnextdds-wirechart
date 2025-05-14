@@ -304,7 +304,7 @@ class RTPSFrame:
                     self.guid_src == value.guid_src and
                     self.guid_dst == value.guid_dst and
                     self.sm_list == value.sm_list and
-                    self.discovery_frame == value.discovery_frame)
+                    self.frame_type == value.frame_type)
         return False
 
     def add_submessage(self, sm):
@@ -323,7 +323,7 @@ class RTPSFrame:
         """
         Returns a list of unique topics from the RTPSFrame object.
         """
-        if FrameTypes.DISCOVERY in self.frame_type:
+        if FrameTypes.DISCOVERY not in self.frame_type:
             return set()
 
         return set(sm.topic for sm in self.sm_list if sm.topic is not None)

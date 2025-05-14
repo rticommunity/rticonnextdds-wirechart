@@ -26,25 +26,14 @@ from matplotlib.ticker import StrMethodFormatter
 
 # Local Application Imports
 from src.log_handler import logging
-from src.rtps_frame import InvalidPCAPDataException, RTPSFrame, SubmessageTypes
-from src.shared_utils import create_output_path
+from src.rtps_frame import InvalidPCAPDataException, RTPSFrame, SubmessageTypes, FrameTypes
+from src.shared_utils import create_output_path, guid_prefix
 
 logger = logging.getLogger(__name__)
 
 class PlotScale(Enum):
     LINEAR          = 'linear'
     LOGARITHMIC     = 'log'
-
-class FrameClassification(IntEnum):
-    STANDARD_FRAME  = 0
-    REPAIR          = 1
-    DURABLE_REPAIR  = 2
-
-class GUIDKey(IntEnum):
-    GUID_SRC        = 0
-    IP_SRC          = 1
-    GUID_DST        = 2
-    IP_DST          = 3
 
 DISCOVERY_TOPIC = "DISCOVERY"
 
@@ -99,7 +88,7 @@ class RTPSCapture:
     def partial_eq(self, value):
         if not isinstance(value, RTPSCapture):
             return NotImplemented
-        return (self.graph_edges == value.graph_edges and
+        return (#self.graph_edges == value.graph_edges and
                 self.df.equals(value.df))
 
     def save(self, filename):
@@ -257,13 +246,15 @@ class RTPSCapture:
         """
         # Declare the SendType and GUIDKey enums for local scope
         class SendType(IntEnum):
-            STANDARD = 0
-            REPAIR = 1
-            DURABLE_REPAIR = 2
+            STANDARD        = 0
+            REPAIR          = 1
+            DURABLE_REPAIR  = 2
 
         class GUIDKey(IntEnum):
-            GUID_SRC = 0
-            GUID_DST = 1
+            GUID_SRC        = 0
+            IP_SRC          = 1
+            GUID_DST        = 2
+            IP_DST          = 3
 
         logger.always("Analyzing capture data...")
 
@@ -290,9 +281,9 @@ class RTPSCapture:
                 # 2. For DATA(w) SMs, save guid_key to graph_edges[topic]
                 # 3. Test with square_best_effort.pcapng
                 # 4. May need to understand better, this approach may not be correct
-                if not frame.discovery_frame and all([frame.guid_src, frame.guid_dst]):
+                if (FrameTypes.DISCOVERY in frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
                     self.graph_edges[topic].add((frame.guid_src, frame.guid_dst))
-                if frame.discovery_frame:
+                if FrameTypes.DISCOVERY in frame.frame_type:
                     topic = DISCOVERY_TOPIC
                 # TODO: Verify not to do this with GAP
                 if "HEARTBEAT" in sm.sm_type.name:

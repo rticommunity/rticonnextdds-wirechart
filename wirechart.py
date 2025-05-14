@@ -31,7 +31,7 @@ def main():
     parser.add_argument('--frame-range', type=str, default=None, help='Specify a range of frames to analyze in the format START:FINISH.')
     args = parser.parse_args()
     # Configure the logger
-    configure_root_logger(create_output_path(args.pcap, args.output, 'log'))
+    configure_root_logger(create_output_path(args.pcap, args.output, 'log'), file_level=logging.DEBUG)
 
     logger.debug(f"Command Arguments: {args}")
     get_tshark_version()
