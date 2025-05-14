@@ -12,6 +12,7 @@
 ##############################################################################################
 
 # Standard Library Imports
+import ipaddress
 import re
 from enum import IntEnum, auto
 
@@ -207,7 +208,8 @@ class RTPSFrame:
         self.frame_number = int(frame_data.get('frame.number', 0))
         info_column = frame_data.get('_ws.col.Info', '')
         self.sm_list = list()
-        self.guid_src, self.guid_dst, entity = None, None, None
+        self.ip_src, self.ip_dst = None, None
+        self.guid_src, self.guid_dst = None, None
         self.discovery_frame = False
 
         if not frame_data.get('rtps.guidPrefix.src', None):
@@ -215,6 +217,14 @@ class RTPSFrame:
 
         if "Malformed Packet" in info_column:
             raise InvalidPCAPDataException(f"Malformed Packet: {info_column}.", log_level=logging.WARNING)
+
+        try:
+            self.ip_src = ipaddress.ip_address(frame_data.get('ip.src'))
+            self.ip_dst = ipaddress.ip_address(frame_data.get('ip.dst'))
+        except ValueError:
+            # TODO: This can probably be better (one try block for each command) but good enough for now.  Maybe throw here?
+            self.ip_src = None
+            self.ip_dst = None
 
         entity_id_str , entity_id = get_entity_id(frame_data.get('rtps.sm.wrEntityId', None))
         if entity_id is None:

@@ -258,7 +258,8 @@ class RTPSCapture:
                 logger.error(f"Frame {frame.frame_number} has no GUID source. Exiting.")
                 # TODO: Could maybe continue here, but exiting for now
                 raise InvalidPCAPDataException(f"Frame {frame.frame_number} has no GUID source. Exiting.")
-            guid_key = (frame.guid_src, frame.guid_dst)
+            # Create a unique key using the GUIDs and IP addresses.  This is required in the event multiple interfaces are used.
+            guid_key = (frame.guid_src, frame.ip_src, frame.guid_dst, frame.ip_dst)
             for sm in frame:
                 topic = sm.topic
                 # TODO: This method doesn't work for best effort.  A better approach would be to:
