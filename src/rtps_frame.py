@@ -219,8 +219,8 @@ class RTPSFrame:
             raise InvalidPCAPDataException(f"Malformed Packet: {info_column}.", log_level=logging.WARNING)
 
         try:
-            self.ip_src = ipaddress.ip_address(frame_data.get('ip.src'))
-            self.ip_dst = ipaddress.ip_address(frame_data.get('ip.dst'))
+            self.ip_src = int(ipaddress.ip_address(frame_data.get('ip.src')))
+            self.ip_dst = int(ipaddress.ip_address(frame_data.get('ip.dst')))
         except ValueError:
             # TODO: This can probably be better (one try block for each command) but good enough for now.  Maybe throw here?
             self.ip_src = None

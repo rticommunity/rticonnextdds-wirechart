@@ -38,13 +38,15 @@ logger = logging.getLogger(__name__)
 DISCOVERY_TOPIC = "DISCOVERY"
 
 class FrameClassification(IntEnum):
-    STANDARD_FRAME = 0
-    REPAIR = 1
-    DURABLE_REPAIR = 2
+    STANDARD_FRAME  = 0
+    REPAIR          = 1
+    DURABLE_REPAIR  = 2
 
 class GUIDKey(IntEnum):
-    GUID_SRC = 0
-    GUID_DST = 1
+    GUID_SRC        = 0
+    IP_SRC          = 1
+    GUID_DST        = 2
+    IP_DST          = 3
 
 class RTPSCapture:
     """
@@ -267,8 +269,8 @@ class RTPSCapture:
                 # 2. For DATA(w) SMs, save guid_key to graph_edges[topic]
                 # 3. Test with square_best_effort.pcapng
                 # 4. May need to understand better, this approach may not be correct
-                if not frame.discovery_frame and all(x is not None for x in guid_key):
-                    self.graph_edges[topic].add(guid_key)
+                if not frame.discovery_frame and all([frame.guid_src, frame.guid_dst]):
+                    self.graph_edges[topic].add((frame.guid_src, frame.guid_dst))
                 if frame.discovery_frame:
                     topic = DISCOVERY_TOPIC
                 # TODO: Verify not to do this with GAP
@@ -281,7 +283,10 @@ class RTPSCapture:
                     # TODO: Discovery repairs?
                     # TODO: Durability repairs?
                     # Check if this submessage is some form of a repair
-                    if sm.seq_num() <= sequence_numbers[guid_key]:
+                    if sm.seq_num() <= max(sequence_numbers[guid_key],
+                                           # Not all HEARTBEATs have a GUID_DST, so we must consider the both
+                                           # cases where the GUID_DST is None and where it is not.
+                                           sequence_numbers[guid_key[GUIDKey.GUID_SRC], guid_key[GUIDKey.IP_SRC], None, guid_key[GUIDKey.IP_DST]]):
                         # If this is a repair, there will be a GUID_DST, and we can key on the entire GUID_KEY
                         if sm.seq_num() <= durability_repairs[guid_key]:
                             sm.sm_type = SubmessageTypes.DATA_DURABILITY_REPAIR
