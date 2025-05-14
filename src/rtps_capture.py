@@ -280,15 +280,11 @@ class RTPSCapture:
                     # TODO: Discovery repairs?
                     # TODO: Durability repairs?
                     # Check if this submessage is some form of a repair
-                    # TODO: < or <= ?  Multiple interfaces requires <
                     if sm.seq_num() <= sequence_numbers[guid_key]:
                         # If this is a repair, there will be a GUID_DST, and we can key on the entire GUID_KEY
-                        if sm.seq_num() < durability_repairs[guid_key]:
+                        if sm.seq_num() <= durability_repairs[guid_key]:
                             sm.sm_type = SubmessageTypes.DATA_DURABILITY_REPAIR
                             frame_classification = FrameClassification.DURABLE_REPAIR
-                        elif sm.seq_num() == durability_repairs[guid_key]:
-                            # This is the very first sample, do nothing
-                            pass
                         else:
                             sm.sm_type = SubmessageTypes.DATA_REPAIR
                             frame_classification = FrameClassification.REPAIR
