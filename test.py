@@ -11,7 +11,7 @@ logger = logging.getLogger('test')
 DATA_DIR = os.path.join(os.path.dirname(__file__))
 
 def main():
-    configure_root_logger('./output/test.log', console_level=ALWAYS, file_level=logging.ERROR)
+    configure_root_logger('./test_output/test.log', console_level=ALWAYS, file_level=logging.DEBUG)
     parser = argparse.ArgumentParser(description="Test RTPSCapture pickle and equality.")
     parser.add_argument("--create-test-files", action="store_true", help="Create .pkl test files from .pcap files")
     parser.add_argument("--partial-compare", action="store_true", help="Only compare the dataframe and RS GUIDs")
@@ -55,6 +55,8 @@ def main():
             else:
                 test_result = rtps_frames == test_frames
             if not test_result:
+                test_frames.save_to_excel('base_' + pcap_file.stem, 'test_output')
+                rtps_frames.save_to_excel('test_' + pcap_file.stem, 'test_output')
                 test_failures.append(pcap_file)
                 logger.test_error(f"Test failed: {pcap_file} and {pkl_file} are not equal.")
             else:
