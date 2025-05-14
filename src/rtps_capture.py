@@ -281,7 +281,7 @@ class RTPSCapture:
                 # 2. For DATA(w) SMs, save guid_key to graph_edges[topic]
                 # 3. Test with square_best_effort.pcapng
                 # 4. May need to understand better, this approach may not be correct
-                if (FrameTypes.DISCOVERY in frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
+                if (FrameTypes.DISCOVERY not in frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
                     self.graph_edges[topic].add((frame.guid_src, frame.guid_dst))
                 if FrameTypes.DISCOVERY in frame.frame_type:
                     topic = DISCOVERY_TOPIC
