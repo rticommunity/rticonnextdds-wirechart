@@ -14,6 +14,7 @@
 # Standard Library Imports
 import os
 import subprocess
+import pickle
 from collections import defaultdict
 from enum import Enum, IntEnum
 
@@ -75,6 +76,29 @@ class RTPSCapture:
             return packet
         else:
             raise StopIteration
+
+    def __eq__(self, value):
+        if isinstance(value, RTPSCapture):
+            return (#self.frames == value.frames and
+                    self.graph_edges == value.graph_edges and
+                    self.df.equals(value.df))
+        else:
+            return False
+
+    def partial_eq(self, value):
+        if not isinstance(value, RTPSCapture):
+            return NotImplemented
+        return (self.graph_edges == value.graph_edges and
+                self.df.equals(value.df))
+
+    def save(self, filename):
+        with open(filename, 'wb') as f:
+            pickle.dump(self, f)
+
+    @staticmethod
+    def load(filename):
+        with open(filename, 'rb') as f:
+            return pickle.load(f)
 
     def add_frame(self, frame):
         """

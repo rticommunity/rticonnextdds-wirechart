@@ -117,6 +117,14 @@ class RTPSSubmessage():
             logger.error(f"Invalid submessage type: {self.sm_type}")
             raise InvalidPCAPDataException(f"Invalid submessage type: {self.sm_type}.", logging.ERROR)
 
+    def __eq__(self, other):
+        if isinstance(other, RTPSSubmessage):
+            return (self.sm_type == other.sm_type and
+                    self.topic == other.topic and
+                    self.length == other.length and
+                    self.seq_num_tuple == other.seq_num_tuple)
+        return False
+
     def seq_num(self):
         """
         Returns the sequence number of the submessage.
@@ -254,6 +262,15 @@ class RTPSFrame:
             return packet
         else:
             raise StopIteration
+
+    def __eq__(self, value):
+        if isinstance(value, RTPSFrame):
+            return (self.frame_number == value.frame_number and
+                    self.guid_src == value.guid_src and
+                    self.guid_dst == value.guid_dst and
+                    self.sm_list == value.sm_list and
+                    self.discovery_frame == value.discovery_frame)
+        return False
 
     def add_submessage(self, sm):
         """
