@@ -23,7 +23,7 @@ logging.addLevelName(TEST_ERROR, "TEST_ERROR")
 logging.addLevelName(ALWAYS, "ALWAYS")
 
 # Configure the logger
-def configure_root_logger(log_file='output/wirechart.log', console_level=logging.WARNING, file_level=logging.INFO):
+def configure_root_logger(log_file='output/wirechart.log', console_level=logging.ERROR, file_level=logging.INFO):
     log_dir = os.path.dirname(log_file)
     if log_dir and not os.path.exists(log_dir):
         os.makedirs(log_dir)

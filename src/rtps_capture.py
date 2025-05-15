@@ -26,8 +26,9 @@ from matplotlib.ticker import StrMethodFormatter
 
 # Local Application Imports
 from src.log_handler import logging
-from src.rtps_frame import InvalidPCAPDataException, RTPSFrame, SubmessageTypes, FrameTypes
+from src.rtps_frame import InvalidPCAPDataException, NoDiscoveryDataException, RTPSFrame, FrameTypes
 from src.shared_utils import create_output_path, guid_prefix
+from src.submessage_types import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
 
 logger = logging.getLogger(__name__)
 
@@ -215,24 +216,36 @@ class RTPSCapture:
             total_frames = len(frame_data)
             progress_interval = max(total_frames // 10, 1)  # Avoid division by zero for small datasets
 
+            frame_errors, frame_warnings, discovery_warnings = 0, 0, 0
             for i, raw_frame in enumerate(frame_data):
                 values = raw_frame.split('\t')
                 frame = {field: value for field, value in zip(fields, values)}
                 try:
                     self.add_frame(RTPSFrame(frame))  # Create a RTPSFrame object for each record
                 except InvalidPCAPDataException as e:
+                    if e.log_level == logging.ERROR:
+                        frame_errors += 1
+                    elif e.log_level == logging.WARNING:
+                        frame_warnings += 1
                     logger.log(e.log_level, f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
                     continue
+                except NoDiscoveryDataException as e:
+                    discovery_warnings += 1
+                    logger.warning(f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
+                    continue
                 except KeyError as e:
+                    frame_errors += 1
                     logger.debug(f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
                     continue
                 # Print progress every 10%
                 if (i + 1) % progress_interval == 0 or (i + 1) == total_frames:
                     percent = ((i + 1) * 100) // total_frames
-                    logger.info(f"Processing {percent}% complete")
+                    logger.always(f"Processing {percent}% complete")
         except subprocess.CalledProcessError as e:
             logger.error("Error running tshark.")
             raise e
+
+        logger.always(f"Discovery warnings: {discovery_warnings} | Frame warnings: {frame_warnings} | Frame errors: {frame_errors}")
 
     def analyze_capture(self):
         """
@@ -286,12 +299,12 @@ class RTPSCapture:
                 if FrameTypes.DISCOVERY in frame.frame_type:
                     topic = DISCOVERY_TOPIC
                 # TODO: Verify not to do this with GAP
-                if "HEARTBEAT" in sm.sm_type.name:
+                if sm.sm_type & SubmessageTypes.HEARTBEAT:
                     # Not all submessages have a DST GUID, so we must only use the SRC GUID to key
                     # the SN dictionary.  Since the SN of a writer is not dependent on the reader,
                     # this approach is valid.
                     sequence_numbers[guid_key] = sm.seq_num()
-                elif sm.sm_type in (SubmessageTypes.DATA, SubmessageTypes.DATA_FRAG, SubmessageTypes.DATA_BATCH):
+                elif sm.sm_type & SubmessageTypes.DATA:
                     # TODO: Discovery repairs?
                     # TODO: Durability repairs?
                     # Check if this submessage is some form of a repair
@@ -301,13 +314,13 @@ class RTPSCapture:
                                            sequence_numbers[guid_key[GUIDKey.GUID_SRC], guid_key[GUIDKey.IP_SRC], None, guid_key[GUIDKey.IP_DST]]):
                         # If this is a repair, there will be a GUID_DST, and we can key on the entire GUID_KEY
                         if sm.seq_num() <= durability_repairs[guid_key]:
-                            sm.sm_type = SubmessageTypes.DATA_DURABILITY_REPAIR
+                            sm.sm_type |= SubmessageTypes.DURABLE
                             frame_classification = SendType.DURABLE_REPAIR
                         else:
-                            sm.sm_type = SubmessageTypes.DATA_REPAIR
+                            sm.sm_type |= SubmessageTypes.REPAIR
                             frame_classification = SendType.REPAIR
                 # TODO: Add support for Discovery repairs?
-                elif sm.sm_type == SubmessageTypes.ACKNACK:
+                elif sm.sm_type & SubmessageTypes.ACKNACK:
                     # Record the writer SN when the first non-zero ACKNACK is received.  All repairs with
                     # a SN less than or equal to this number are considered durability repairs while all
                     # repairs after this SN are considered standard repairs.
@@ -315,7 +328,7 @@ class RTPSCapture:
                         # Only add this for the first non-zero ACKNACK
                         durability_repairs[guid_key] = sequence_numbers[guid_key]
 
-                frame_list.append({'topic': topic, 'sm': sm.sm_type.name, 'count': 1, 'length': sm.length})
+                frame_list.append({'topic': topic, 'sm': str(sm.sm_type), 'count': 1, 'length': sm.length})
 
             if frame_classification > SendType.STANDARD:
                 logger.info(f"Frame {frame.frame_number} classified as {frame_classification.name}.")
@@ -330,17 +343,17 @@ class RTPSCapture:
         self.df = self.df.groupby(['topic', 'sm'], as_index=False).agg({'count': 'sum', 'length': 'sum'})
 
         # Ensure all unique topics are included in the DataFrame
-        def include_missing_topics_and_sm(df, all_topics, sm_start, sm_end):
+        def include_missing_topics_and_sm(df, all_topics, sm_list):
             missing_list = []
             for topic in all_topics:
-                for sm_type in SubmessageTypes.subset(start = sm_start, end = sm_end):
-                    if not ((df['topic'] == topic) & (df['sm'] == sm_type.name)).any():
-                        missing_list.append({'topic': topic, 'sm': sm_type.name, 'count': 0, 'length': 0})
+                for sm_type in sm_list:
+                    if not ((df['topic'] == topic) & (df['sm'] == str(sm_type))).any():
+                        missing_list.append({'topic': topic, 'sm': str(sm_type), 'count': 0, 'length': 0})
             return missing_list
 
         all_rows = []
-        all_rows.extend(include_missing_topics_and_sm(self.df, {DISCOVERY_TOPIC}, SubmessageTypes.DATA_P, SubmessageTypes.DISCOVERY_STATE))
-        all_rows.extend(include_missing_topics_and_sm(self.df, self.list_all_topics(), SubmessageTypes.DATA, SubmessageTypes.DATA_STATE))
+        all_rows.extend(include_missing_topics_and_sm(self.df, {DISCOVERY_TOPIC}, list_combinations_by_flag(SubmessageTypes.DISCOVERY)))
+        all_rows.extend(include_missing_topics_and_sm(self.df, self.list_all_topics(), list_combinations_by_flag(SubmessageTypes.DISCOVERY, negate=True)))
 
         # Add missing rows with a count of 0 and length of 0
         if all_rows:
@@ -350,7 +363,7 @@ class RTPSCapture:
         # Create an ordered categorical column using enum member names
         self.df['sm'] = pd.Categorical(
             self.df['sm'],
-            categories=[member.name for member in SubmessageTypes],
+            categories=[str(s) for s in SUBMESSAGE_COMBINATIONS],
             ordered=True)
 
         # Sort and reset index
@@ -470,11 +483,11 @@ class RTPSCapture:
         # Calculate counts for each submessage type
         submessage_counts = self.df.groupby('sm', observed=False)['count'].sum()
         print(f"{" " * 2}Submessage counts:")
-        for submsg in SubmessageTypes.subset_names():
+        for submsg in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
             if submsg in submessage_counts:
                 print(f"{" " * 4}{submsg}: {submessage_counts[submsg]}")
         for submsg, count in submessage_counts.items():
-            if submsg not in SubmessageTypes.subset_names():
+            if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
                 print(f"  {submsg}: {count}")
         print()
 
@@ -498,11 +511,11 @@ class RTPSCapture:
         submessage_lengths = self.df.groupby('sm', observed=False)['length'].sum()
         print(f"{" " * 2}Submessage lengths:")
         # Get all submessage types
-        for submsg in SubmessageTypes.subset_names():
+        for submsg in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
             if submsg in submessage_lengths:
                 print(f"{" " * 4}{submsg}: {submessage_lengths[submsg]:,} bytes")
         for submsg, length in submessage_lengths.items():
-            if submsg not in SubmessageTypes.subset_names():
+            if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
                 print(f"{" " * 4}{submsg}: {length:,} bytes")
         print()
 
@@ -542,8 +555,8 @@ class RTPSCapture:
         pivot_df = df.pivot(index='topic', columns='sm', values=metric).fillna(0)
 
         # Ensure the columns (submessages) are ordered based on SubmessageTypes
-        submessage_order = SubmessageTypes.subset_names(
-            start=SubmessageTypes.DATA_P if include_discovery else SubmessageTypes.DATA)  # Get the desired order of submessages
+        submessage_order = [str(s) for s in (SUBMESSAGE_COMBINATIONS if include_discovery
+            else list_combinations_by_flag(SubmessageTypes.DISCOVERY, negate=True))]
         pivot_df = pivot_df.reindex(columns=submessage_order, fill_value=0)
 
         # Filter out topics with no submessages (all values are zero)

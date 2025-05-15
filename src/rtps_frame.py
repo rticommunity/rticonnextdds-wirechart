@@ -19,52 +19,15 @@ from enum import IntEnum, auto, Flag
 # Local Application Imports
 from src.log_handler import logging
 from src.shared_utils import guid_prefix
+from src.submessage_types import SubmessageTypes
 
 logger = logging.getLogger(__name__)
 
 class FrameTypes(Flag):
-    UNSET =             0b0000
-    USER_DATA =         0b0001
-    DISCOVERY =         0b0010
-    ROUTING_SERVICE =   0b0100
-
-class SubmessageTypes(IntEnum):
-    def _generate_next_value_(name, start, count, last_values):
-        return count  # Start from 0
-
-    DATA_P = auto()
-    DATA_RW = auto()
-    DISCOVERY_REPAIR = auto()
-    DISCOVERY_HEARTBEAT = auto()
-    DISCOVERY_PIGGYBACK_HEARTBEAT = auto()
-    DISCOVERY_ACKNACK = auto()
-    DISCOVERY_STATE = auto()
-    DATA = auto()
-    DATA_FRAG = auto()
-    DATA_BATCH = auto()
-    DATA_REPAIR = auto()
-    DATA_DURABILITY_REPAIR = auto()
-    HEARTBEAT = auto()
-    HEARTBEAT_BATCH = auto()
-    PIGGYBACK_HEARTBEAT = auto()
-    PIGGYBACK_HEARTBEAT_BATCH = auto()
-    ACKNACK = auto()
-    GAP = auto()
-    DATA_STATE = auto()
-
-    @classmethod
-    def subset(cls, start = DATA_P, end = DATA_STATE):
-        """
-        Returns a subset of the enum members between start and end.
-        """
-        return [member for member in cls if start <= member.value <= end]
-
-    @classmethod
-    def subset_names(cls, start = DATA_P, end = DATA_STATE):
-        """
-        Returns a list of names of the enum members between start and end.
-        """
-        return [member.name for member in cls if start <= member.value <= end]
+    UNSET           = 0b0000
+    USER_DATA       = 0b0001
+    DISCOVERY       = 0b0010
+    ROUTING_SERVICE = 0b0100
 
 class InvalidPCAPDataException(Exception):
     """Exception raised for invalid PCAP data."""
@@ -80,55 +43,65 @@ class InvalidPCAPDataException(Exception):
 
     def __str__(self):
         return self.message
+    
+class NoDiscoveryDataException(Exception):
+    """Exception raised for missing discovery data."""
+
+    def __init__(self, message):
+        """
+        :param message: The error message.
+        """
+        self.message = message
+        super().__init__(self.message)
+
+    def __str__(self):
+        return self.message
 
 class RTPSSubmessage():
     def __init__(self, sm_type, topic, length, seq_number_tuple, frame_type, multiple_sm=False):
         if any(term in sm_type.lower() for term in ("port", "ping")):
             raise InvalidPCAPDataException(f"Routing frame: {sm_type}.", logging.INFO)
         if FrameTypes.DISCOVERY not in frame_type and not topic:
-            raise InvalidPCAPDataException(f"No discovery data.", logging.WARNING)
+            raise NoDiscoveryDataException(f"No discovery data.")
 
         self.topic = topic
         self.length = length
         self.seq_num_tuple = seq_number_tuple
-        self.sm_type = None
+        self.sm_type = SubmessageTypes.DISCOVERY if FrameTypes.DISCOVERY in frame_type else SubmessageTypes.UNSET
 
         #  TODO: Handle user data that doens't have a topic
         # Check for a state submessage type
-        try:
-            if "DATA" in sm_type:
-                if sm_type == "DATA":
-                    self.sm_type = SubmessageTypes.DATA
-                elif sm_type == "DATA(p)":
-                    self.sm_type = SubmessageTypes.DATA_P
-                elif sm_type in ("DATA(r)", "DATA(w)"):
-                    self.sm_type = SubmessageTypes.DATA_RW
-                elif re.search(r'DATA\([pwr]\[UD]\)', sm_type):
-                    # Unregister/Dispose for Discovery Data
-                    self.sm_type = SubmessageTypes.DISCOVERY_STATE
-                elif "([" in sm_type:
-                    # Unregister/Dispose for User Data
-                    self.sm_type = SubmessageTypes.DATA_STATE
-                elif sm_type == "DATA_BATCH":
-                    self.sm_type = SubmessageTypes.DATA_BATCH
-                elif sm_type == "DATA_FRAG":
-                    self.sm_type = SubmessageTypes.DATA_FRAG
-                # else caught below
-            else:
-                # If this is a HEARTBEAT and there are multiple submessages, this is a PIGGYBACK_HEARTBEAT
-                if multiple_sm and "HEARTBEAT" in sm_type:
-                    sm_type = "PIGGYBACK_" + sm_type
-                if FrameTypes.DISCOVERY in frame_type and ("HEARTBEAT" in sm_type or "ACKNACK" in sm_type):
-                    sm_type = "DISCOVERY_" + sm_type
+        if "BATCH" in sm_type:
+            self.sm_type |= SubmessageTypes.BATCH
+        if "FRAG" in sm_type:
+            self.sm_type |= SubmessageTypes.FRAGMENT
+        if "DATA" in sm_type:
+            if sm_type == "DATA":
+                self.sm_type |= SubmessageTypes.DATA
+            elif sm_type == "DATA(p)":
+                self.sm_type |= SubmessageTypes.DATA_P
+            elif sm_type in ("DATA(r)", "DATA(w)"):
+                self.sm_type |= SubmessageTypes.DATA_RW
+            elif re.search(r'DATA\([pwr]\[UD]\)', sm_type):
+                # Unregister/Dispose for Discovery Data
+                self.sm_type |= SubmessageTypes.STATE
+            elif "([" in sm_type:
+                # Unregister/Dispose for User Data
+                self.sm_type |= SubmessageTypes.DATA | SubmessageTypes.STATE
+            # else caught below
+        elif "HEARTBEAT" in sm_type:
+            self.sm_type |= SubmessageTypes.HEARTBEAT
+            if multiple_sm:
+                self.sm_type |= SubmessageTypes.PIGGYBACK
+        elif "ACKNACK" == sm_type:
+            self.sm_type |= SubmessageTypes.ACKNACK
+        elif "GAP" == sm_type:
+            self.sm_type |= SubmessageTypes.GAP
 
-                self.sm_type = SubmessageTypes[sm_type]
-        except KeyError:
-            logger.error(f"Invalid submessage type: {sm_type}.")
-            raise KeyError(f"Invalid submessage: {sm_type}")
-
-        if not isinstance(self.sm_type, SubmessageTypes):
-            logger.error(f"Invalid submessage type: {self.sm_type}")
-            raise InvalidPCAPDataException(f"Invalid submessage type: {self.sm_type}.", logging.ERROR)
+        if self.sm_type in {SubmessageTypes.UNSET, SubmessageTypes.DISCOVERY}:
+            # If there are no additional bits set, then an error has occurred, these can't exist alone
+            logger.error(f"Submessage type not set: {sm_type}.")
+            raise InvalidPCAPDataException(f"Submessage type not set: {sm_type}.", logging.ERROR)
 
     def __eq__(self, other):
         if isinstance(other, RTPSSubmessage):
@@ -142,11 +115,10 @@ class RTPSSubmessage():
         """
         Returns the sequence number of the submessage.
         If the submessage type is GAP, returns None."""
-        if self.sm_type == SubmessageTypes.GAP:
+        if SubmessageTypes.GAP & self.sm_type:
             return None
 
-        elif self.sm_type in (SubmessageTypes.HEARTBEAT, SubmessageTypes.PIGGYBACK_HEARTBEAT,
-                              SubmessageTypes.HEARTBEAT_BATCH, SubmessageTypes.PIGGYBACK_HEARTBEAT_BATCH):
+        elif SubmessageTypes.HEARTBEAT & self.sm_type:
             # SN stored as (first available SN, last available SN)
             return self.seq_num_tuple[1]
         else:
@@ -157,7 +129,7 @@ class RTPSSubmessage():
         """
         Returns the first available sequence number of the submessage.
         If the submessage type is not HEARTBEAT, returns None."""
-        if "HEARTBEAT" in self.sm_type.name:
+        if SubmessageTypes.HEARTBEAT & self.sm_type:
             # SN stored as (first available SN, last available SN)
             return self.seq_num_tuple[0]
         else:
@@ -168,7 +140,7 @@ class RTPSSubmessage():
         Returns the gap sequence numbers of the submessage.
         If the submessage type is not GAP, returns None."""
         # GAP sequence numbers stored as (first available SN, last available SN)
-        if self.sm_type == SubmessageTypes.GAP:
+        if SubmessageTypes.GAP & self.sm_type:
             return self.seq_num_tuple[0], self.seq_num_tuple[1]
         return None, None
 
@@ -202,7 +174,7 @@ class RTPSFrame:
             wr_entity_id, _ = get_entity_id(frame_data.get('rtps.sm.wrEntityId'))
             rd_entity_id, _ = get_entity_id(frame_data.get('rtps.sm.rdEntityId'))
 
-            if sm_id == SubmessageTypes.ACKNACK:
+            if sm_id & SubmessageTypes.ACKNACK:
                 # ACKNACKs reverse the GUID_prefixes but keep the entity IDs constant
                 guid_src = guid_prefix_dst + wr_entity_id
                 guid_dst = guid_prefix_src + rd_entity_id
