@@ -97,7 +97,7 @@ class RTPSSubmessage():
     def __init__(self, sm_type, topic, length, seq_number_tuple, discovery_frame, multiple_sm=False):
         if any(term in sm_type.lower() for term in ("port", "ping")):
             raise InvalidPCAPDataException(f"Routing frame: {sm_type}.", logging.INFO)
-        if discovery_frame and not topic:
+        if not (discovery_frame or topic):
             raise NoDiscoveryDataException(f"No discovery data.")
 
         self.topic = topic
@@ -112,7 +112,7 @@ class RTPSSubmessage():
         if "FRAG" in sm_type:
             self.sm_type |= SubmessageTypes.FRAGMENT
         if "DATA" in sm_type:
-            if sm_type == "DATA":
+            if sm_type in ("DATA", "DATA_BATCH", "DATA_FRAG"):
                 self.sm_type |= SubmessageTypes.DATA
             elif sm_type == "DATA(p)":
                 self.sm_type |= SubmessageTypes.DATA_P
