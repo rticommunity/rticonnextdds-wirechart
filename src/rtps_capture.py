@@ -537,6 +537,7 @@ class RTPSCapture:
 
         :param metric: The column to plot, either 'count' or 'length'.
         :param include_discovery: If False, excludes the "DISCOVERY" topic from the plot.
+        :param scale: The scale of the y-axis, either PlotScale.LINEAR or PlotScale.LOGARITHMIC.
         """
         if metric not in ['count', 'length']:
             raise ValueError("Invalid metric. Choose either 'count' or 'length'.")
@@ -575,7 +576,37 @@ class RTPSCapture:
         total_metric_by_topic = pivot_df['TotalMetric']
         pivot_df = pivot_df.drop(columns=['TotalMetric'])  # Remove the helper column
 
-        ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13))
+        # Define a consistent color mapping for submessages
+        colors = [
+            "#1f77b4",  # blue
+            "#ff7f0e",  # orange
+            "#2ca02c",  # green
+            "#d62728",  # red
+            "#9467bd",  # purple
+            "#8c564b",  # brown
+            "#e377c2",  # pink
+            "#7f7f7f",  # gray
+            "#bcbd22",  # lime
+            "#17becf",  # cyan
+            "#3a44b1",  # darker indigo
+            "#c43b2b",  # deeper coral
+            "#00996f",  # deeper teal
+            "#8b3cf9",  # darker violet
+            "#cc6d30",  # richer peach
+            "#139abf",  # deeper sky blue
+            "#86b84f",  # earthier green
+            "#cc33cc",  # richer magenta
+            "#e0a000"   # deeper sunflower yellow
+        ]
+
+        # Map colors to submessages
+        color_mapping = {submsg: colors[i % len(colors)] for i, submsg in enumerate([str(s) for s in SUBMESSAGE_COMBINATIONS])}
+
+        # Generate a list of colors for the submessage order
+        plot_colors = [color_mapping[submsg] for submsg in submessage_order if submsg in color_mapping]
+
+        # Plot the stacked bar chart with consistent colors
+        ax = pivot_df.plot(kind='bar', stacked=True, figsize=(20, 13), color=plot_colors)
 
         # Add totals to the legend, filtering out submessages not in submessage_order
         submessage_totals = self.df.groupby('sm', observed=False)[metric].sum()
