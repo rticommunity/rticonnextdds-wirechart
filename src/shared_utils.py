@@ -14,6 +14,37 @@
 # Standard Library Imports
 import os
 
+# Local Application Imports
+from src.log_handler import logging
+
+class InvalidPCAPDataException(Exception):
+    """Exception raised for invalid PCAP data."""
+
+    def __init__(self, message, log_level=logging.DEBUG):
+        """
+        :param message: The error message.
+        :param log_level: Logging level from logging module (e.g., logging.WARNING).
+        """
+        self.message = message
+        self.log_level = log_level
+        super().__init__(self.message)
+
+    def __str__(self):
+        return self.message
+
+class NoDiscoveryDataException(Exception):
+    """Exception raised for missing discovery data."""
+
+    def __init__(self, message):
+        """
+        :param message: The error message.
+        """
+        self.message = message
+        super().__init__(self.message)
+
+    def __str__(self):
+        return self.message
+
 def create_output_path(pcap_file, output_path, extension, description=None):
     """
     Creates an output path for a file with the specified extension.

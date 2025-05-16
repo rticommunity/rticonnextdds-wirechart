@@ -13,9 +13,11 @@
 
 # Standard Library Imports
 from enum import Flag
+import re
 
 # Local Application Imports
 from src.log_handler import logging
+from src.shared_utils import InvalidPCAPDataException, NoDiscoveryDataException
 
 logger = logging.getLogger(__name__)
 
@@ -90,3 +92,94 @@ def list_combinations_by_flag(flag: SubmessageTypes, combinations=SUBMESSAGE_COM
         logger.error(f"No combinations found with {'NOT ' if negate else ''}{flag}")
 
     return result
+
+class RTPSSubmessage():
+    def __init__(self, sm_type, topic, length, seq_number_tuple, discovery_frame, multiple_sm=False):
+        if any(term in sm_type.lower() for term in ("port", "ping")):
+            raise InvalidPCAPDataException(f"Routing frame: {sm_type}.", logging.INFO)
+        if discovery_frame and not topic:
+            raise NoDiscoveryDataException(f"No discovery data.")
+
+        self.topic = topic
+        self.length = length
+        self.seq_num_tuple = seq_number_tuple
+        self.sm_type = SubmessageTypes.DISCOVERY if discovery_frame else SubmessageTypes.UNSET
+
+        #  TODO: Handle user data that doens't have a topic
+        # Check for a state submessage type
+        if "BATCH" in sm_type:
+            self.sm_type |= SubmessageTypes.BATCH
+        if "FRAG" in sm_type:
+            self.sm_type |= SubmessageTypes.FRAGMENT
+        if "DATA" in sm_type:
+            if sm_type == "DATA":
+                self.sm_type |= SubmessageTypes.DATA
+            elif sm_type == "DATA(p)":
+                self.sm_type |= SubmessageTypes.DATA_P
+            elif sm_type in ("DATA(r)", "DATA(w)"):
+                self.sm_type |= SubmessageTypes.DATA_RW
+            elif re.search(r'DATA\([pwr]\[UD]\)', sm_type):
+                # Unregister/Dispose for Discovery Data
+                self.sm_type |= SubmessageTypes.STATE
+            elif "([" in sm_type:
+                # Unregister/Dispose for User Data
+                self.sm_type |= SubmessageTypes.DATA | SubmessageTypes.STATE
+            # else caught below
+        elif "HEARTBEAT" in sm_type:
+            self.sm_type |= SubmessageTypes.HEARTBEAT
+            if multiple_sm:
+                self.sm_type |= SubmessageTypes.PIGGYBACK
+        elif "ACKNACK" == sm_type:
+            self.sm_type |= SubmessageTypes.ACKNACK
+        elif "GAP" == sm_type:
+            self.sm_type |= SubmessageTypes.GAP
+
+        if self.sm_type in {SubmessageTypes.UNSET, SubmessageTypes.DISCOVERY}:
+            # If there are no additional bits set, then an error has occurred, these can't exist alone
+            logger.error(f"Submessage type not set: {sm_type}.")
+            raise InvalidPCAPDataException(f"Submessage type not set: {sm_type}.", logging.ERROR)
+
+    def __eq__(self, other):
+        if isinstance(other, RTPSSubmessage):
+            return (self.sm_type == other.sm_type and
+                    self.topic == other.topic and
+                    self.length == other.length and
+                    self.seq_num_tuple == other.seq_num_tuple)
+        return False
+
+    def seq_num(self):
+        """
+        Returns the sequence number of the submessage.
+        If the submessage type is GAP, returns None."""
+        if SubmessageTypes.GAP & self.sm_type:
+            return None
+
+        elif SubmessageTypes.HEARTBEAT & self.sm_type:
+            # SN stored as (first available SN, last available SN)
+            return self.seq_num_tuple[1]
+        else:
+            # SN stored as (SN)
+            return self.seq_num_tuple[0]
+
+    def first_available_seq_num(self):
+        """
+        Returns the first available sequence number of the submessage.
+        If the submessage type is not HEARTBEAT, returns None."""
+        if SubmessageTypes.HEARTBEAT & self.sm_type:
+            # SN stored as (first available SN, last available SN)
+            return self.seq_num_tuple[0]
+        else:
+            return None
+
+    def gap(self):
+        """
+        Returns the gap sequence numbers of the submessage.
+        If the submessage type is not GAP, returns None."""
+        # GAP sequence numbers stored as (first available SN, last available SN)
+        if SubmessageTypes.GAP & self.sm_type:
+            return self.seq_num_tuple[0], self.seq_num_tuple[1]
+        return None, None
+
+    def __str__(self):
+        return (f"Type: {self.sm_type.name}, Topic: {self.topic}, "
+                f"Length: {self.length}, Seq Number: {self.seq_num_tuple}")

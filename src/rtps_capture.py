@@ -26,9 +26,9 @@ from matplotlib.ticker import StrMethodFormatter
 
 # Local Application Imports
 from src.log_handler import logging
-from src.rtps_frame import InvalidPCAPDataException, NoDiscoveryDataException, RTPSFrame, FrameTypes
-from src.shared_utils import create_output_path, guid_prefix
-from rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
+from src.rtps_frame import RTPSFrame, FrameTypes
+from src.shared_utils import InvalidPCAPDataException, NoDiscoveryDataException, create_output_path, guid_prefix
+from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
 
 logger = logging.getLogger(__name__)
 
@@ -368,6 +368,11 @@ class RTPSCapture:
 
         # Sort and reset index
         self.df = self.df.sort_values(by=['topic', 'sm']).reset_index(drop=True)
+
+        duplicates = self.df[self.df.duplicated(subset=['topic', 'sm'], keep=False)]
+        if not duplicates.empty:
+            print("Duplicate entries found:")
+            print(duplicates)
 
     def plot_multi_topic_graph(self):
         topic_node_counts = {
