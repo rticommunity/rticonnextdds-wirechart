@@ -28,7 +28,7 @@ from matplotlib.ticker import StrMethodFormatter
 from src.log_handler import logging
 from src.rtps_frame import InvalidPCAPDataException, NoDiscoveryDataException, RTPSFrame, FrameTypes
 from src.shared_utils import create_output_path, guid_prefix
-from src.submessage_types import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
+from rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
 
 logger = logging.getLogger(__name__)
 

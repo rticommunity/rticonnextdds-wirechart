@@ -19,7 +19,7 @@ from enum import IntEnum, auto, Flag
 # Local Application Imports
 from src.log_handler import logging
 from src.shared_utils import guid_prefix
-from src.submessage_types import SubmessageTypes
+from rtps_submessage import SubmessageTypes
 
 logger = logging.getLogger(__name__)
 
