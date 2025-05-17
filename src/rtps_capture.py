@@ -324,8 +324,8 @@ class RTPSCapture:
                 frame_list.append({'topic': topic, 'sm': str(sm.sm_type), 'count': 1, 'length': sm.length})
 
             if frame_classification & (SubmessageTypes.REPAIR | SubmessageTypes.DURABLE):
-                frame_classification &= (SubmessageTypes.REPAIR | SubmessageTypes.DURABLE)
-                frame_classification |= SubmessageTypes.DATA
+                frame_classification &= (SubmessageTypes.DISCOVERY | SubmessageTypes.DATA |
+                                         SubmessageTypes.REPAIR | SubmessageTypes.DURABLE)
                 logger.info(f"Frame {frame.frame_number} classified as {frame_classification}.")
 
         if not any(frame.get('topic') != 'DISCOVERY' for frame in frame_list):
