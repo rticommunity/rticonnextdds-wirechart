@@ -12,8 +12,13 @@ REPLACEMENTS = [
 
 def process_file(file_path, replacements):
     try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            content = file.read()
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except UnicodeDecodeError:
+            # print(f"⚠️ UTF-8 decode failed for {file_path}, retrying with 'utf-16'...")
+            with open(file_path, 'r', encoding='utf-16') as f:
+                content = f.read()
 
         content = content.strip()
 
@@ -34,7 +39,7 @@ def process_directory(directory_path, replacements):
         for file_name in files:
             file_path = os.path.join(root, file_name)
 
-            if file_name.endswith('.txt') and not file_name.endswith('.enum_flag.txt'):
+            if file_name.endswith('.txt') and not file_name.endswith('.flag_enum.txt'):
                 process_file(file_path, replacements)
 
 def main():

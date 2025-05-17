@@ -14,7 +14,13 @@ def load_expectations(filepath):
         return []
 
     with open(filepath, 'r', encoding='utf-8') as f:
-        return [line.strip() for line in f if line.strip()]
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                return [line.strip() for line in f if line.strip()]
+        except UnicodeDecodeError:
+            # print(f"⚠️ UTF-8 decode failed for {filepath}, retrying with 'utf-16'...")
+            with open(filepath, 'r', encoding='utf-16') as f:
+                return [line.strip() for line in f if line.strip()]
 
 
 def validate_output(pcap_path, expectations):
@@ -35,11 +41,11 @@ def validate_output(pcap_path, expectations):
 
         try:
             for expected in expectations:
-                print(f"⏳ Expecting: {expected}")
+                # print(f"⏳ Expecting: {expected}")
                 child.expect(expected)
 
                 if "Enter your choice" in expected and input_index < len(inputs):
-                    print(f"📝 Sending input: {inputs[input_index]}")
+                    # print(f"📝 Sending input: {inputs[input_index]}")
                     child.sendline(inputs[input_index])
                     input_index += 1
 
@@ -58,6 +64,7 @@ def main():
     args = parser.parse_args()
 
     tests_passed, tests_failed, tests_skipped = 0, 0, 0
+    failed_tests = []
 
     pcap_files = glob.glob(os.path.join(PCAP_FOLDER, "*.pcap")) + \
                  glob.glob(os.path.join(PCAP_FOLDER, "*.pcapng"))
@@ -80,11 +87,14 @@ def main():
                 tests_passed += 1
             else:
                 tests_failed += 1
+                failed_tests.append(pcap)
         else:
             tests_skipped += 1
             print(f"⚠️ No expectations file found for {base_name}. Skipping validation.")
 
     print(f"\n📝 Summary: {tests_passed} tests passed, {tests_failed} tests failed, {tests_skipped} tests skipped.")
+    if tests_failed > 0:
+        print(f"❌ Failed tests: {', '.join(failed_tests)}")
 
 if __name__ == "__main__":
     main()
