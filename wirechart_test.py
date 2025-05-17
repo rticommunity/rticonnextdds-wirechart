@@ -1,5 +1,6 @@
 import os
 import glob
+import argparse
 from pexpect.popen_spawn import PopenSpawn
 
 PCAP_FOLDER = ".\\pcap"
@@ -52,6 +53,12 @@ def validate_output(pcap_path, expectations):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Wirechart Test Script")
+    parser.add_argument("--flag-enum", action="store_true", help="Enable the flag-enum option")
+    args = parser.parse_args()
+
+    tests_passed, tests_failed, tests_skipped = 0, 0, 0
+
     pcap_files = glob.glob(os.path.join(PCAP_FOLDER, "*.pcap")) + \
                  glob.glob(os.path.join(PCAP_FOLDER, "*.pcapng"))
 
@@ -62,17 +69,22 @@ def main():
     for pcap in pcap_files:
         # Generate expectations file path based on pcap filename
         base_name = os.path.basename(pcap)
-        expectations_file = os.path.splitext(base_name)[0] + ".txt"
+        expectations_file = os.path.splitext(base_name)[0] + (".flag_enum" if args.flag_enum else "") + ".txt"
         expectations_path = os.path.join(TEST_INPUT_FOLDER, expectations_file)
 
         # Load the expectations for the current pcap file (if it exists)
         expectations = load_expectations(expectations_path)
 
         if expectations:
-            validate_output(pcap, expectations)
+            if validate_output(pcap, expectations):
+                tests_passed += 1
+            else:
+                tests_failed += 1
         else:
+            tests_skipped += 1
             print(f"⚠️ No expectations file found for {base_name}. Skipping validation.")
 
+    print(f"\n📝 Summary: {tests_passed} tests passed, {tests_failed} tests failed, {tests_skipped} tests skipped.")
 
 if __name__ == "__main__":
     main()
