@@ -257,12 +257,7 @@ class RTPSCapture:
         :param unique_topics: A set of unique topics to initialize the DataFrame.
         :return: A pandas DataFrame with columns ['Topic', 'Submessage', 'Count', 'Length'].
         """
-        # Declare the SendType and GUIDKey enums for local scope
-        class SendType(IntEnum):
-            STANDARD        = 0
-            REPAIR          = 1
-            DURABLE_REPAIR  = 2
-
+        # Declare the GUIDKey enum for local scope
         class GUIDKey(IntEnum):
             GUID_SRC        = 0
             IP_SRC          = 1
@@ -277,7 +272,7 @@ class RTPSCapture:
 
         # Process the PCAP data to count messages and include lengths
         for frame in self.frames:
-            frame_classification = SendType.STANDARD
+            frame_classification = SubmessageTypes.UNSET
             if frame.guid_src is None:
                 logger.error(f"Frame {frame.frame_number} has no GUID source. Exiting.")
                 # TODO: Could maybe continue here, but exiting for now
@@ -313,12 +308,9 @@ class RTPSCapture:
                                            # cases where the GUID_DST is None and where it is not.
                                            sequence_numbers[guid_key[GUIDKey.GUID_SRC], guid_key[GUIDKey.IP_SRC], None, guid_key[GUIDKey.IP_DST]]):
                         # If this is a repair, there will be a GUID_DST, and we can key on the entire GUID_KEY
+                        sm.sm_type |= SubmessageTypes.REPAIR
                         if sm.seq_num() <= durability_repairs[guid_key]:
                             sm.sm_type |= SubmessageTypes.DURABLE
-                            frame_classification = SendType.DURABLE_REPAIR
-                        else:
-                            sm.sm_type |= SubmessageTypes.REPAIR
-                            frame_classification = SendType.REPAIR
                 # TODO: Add support for Discovery repairs?
                 elif sm.sm_type & SubmessageTypes.ACKNACK:
                     # Record the writer SN when the first non-zero ACKNACK is received.  All repairs with
@@ -328,10 +320,13 @@ class RTPSCapture:
                         # Only add this for the first non-zero ACKNACK
                         durability_repairs[guid_key] = sequence_numbers[guid_key]
 
+                frame_classification |= sm.sm_type
                 frame_list.append({'topic': topic, 'sm': str(sm.sm_type), 'count': 1, 'length': sm.length})
 
-            if frame_classification > SendType.STANDARD:
-                logger.info(f"Frame {frame.frame_number} classified as {frame_classification.name}.")
+            if frame_classification & (SubmessageTypes.REPAIR | SubmessageTypes.DURABLE):
+                frame_classification &= (SubmessageTypes.REPAIR | SubmessageTypes.DURABLE)
+                frame_classification |= SubmessageTypes.DATA
+                logger.info(f"Frame {frame.frame_number} classified as {frame_classification}.")
 
         if not any(frame.get('topic') != 'DISCOVERY' for frame in frame_list):
             raise InvalidPCAPDataException("No RTPS user frames with associated discovery data")
