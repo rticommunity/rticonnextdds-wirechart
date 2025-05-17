@@ -49,6 +49,7 @@ SUBMESSAGE_COMBINATIONS = [
     SubmessageTypes.DISCOVERY | SubmessageTypes.HEARTBEAT,
     SubmessageTypes.DISCOVERY | SubmessageTypes.PIGGYBACK | SubmessageTypes.HEARTBEAT,
     SubmessageTypes.DISCOVERY | SubmessageTypes.ACKNACK,
+    SubmessageTypes.DISCOVERY | SubmessageTypes.GAP,
     SubmessageTypes.DISCOVERY | SubmessageTypes.STATE,
     SubmessageTypes.DATA,
     SubmessageTypes.DATA | SubmessageTypes.FRAGMENT,
