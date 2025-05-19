@@ -78,13 +78,12 @@ class RTPSFrame:
         if "Malformed Packet" in info_column:
             raise InvalidPCAPDataException(f"Malformed Packet: {info_column}.", log_level=logging.WARNING)
 
-        try:
-            self.ip_src = int(ipaddress.ip_address(frame_data.get('ip.src')))
-            self.ip_dst = int(ipaddress.ip_address(frame_data.get('ip.dst')))
-        except ValueError:
-            # TODO: This can probably be better (one try block for each command) but good enough for now.  Maybe throw here?
-            self.ip_src = None
-            self.ip_dst = None
+        for attr, key in (('ip_src', 'ip.src'), ('ip_dst', 'ip.dst')):
+            try:
+                setattr(self, attr, int(ipaddress.ip_address(frame_data.get(key))))
+            except ValueError:
+                setattr(self, attr, None)
+
 
         entity_id_str , entity_id = get_entity_id(frame_data.get('rtps.sm.wrEntityId', None))
         if entity_id is None:
