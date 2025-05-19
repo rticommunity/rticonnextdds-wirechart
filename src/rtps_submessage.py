@@ -95,15 +95,21 @@ def list_combinations_by_flag(flag: SubmessageTypes, combinations=SUBMESSAGE_COM
     return result
 
 class RTPSSubmessage():
-    def __init__(self, sm_type, topic, length, seq_number_tuple, discovery_frame, multiple_sm=False):
-        if any(term in sm_type.lower() for term in ("port", "ping")):
-            raise InvalidPCAPDataException(f"Routing frame: {sm_type}.", logging.INFO)
+    def __init__(self, sm, length, seq_num_it, discovery_frame, multiple_sm=False):
+
+        matches = re.match(r'^(.*?)\s*->\s*(.*)', sm)
+        # If no -> is found, this might be a discovery frame or a user data frame without
+        # discovery info (which is handled below)
+        sm_type = matches.group(1).strip() if matches else sm
+        topic = matches.group(2).strip() if matches else None
+
+        if any(term in sm.lower() for term in ("port", "ping")):
+            raise InvalidPCAPDataException(f"Routing frame: {sm}.", logging.INFO)
         if not (discovery_frame or topic):
             raise NoDiscoveryDataException(f"No discovery data.")
 
         self.topic = topic
         self.length = length
-        self.seq_num_tuple = seq_number_tuple
         self.sm_type = SubmessageTypes.DISCOVERY if discovery_frame else SubmessageTypes.UNSET
 
         #  TODO: Handle user data that doens't have a topic
@@ -139,6 +145,19 @@ class RTPSSubmessage():
             # If there are no additional bits set, then an error has occurred, these can't exist alone
             logger.error(f"Submessage type not set: {sm_type}.")
             raise InvalidPCAPDataException(f"Submessage type not set: {sm_type}.", logging.ERROR)
+
+        # All submessages have a at least one sequence number
+        seq_num_count = 1
+        if self.sm_type & (SubmessageTypes.HEARTBEAT | SubmessageTypes.GAP):
+            # HEARTBEAT and GAP have double the sequence numbers
+            # TODO: Does GAP_BATCH exist, and do they have 4 sequence numbers?
+            seq_num_count *= 2
+        elif self.sm_type & SubmessageTypes.BATCH:
+            # BATCH has double the sequence numbers
+            seq_num_count *= 2
+
+        # Create a tuple of sequence numbers based on the count
+        self.seq_num_tuple = tuple([next(seq_num_it) for _ in range(seq_num_count)])
 
     def __eq__(self, other):
         if isinstance(other, RTPSSubmessage):

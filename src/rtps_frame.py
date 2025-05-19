@@ -104,36 +104,20 @@ class RTPSFrame:
         sm_len_list = list(map(int, frame_data.get('rtps.sm.octetsToNextHeader', 0).split(',')))
         udp_length = int(frame_data.get('udp.length', 0))
 
-        seq_number_iterator = iter(seq_number_list)
+        seq_num_it = iter(seq_number_list)
         for sm, sm_len in zip(sm_list, sm_len_list):
             if sm in ("INFO_TS", "INFO_DST"):  # TODO: Maybe INFO_SRC too?
                 continue
-            matches = re.match(r'^(.*?)\s*->\s*(.*)', sm)
-            sm = matches.group(1).strip() if matches else sm
-            sm_topic = matches.group(2).strip() if matches else None
-            seq_num_tuple = ()
-
-            if sm in ("HEARTBEAT", "GAP"):
-                # HEARTBEAT and GAP have 2 sequence numbers in the list
-                seq_num_tuple = (next(seq_number_iterator), next(seq_number_iterator))
-            elif sm == "DATA_BATCH":
-                seq_num_tuple = (next(seq_number_iterator), next(seq_number_iterator))
-            elif sm == "HEARTBEAT_BATCH":
-                # HEARTBEAT_BATCH has 4 sequence numbers in the list
-                seq_num_tuple = (next(seq_number_iterator), next(seq_number_iterator), next(seq_number_iterator), next(seq_number_iterator))
-            else:
-                # For all other submessages, we only get one sequence number
-                seq_num_tuple = (next(seq_number_iterator),)
 
             if not self.sm_list:
                 # Include full upd_length in the first submessage
-                self.add_submessage(RTPSSubmessage(sm, sm_topic, udp_length, seq_num_tuple, FrameTypes.DISCOVERY in self.frame_type))
+                self.add_submessage(RTPSSubmessage(sm, udp_length, seq_num_it, FrameTypes.DISCOVERY in self.frame_type))
 
             else:
                 # Decrease the length of the first submessage by the length of the current submessage
                 self.sm_list[0].length -= sm_len
                 # Indicate more than one submessage in the frame
-                self.sm_list.append(RTPSSubmessage(sm, sm_topic, sm_len, seq_num_tuple, FrameTypes.DISCOVERY in self.frame_type, True))
+                self.sm_list.append(RTPSSubmessage(sm, sm_len, seq_num_it, FrameTypes.DISCOVERY in self.frame_type, True))
 
         self.guid_src, self.guid_dst = create_guid(frame_data, self.sm_list[-1].sm_type)
 
