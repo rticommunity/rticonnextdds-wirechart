@@ -299,7 +299,9 @@ class RTPSCapture:
                     # the SN dictionary.  Since the SN of a writer is not dependent on the reader,
                     # this approach is valid.
                     sequence_numbers[guid_key] = sm.seq_num()
-                elif sm.sm_type & SubmessageTypes.DATA:
+                elif (sm.sm_type & SubmessageTypes.DATA) and not (sm.sm_type & SubmessageTypes.FRAGMENT):
+                # elif (sm.sm_type & SubmessageTypes.DATA):
+                    # TODO: Not sure how to handle FRAGs, so ignoring them for now
                     # TODO: Discovery repairs?
                     # TODO: Durability repairs?
                     # Check if this submessage is some form of a repair
@@ -311,7 +313,6 @@ class RTPSCapture:
                         sm.sm_type |= SubmessageTypes.REPAIR
                         if sm.seq_num() <= durability_repairs[guid_key]:
                             sm.sm_type |= SubmessageTypes.DURABLE
-                # TODO: Add support for Discovery repairs?
                 elif sm.sm_type & SubmessageTypes.ACKNACK:
                     # Record the writer SN when the first non-zero ACKNACK is received.  All repairs with
                     # a SN less than or equal to this number are considered durability repairs while all
@@ -325,7 +326,7 @@ class RTPSCapture:
 
             if frame_classification & (SubmessageTypes.REPAIR | SubmessageTypes.DURABLE):
                 frame_classification &= (SubmessageTypes.DISCOVERY | SubmessageTypes.DATA |
-                                         SubmessageTypes.REPAIR | SubmessageTypes.DURABLE)
+                                         SubmessageTypes.FRAGMENT | SubmessageTypes.REPAIR | SubmessageTypes.DURABLE)
                 logger.info(f"Frame {frame.frame_number} classified as {frame_classification}.")
 
         if not any(frame.get('topic') != 'DISCOVERY' for frame in frame_list):

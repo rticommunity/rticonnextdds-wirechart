@@ -30,12 +30,13 @@ class SubmessageTypes(Flag):
     PIGGYBACK       = 0x0010
     HEARTBEAT       = 0x0020
     BATCH           = 0x0040
-    DURABLE         = 0x0080
-    REPAIR          = 0x0100
+    ACKNACK         = 0x0080
+    NACK            = 0x0100
     FRAGMENT        = 0x0200
-    ACKNACK         = 0x0400
-    GAP             = 0x0800
-    STATE           = 0x1000
+    DURABLE         = 0x0400
+    REPAIR          = 0x0800
+    GAP             = 0x1000
+    STATE           = 0x2000
 
     def __str__(self):
         if self == SubmessageTypes.UNSET:
@@ -56,11 +57,14 @@ SUBMESSAGE_COMBINATIONS = [
     SubmessageTypes.DATA | SubmessageTypes.BATCH,
     SubmessageTypes.DATA | SubmessageTypes.REPAIR,
     SubmessageTypes.DATA | SubmessageTypes.DURABLE | SubmessageTypes.REPAIR,
+    SubmessageTypes.DATA | SubmessageTypes.FRAGMENT | SubmessageTypes.REPAIR,
+    SubmessageTypes.DATA | SubmessageTypes.FRAGMENT | SubmessageTypes.DURABLE | SubmessageTypes.REPAIR,
     SubmessageTypes.HEARTBEAT,
     SubmessageTypes.HEARTBEAT | SubmessageTypes.BATCH,
     SubmessageTypes.PIGGYBACK | SubmessageTypes.HEARTBEAT,
     SubmessageTypes.PIGGYBACK | SubmessageTypes.HEARTBEAT | SubmessageTypes.BATCH,
     SubmessageTypes.ACKNACK,
+    SubmessageTypes.NACK | SubmessageTypes.FRAGMENT,
     SubmessageTypes.GAP,
     SubmessageTypes.DATA | SubmessageTypes.STATE,
 ]
