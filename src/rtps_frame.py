@@ -14,11 +14,11 @@
 # Standard Library Imports
 import ipaddress
 import re
-from enum import IntEnum, auto, Flag
+from enum import Flag
 
 # Local Application Imports
 from src.log_handler import logging
-from src.shared_utils import InvalidPCAPDataException, NoDiscoveryDataException, guid_prefix
+from src.shared_utils import InvalidPCAPDataException, guid_prefix
 from src.rtps_submessage import RTPSSubmessage, SubmessageTypes
 
 logger = logging.getLogger(__name__)

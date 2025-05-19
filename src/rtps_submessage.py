@@ -156,8 +156,9 @@ class RTPSSubmessage():
             # HEARTBEAT and GAP have double the sequence numbers
             # TODO: Does GAP_BATCH exist, and do they have 4 sequence numbers?
             seq_num_count *= 2
-        elif self.sm_type & SubmessageTypes.BATCH:
+        if self.sm_type & SubmessageTypes.BATCH:
             # BATCH has double the sequence numbers
+            # DATA_BATCH has 2 sequence numbers and HEARTBEAT_BATCH has 4 sequence numbers
             seq_num_count *= 2
 
         # Create a tuple of sequence numbers based on the count
