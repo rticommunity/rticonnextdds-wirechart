@@ -118,6 +118,11 @@ class RTPSFrame:
                 # Indicate more than one submessage in the frame
                 self.sm_list.append(RTPSSubmessage(sm, sm_len, seq_num_it, FrameTypes.DISCOVERY in self.frame_type, True))
 
+        if len(list(seq_num_it)):
+            # If SNs remain, they are likely virtual SNs
+            # TODO: Handle virtual SNs
+            logger.warning(f"Frame {self.frame_number:09}: Unexpected number of sequence numbers: {seq_number_list}.")
+
         self.guid_src, self.guid_dst = create_guid(frame_data, self.sm_list[-1].sm_type)
 
         logger.debug(str(self))
