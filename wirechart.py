@@ -121,7 +121,7 @@ def get_tshark_version():
         logger.error(f"Error running tshark: {e.output.strip()}")
 
 if __name__ == "__main__":
-    # try:
+    try:
         main()
-    # except Exception as e:
-    #     logger.error(e)
+    except Exception as e:
+        logger.error(e)
