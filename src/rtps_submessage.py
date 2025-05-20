@@ -78,15 +78,15 @@ def get_combination_order(smtype_combo):
 
 def list_combinations_by_flag(flag: SubmessageTypes, combinations=SUBMESSAGE_COMBINATIONS, negate=False) -> list[SubmessageTypes]:
     """
-    Return a list of SMTypes combinations that include or exclude the given flag.
+    Return a list of SubmessageTypes combinations that include or exclude the given flag.
 
     Args:
-        flag (SMTypes): The flag to filter by.
-        combinations (list[SMTypes], optional): The ordered list to filter from.
+        flag (SubmessageTypes): The flag to filter by.
+        combinations (list[SubmessageTypes], optional): The ordered list to filter from.
         negate (bool): If True, returns combinations where the flag is NOT set.
 
     Returns:
-        list[SMTypes]: Filtered list of combinations.
+        list[SubmessageTypes]: Filtered list of combinations.
     """
     if negate:
         result = [combo for combo in combinations if not (combo & flag)]
@@ -110,6 +110,7 @@ class RTPSSubmessage():
         if any(term in sm.lower() for term in ("port", "ping")):
             raise InvalidPCAPDataException(f"Routing frame: {sm}.", logging.INFO)
         if not (discovery_frame or topic):
+            # If not a discovery frame or a frame associated with a topic, then discard it
             raise NoDiscoveryDataException(f"No discovery data.")
 
         self.topic = topic

@@ -80,17 +80,18 @@ class RTPSCapture:
 
     def __eq__(self, value):
         if isinstance(value, RTPSCapture):
-            return (#self.frames == value.frames and
+            return (self.frames == value.frames and
                     self.graph_edges == value.graph_edges and
                     self.df.equals(value.df))
         else:
             return False
 
     def partial_eq(self, value):
-        if not isinstance(value, RTPSCapture):
-            return NotImplemented
-        return (#self.graph_edges == value.graph_edges and
-                self.df.equals(value.df))
+        if isinstance(value, RTPSCapture):
+            return (self.graph_edges == value.graph_edges and
+                    self.df.equals(value.df))
+        else:
+            return False
 
     def save(self, filename):
         with open(filename, 'wb') as f:
