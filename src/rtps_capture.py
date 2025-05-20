@@ -37,6 +37,7 @@ class PlotScale(Enum):
     LOGARITHMIC     = 'log'
 
 DISCOVERY_TOPIC = "DISCOVERY"
+META_DATA_TOPIC = "META_DATA"
 
 # tshark seems to return commands in a hierarchy, i.e. frame -> udp -> rtps so order matters
 PCAP_FIELDS = list(['frame.number',
@@ -290,10 +291,13 @@ class RTPSCapture:
                 # 2. For DATA(w) SMs, save guid_key to graph_edges[topic]
                 # 3. Test with square_best_effort.pcapng
                 # 4. May need to understand better, this approach may not be correct
+                # TODO: Probably want to just check for USER_DATA and ignore other flags
                 if (FrameTypes.DISCOVERY not in frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
                     self.graph_edges[topic].add((frame.guid_src, frame.guid_dst))
                 if FrameTypes.DISCOVERY in frame.frame_type:
                     topic = DISCOVERY_TOPIC
+                elif FrameTypes.META_DATA in frame.frame_type:
+                    topic = META_DATA_TOPIC
                 # TODO: Verify not to do this with GAP
                 if sm.sm_type & SubmessageTypes.HEARTBEAT:
                     # Not all submessages have a DST GUID, so we must only use the SRC GUID to key
@@ -350,6 +354,7 @@ class RTPSCapture:
 
         all_rows = []
         all_rows.extend(include_missing_topics_and_sm(self.df, {DISCOVERY_TOPIC}, list_combinations_by_flag(SubmessageTypes.DISCOVERY)))
+        # Do not include missing topics/SMs for META_DATA_TOPIC
         all_rows.extend(include_missing_topics_and_sm(self.df, self.list_all_topics(), list_combinations_by_flag(SubmessageTypes.DISCOVERY, negate=True)))
 
         # Add missing rows with a count of 0 and length of 0

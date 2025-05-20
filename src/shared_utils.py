@@ -12,10 +12,18 @@
 ##############################################################################################
 
 # Standard Library Imports
+from enum import Flag
 import os
 
 # Local Application Imports
 from src.log_handler import logging
+
+class FrameTypes(Flag):
+    UNSET           = 0x0000
+    USER_DATA       = 0x0001
+    DISCOVERY       = 0x0002
+    META_DATA       = 0x0004
+    ROUTING_SERVICE = 0x0008
 
 class InvalidPCAPDataException(Exception):
     """Exception raised for invalid PCAP data."""

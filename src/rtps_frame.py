@@ -18,16 +18,10 @@ from enum import Flag
 
 # Local Application Imports
 from src.log_handler import logging
-from src.shared_utils import InvalidPCAPDataException, guid_prefix
+from src.shared_utils import InvalidPCAPDataException, guid_prefix, FrameTypes
 from src.rtps_submessage import RTPSSubmessage, SubmessageTypes
 
 logger = logging.getLogger(__name__)
-
-class FrameTypes(Flag):
-    UNSET           = 0b0000
-    USER_DATA       = 0b0001
-    DISCOVERY       = 0b0010
-    ROUTING_SERVICE = 0b0100
 
 class RTPSFrame:
     """
@@ -93,8 +87,12 @@ class RTPSFrame:
         if get_entity_id(frame_data.get('rtps.param.service_kind'))[1] == 0x3:
             self.frame_type |= FrameTypes.ROUTING_SERVICE
             logger.debug(f"Routing service frame.")
+        # Builtin discovery writers
         if entity_id in {0x000100c2, 0x000003c2, 0x000004c2, 0xff0003c2, 0xff0004c2}:
             self.frame_type |= FrameTypes.DISCOVERY
+        # Participant meta data writer (e.g. User Liveliness)
+        elif entity_id in {0x000200c2}:
+            self.frame_type |= FrameTypes.META_DATA
         else:
             self.frame_type |= FrameTypes.USER_DATA
 
@@ -110,13 +108,13 @@ class RTPSFrame:
 
             if not self.sm_list:
                 # Include full upd_length in the first submessage
-                self.add_submessage(RTPSSubmessage(sm, udp_length, seq_num_it, FrameTypes.DISCOVERY in self.frame_type))
+                self.add_submessage(RTPSSubmessage(sm, udp_length, seq_num_it, self.frame_type))
 
             else:
                 # Decrease the length of the first submessage by the length of the current submessage
                 self.sm_list[0].length -= sm_len
                 # Indicate more than one submessage in the frame
-                self.sm_list.append(RTPSSubmessage(sm, sm_len, seq_num_it, FrameTypes.DISCOVERY in self.frame_type, True))
+                self.sm_list.append(RTPSSubmessage(sm, sm_len, seq_num_it, self.frame_type, True))
 
         if len(list(seq_num_it)):
             # If SNs remain, they are likely virtual SNs

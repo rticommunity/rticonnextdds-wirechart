@@ -17,7 +17,7 @@ import re
 
 # Local Application Imports
 from src.log_handler import logging
-from src.shared_utils import InvalidPCAPDataException, NoDiscoveryDataException
+from src.shared_utils import InvalidPCAPDataException, NoDiscoveryDataException, FrameTypes
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,8 @@ class SubmessageTypes(Flag):
     DURABLE         = 0x0400
     REPAIR          = 0x0800
     GAP             = 0x1000
-    STATE           = 0x2000
+    LIVELINESS      = 0x2000
+    STATE           = 0x4000
 
     def __str__(self):
         if self == SubmessageTypes.UNSET:
@@ -66,6 +67,7 @@ SUBMESSAGE_COMBINATIONS = [
     SubmessageTypes.ACKNACK,
     SubmessageTypes.NACK | SubmessageTypes.FRAGMENT,
     SubmessageTypes.GAP,
+    SubmessageTypes.LIVELINESS,
     SubmessageTypes.DATA | SubmessageTypes.STATE,
 ]
 
@@ -96,10 +98,16 @@ def list_combinations_by_flag(flag: SubmessageTypes, combinations=SUBMESSAGE_COM
     if not result:
         logger.error(f"No combinations found with {'NOT ' if negate else ''}{flag}")
 
+    if __debug__:
+        for combo in result:
+            if combo not in combinations:
+                logger.error(f"Combination {combo} not found in the predefined list.")
+                raise ValueError(f"Combination {combo} not found in the predefined list.")
+
     return result
 
 class RTPSSubmessage():
-    def __init__(self, sm, length, seq_num_it, discovery_frame, multiple_sm=False):
+    def __init__(self, sm, length, seq_num_it, frame_type, multiple_sm=False):
 
         matches = re.match(r'^(.*?)\s*->\s*(.*)', sm)
         # If no -> is found, this might be a discovery frame or a user data frame without
@@ -109,13 +117,15 @@ class RTPSSubmessage():
 
         if any(term in sm.lower() for term in ("port", "ping")):
             raise InvalidPCAPDataException(f"Routing frame: {sm}.", logging.INFO)
-        if not (discovery_frame or topic):
+        # Meta data frames won't have an associated topic
+        if not ((frame_type & (FrameTypes.DISCOVERY | FrameTypes.META_DATA)) or topic):
             # If not a discovery frame or a frame associated with a topic, then discard it
             raise NoDiscoveryDataException(f"No discovery data.")
 
         self.topic = topic
         self.length = length
-        self.sm_type = SubmessageTypes.DISCOVERY if discovery_frame else SubmessageTypes.UNSET
+        self.sm_type = (SubmessageTypes.DISCOVERY
+            if frame_type & FrameTypes.DISCOVERY else SubmessageTypes.UNSET)
 
         #  TODO: Handle user data that doens't have a topic
         # Check for a state submessage type
@@ -136,6 +146,8 @@ class RTPSSubmessage():
             elif "([" in sm_type:
                 # Unregister/Dispose for User Data
                 self.sm_type |= SubmessageTypes.DATA | SubmessageTypes.STATE
+            elif sm_type == "DATA(m)":
+                self.sm_type |= SubmessageTypes.LIVELINESS
             # else caught below
         elif "HEARTBEAT" in sm_type:
             self.sm_type |= SubmessageTypes.HEARTBEAT
