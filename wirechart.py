@@ -16,7 +16,7 @@ import argparse
 import subprocess
 
 # Local Application Imports
-from src.log_handler import configure_root_logger, logging
+from src.log_handler import configure_root_logger, logging, get_log_level
 from src.menu import MenuOption, get_user_menu_choice
 from src.rtps_capture import PlotScale, RTPSCapture
 from src.shared_utils import create_output_path
@@ -29,9 +29,14 @@ def main():
     parser.add_argument('--output', type=str, default='output', help='Specify an output file for PCAP statistics.')
     parser.add_argument('--no-gui', action='store_true', default=False, help='Disable GUI-based plotting.')
     parser.add_argument('--frame-range', type=str, default=None, help='Specify a range of frames to analyze in the format START:FINISH.')
+    parser.add_argument('--console-log-level', type=str, default='ERROR', help='Specify the console log level (DEBUG, INFO, WARNING, *ERROR*, CRITICAL).')
+    parser.add_argument('--file-log-level', type=str, default='INFO', help='Specify the file log level (DEBUG, *INFO*, WARNING, ERROR, CRITICAL).')
     args = parser.parse_args()
+
     # Configure the logger
-    configure_root_logger(create_output_path(args.pcap, args.output, 'log'))
+    configure_root_logger(create_output_path(args.pcap, args.output, 'log'),
+                          console_level=get_log_level(args.console_log_level),
+                          file_level=get_log_level(args.file_log_level))
 
     logger.debug(f"Command Arguments: {args}")
     get_tshark_version()

@@ -9,7 +9,7 @@
 # liable for any incidental or consequential damages arising out of the use or inability to
 # use the software.
 #
-############################################################################################## 
+##############################################################################################
 
 # Standard Library Imports
 import logging
@@ -17,6 +17,24 @@ import os
 
 TEST_ERROR = logging.CRITICAL + 10
 ALWAYS = TEST_ERROR + 10
+
+def get_log_level(level_str: str) -> int:
+    """
+    Converts a string into a corresponding logging level.
+
+    :param level_str: The log level as a string (e.g., "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL").
+    :return: The corresponding logging level (e.g., logging.DEBUG, logging.INFO).
+    """
+    log_levels = {
+        "DEBUG": logging.DEBUG,
+        "INFO": logging.INFO,
+        "WARNING": logging.WARNING,
+        "ERROR": logging.ERROR,
+        "CRITICAL": logging.CRITICAL,
+    }
+
+    # Convert the input string to uppercase and return the corresponding log level
+    return log_levels.get(level_str.upper(), logging.INFO)  # Default to INFO if invalid
 
 # Add the custom level name to the logging module
 logging.addLevelName(TEST_ERROR, "TEST_ERROR")
