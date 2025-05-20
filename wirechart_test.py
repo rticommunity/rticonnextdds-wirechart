@@ -15,7 +15,6 @@
 
 import os
 import glob
-import argparse
 from pexpect.popen_spawn import PopenSpawn
 
 PCAP_FOLDER = ".\\pcap"
@@ -74,10 +73,6 @@ def validate_output(pcap_path, expectations):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Wirechart Test Script")
-    parser.add_argument("--flag-enum", action="store_true", help="Enable the flag-enum option")
-    args = parser.parse_args()
-
     tests_passed, tests_failed, tests_skipped = 0, 0, 0
     failed_tests = []
 
@@ -91,7 +86,7 @@ def main():
     for pcap in pcap_files:
         # Generate expectations file path based on pcap filename
         base_name = os.path.basename(pcap)
-        expectations_file = os.path.splitext(base_name)[0] + (".flag_enum" if args.flag_enum else "") + ".txt"
+        expectations_file = os.path.splitext(base_name)[0] + ".flag_enum.txt"
         expectations_path = os.path.join(TEST_INPUT_FOLDER, expectations_file)
 
         # Load the expectations for the current pcap file (if it exists)
