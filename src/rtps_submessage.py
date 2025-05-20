@@ -71,13 +71,6 @@ SUBMESSAGE_COMBINATIONS = [
     SubmessageTypes.DATA | SubmessageTypes.STATE,
 ]
 
-def get_combination_order(smtype_combo):
-    try:
-        return SUBMESSAGE_COMBINATIONS.index(smtype_combo)
-    except ValueError:
-        # TODO: Figure out what to do here
-        return float('inf')  # or raise an exception or log warning
-
 def list_combinations_by_flag(flag: SubmessageTypes, combinations=SUBMESSAGE_COMBINATIONS, negate=False) -> list[SubmessageTypes]:
     """
     Return a list of SubmessageTypes combinations that include or exclude the given flag.
@@ -127,7 +120,6 @@ class RTPSSubmessage():
         self.sm_type = (SubmessageTypes.DISCOVERY
             if frame_type & FrameTypes.DISCOVERY else SubmessageTypes.UNSET)
 
-        #  TODO: Handle user data that doens't have a topic
         # Check for a state submessage type
         if "BATCH" in sm_type:
             self.sm_type |= SubmessageTypes.BATCH
@@ -167,11 +159,11 @@ class RTPSSubmessage():
         seq_num_count = 1
         if self.sm_type & (SubmessageTypes.HEARTBEAT | SubmessageTypes.GAP):
             # HEARTBEAT and GAP have double the sequence numbers
-            # TODO: Does GAP_BATCH exist, and do they have 4 sequence numbers?
             seq_num_count *= 2
         if self.sm_type & SubmessageTypes.BATCH:
             # BATCH has double the sequence numbers
             # DATA_BATCH has 2 sequence numbers and HEARTBEAT_BATCH has 4 sequence numbers
+            # TODO: Does GAP_BATCH exist, and do they have 4 sequence numbers?
             seq_num_count *= 2
 
         # Create a tuple of sequence numbers based on the count

@@ -103,7 +103,7 @@ class RTPSFrame:
 
         seq_num_it = iter(seq_number_list)
         for sm, sm_len in zip(sm_list, sm_len_list):
-            if sm in ("INFO_TS", "INFO_DST"):  # TODO: Maybe INFO_SRC too?
+            if sm in ("INFO_TS", "INFO_DST"):
                 continue
 
             if not self.sm_list:

@@ -286,11 +286,6 @@ class RTPSCapture:
             guid_key = (frame.guid_src, frame.ip_src, frame.guid_dst, frame.ip_dst)
             for sm in frame:
                 topic = sm.topic
-                # TODO: This method doesn't work for best effort.  A better approach would be to:
-                # 1. Differentiate between DATA(w) and DATA(r)s when creating Frame/SMs
-                # 2. For DATA(w) SMs, save guid_key to graph_edges[topic]
-                # 3. Test with square_best_effort.pcapng
-                # 4. May need to understand better, this approach may not be correct
                 # TODO: Probably want to just check for USER_DATA and ignore other flags
                 if (FrameTypes.DISCOVERY not in frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
                     self.graph_edges[topic].add((frame.guid_src, frame.guid_dst))
@@ -308,14 +303,12 @@ class RTPSCapture:
                 # elif (sm.sm_type & SubmessageTypes.DATA):
                     # TODO: Not sure how to handle FRAGs, so ignoring them for now
                     # TODO: Discovery repairs?
-                    # TODO: Durability repairs?
-                    # Check if this submessage is some form of a repair
+                    # Check if this submessage is some form of a repair.  Not all HEARTBEATs have a GUID_DST,
+                    # so we must consider the both cases where the GUID_DST is None and where it is not.
                     if sm.seq_num() <= max(sequence_numbers[guid_key],
-                                           # Not all HEARTBEATs have a GUID_DST, so we must consider the both
-                                           # cases where the GUID_DST is None and where it is not.
                                            sequence_numbers[guid_key[GUIDKey.GUID_SRC], guid_key[GUIDKey.IP_SRC], None, guid_key[GUIDKey.IP_DST]]):
-                        # If this is a repair, there will be a GUID_DST, and we can key on the entire GUID_KEY
                         sm.sm_type |= SubmessageTypes.REPAIR
+                        # If this is a repair, there will be a GUID_DST, and we can key on the entire GUID_KEY
                         if sm.seq_num() <= durability_repairs[guid_key]:
                             sm.sm_type |= SubmessageTypes.DURABLE
                 elif sm.sm_type & SubmessageTypes.ACKNACK:
@@ -397,11 +390,6 @@ class RTPSCapture:
         Parameters:
             edge_tuples (set): Set of (source, target) tuples
         """
-        # TODO: Make this a hierarchical graph so that all writers are on the left and all readers are on the right
-
-        # TODO: Maybe remove this?
-        # If not topic is provided, use the one with the most edges
-
         ax_none = (ax is None)
 
         if topic not in self.graph_edges:
@@ -498,7 +486,6 @@ class RTPSCapture:
                 print(f"  {submsg}: {count}")
         print()
 
-    # TODO: Add logic to print by count and length in the same function
     def print_stats_in_bytes(self):
         """
         Prints statistics about the PCAP data in bytes, including total message lengths,
