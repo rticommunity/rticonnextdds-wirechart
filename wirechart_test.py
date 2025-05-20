@@ -25,7 +25,7 @@ TEST_OUTPUT_FOLDER = ".\\test\\test_output"
 
 def load_expectations(filepath):
     if not os.path.exists(filepath):
-        print(f"⚠️ Expectations file not found: {filepath}")
+        # print(f"⚠️ Expectations file not found: {filepath}")
         return []
 
     with open(filepath, 'r', encoding='utf-8') as f:
@@ -85,7 +85,7 @@ def main():
                  glob.glob(os.path.join(PCAP_FOLDER, "*.pcapng"))
 
     if not pcap_files:
-        print("⚠️ No .pcap or .pcapng files found.")
+        print("\n⚠️ No .pcap or .pcapng files found.")
         return
 
     for pcap in pcap_files:
@@ -105,7 +105,7 @@ def main():
                 failed_tests.append(pcap)
         else:
             tests_skipped += 1
-            print(f"⚠️ No expectations file found for {base_name}. Skipping validation.")
+            print(f"\n⚠️ No expectations file found for {base_name}. Skipping validation.")
 
     print(f"\n📝 Summary: {tests_passed} tests passed, {tests_failed} tests failed, {tests_skipped} tests skipped.")
     if tests_failed > 0:
