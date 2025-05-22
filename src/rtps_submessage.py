@@ -13,11 +13,9 @@
 
 # Standard Library Imports
 from enum import Flag
-import re
 
 # Local Application Imports
 from src.log_handler import logging
-from src.shared_utils import InvalidPCAPDataException, NoDiscoveryDataException, FrameTypes
 
 logger = logging.getLogger(__name__)
 
@@ -100,74 +98,11 @@ def list_combinations_by_flag(flag: SubmessageTypes, combinations=SUBMESSAGE_COM
     return result
 
 class RTPSSubmessage():
-    def __init__(self, sm, length, seq_num_it, frame_type, multiple_sm=False):
-
-        matches = re.match(r'^(.*?)\s*->\s*(.*)', sm)
-        # If no -> is found, this might be a discovery frame or a user data frame without
-        # discovery info (which is handled below)
-        sm_type = matches.group(1).strip() if matches else sm
-        topic = matches.group(2).strip() if matches else None
-
-        if any(term in sm.lower() for term in ("port", "ping")):
-            raise InvalidPCAPDataException(f"Routing frame: {sm}.", logging.INFO)
-        # Meta data frames won't have an associated topic
-        if not ((frame_type & (FrameTypes.DISCOVERY | FrameTypes.META_DATA)) or topic):
-            # If not a discovery frame or a frame associated with a topic, then discard it
-            raise NoDiscoveryDataException(f"No discovery data.")
-
+    def __init__(self, topic, length, sm_type, seq_num_tuple):
         self.topic = topic
         self.length = length
-        self.sm_type = (SubmessageTypes.DISCOVERY
-            if frame_type & FrameTypes.DISCOVERY else SubmessageTypes.UNSET)
-
-        # Check for a state submessage type
-        if "BATCH" in sm_type:
-            self.sm_type |= SubmessageTypes.BATCH
-        if "FRAG" in sm_type:
-            self.sm_type |= SubmessageTypes.FRAGMENT
-        if "DATA" in sm_type:
-            if sm_type in ("DATA", "DATA_BATCH", "DATA_FRAG"):
-                self.sm_type |= SubmessageTypes.DATA
-            elif sm_type == "DATA(p)":
-                self.sm_type |= SubmessageTypes.DATA_P
-            elif sm_type in ("DATA(r)", "DATA(w)"):
-                self.sm_type |= SubmessageTypes.DATA_RW
-            elif re.search(r'DATA\([pwr]\[UD]\)', sm_type):
-                # Unregister/Dispose for Discovery Data
-                self.sm_type |= SubmessageTypes.STATE
-            elif "([" in sm_type:
-                # Unregister/Dispose for User Data
-                self.sm_type |= SubmessageTypes.DATA | SubmessageTypes.STATE
-            elif sm_type == "DATA(m)":
-                self.sm_type |= SubmessageTypes.LIVELINESS
-            # else caught below
-        elif "HEARTBEAT" in sm_type:
-            self.sm_type |= SubmessageTypes.HEARTBEAT
-            if multiple_sm:
-                self.sm_type |= SubmessageTypes.PIGGYBACK
-        elif "ACKNACK" == sm_type:
-            self.sm_type |= SubmessageTypes.ACKNACK
-        elif "GAP" == sm_type:
-            self.sm_type |= SubmessageTypes.GAP
-
-        if self.sm_type in {SubmessageTypes.UNSET, SubmessageTypes.DISCOVERY}:
-            # If there are no additional bits set, then an error has occurred, these can't exist alone
-            logger.error(f"Submessage type not set: {sm_type}.")
-            raise InvalidPCAPDataException(f"Submessage type not set: {sm_type}.", logging.ERROR)
-
-        # All submessages have a at least one sequence number
-        seq_num_count = 1
-        if self.sm_type & (SubmessageTypes.HEARTBEAT | SubmessageTypes.GAP):
-            # HEARTBEAT and GAP have double the sequence numbers
-            seq_num_count *= 2
-        if self.sm_type & SubmessageTypes.BATCH:
-            # BATCH has double the sequence numbers
-            # DATA_BATCH has 2 sequence numbers and HEARTBEAT_BATCH has 4 sequence numbers
-            # TODO: Does GAP_BATCH exist, and do they have 4 sequence numbers?
-            seq_num_count *= 2
-
-        # Create a tuple of sequence numbers based on the count
-        self.seq_num_tuple = tuple([next(seq_num_it) for _ in range(seq_num_count)])
+        self.sm_type = sm_type
+        self.seq_num_tuple = seq_num_tuple
 
     def __eq__(self, other):
         if isinstance(other, RTPSSubmessage):
@@ -176,6 +111,10 @@ class RTPSSubmessage():
                     self.length == other.length and
                     self.seq_num_tuple == other.seq_num_tuple)
         return False
+    
+    def __str__(self):
+        return (f"Type: {self.sm_type.name}, Topic: {self.topic}, "
+                f"Length: {self.length}, Seq Number: {self.seq_num_tuple}")
 
     def seq_num(self):
         """
@@ -209,7 +148,3 @@ class RTPSSubmessage():
         if SubmessageTypes.GAP & self.sm_type:
             return self.seq_num_tuple[0], self.seq_num_tuple[1]
         return None, None
-
-    def __str__(self):
-        return (f"Type: {self.sm_type.name}, Topic: {self.topic}, "
-                f"Length: {self.length}, Seq Number: {self.seq_num_tuple}")

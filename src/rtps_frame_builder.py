@@ -7,6 +7,7 @@ from src.log_handler import logging
 from src.rtps_frame import RTPSFrame, FrameTypes
 from src.shared_utils import InvalidPCAPDataException
 from src.rtps_submessage import SubmessageTypes, RTPSSubmessage
+from src.rtps_submessage_builder import RTPSSubmessageBuilder
 
 logger = logging.getLogger(__name__)
 
@@ -124,10 +125,10 @@ class RTPSFrameBuilder:
                 continue
 
             if not submessages:
-                submessages.append(RTPSSubmessage(name, udp_length, seq_it, frame_type))
+                submessages.append(RTPSSubmessageBuilder(name, udp_length, seq_it, frame_type).build())
             else:
                 submessages[0].length -= length
-                submessages.append(RTPSSubmessage(name, length, seq_it, frame_type, True))
+                submessages.append(RTPSSubmessageBuilder(name, length, seq_it, frame_type, True).build())
 
         remaining = list(seq_it)
         if remaining:
