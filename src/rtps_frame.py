@@ -78,7 +78,6 @@ class RTPSFrame:
             except ValueError:
                 setattr(self, attr, None)
 
-
         entity_id_str , entity_id = get_entity_id(frame_data.get('rtps.sm.wrEntityId', None))
         if entity_id is None:
             raise InvalidPCAPDataException(f"Invalid Entity ID: {entity_id_str}", logging.WARNING)

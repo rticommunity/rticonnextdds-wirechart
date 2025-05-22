@@ -40,6 +40,7 @@ DISCOVERY_TOPIC = "DISCOVERY"
 META_DATA_TOPIC = "META_DATA"
 
 # tshark seems to return commands in a hierarchy, i.e. frame -> udp -> rtps so order matters
+# TODO: Use frame.length(entire frame), requires changes to test files.
 PCAP_FIELDS = list(['frame.number',
                     'ip.src', 'ip.dst', 'udp.length',
                     'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',        # Writer GUID
@@ -67,18 +68,6 @@ class RTPSCapture:
         self.df = pd.DataFrame()  # DataFrame to store analysis results
         self._extract_rtps_frames(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
 
-    def __iter__(self):
-        self._current_index = 0
-        return self
-
-    def __next__(self):
-        if self._current_index < len(self.frames):
-            packet = self.frames[self._current_index]
-            self._current_index += 1
-            return packet
-        else:
-            raise StopIteration
-
     def __eq__(self, value):
         if isinstance(value, RTPSCapture):
             return (self.frames == value.frames and
@@ -93,15 +82,6 @@ class RTPSCapture:
                     self.df.equals(value.df))
         else:
             return False
-
-    def save(self, filename):
-        with open(filename, 'wb') as f:
-            pickle.dump(self, f)
-
-    @staticmethod
-    def load(filename):
-        with open(filename, 'rb') as f:
-            return pickle.load(f)
 
     def add_frame(self, frame):
         """
@@ -287,6 +267,9 @@ class RTPSCapture:
             for sm in frame:
                 topic = sm.topic
                 # TODO: Probably want to just check for USER_DATA and ignore other flags
+                # TODO: Add this check after the frame is classified as a repair?  Otherwise,
+                # multicast frame repairs might be added to the graph, which doesn't accurately
+                # represent the topology for a multicast writer.
                 if (FrameTypes.DISCOVERY not in frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
                     self.graph_edges[topic].add((frame.guid_src, frame.guid_dst))
                 if FrameTypes.DISCOVERY in frame.frame_type:
