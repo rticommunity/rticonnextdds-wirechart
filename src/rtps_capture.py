@@ -14,7 +14,6 @@
 # Standard Library Imports
 import os
 import subprocess
-import pickle
 from collections import defaultdict
 from enum import Enum, IntEnum
 
@@ -27,6 +26,7 @@ from matplotlib.ticker import StrMethodFormatter
 # Local Application Imports
 from src.log_handler import logging
 from src.rtps_frame import RTPSFrame, FrameTypes
+from src.rtps_frame_builder import RTPSFrameBuilder
 from src.shared_utils import InvalidPCAPDataException, NoDiscoveryDataException, create_output_path, guid_prefix
 from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
 
@@ -203,7 +203,7 @@ class RTPSCapture:
                 values = raw_frame.split('\t')
                 frame = {field: value for field, value in zip(fields, values)}
                 try:
-                    self.add_frame(RTPSFrame(frame))  # Create a RTPSFrame object for each record
+                    self.add_frame(RTPSFrameBuilder(frame).build())  # Create a RTPSFrame object for each record
                 except InvalidPCAPDataException as e:
                     if e.log_level == logging.ERROR:
                         frame_errors += 1
