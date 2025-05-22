@@ -11,15 +11,16 @@ from src.rtps_submessage_builder import RTPSSubmessageBuilder
 
 logger = logging.getLogger(__name__)
 
+# Useful: https://community.rti.com/static/documentation/wireshark/2020-07/doc/appendix.html
 class EntityIds:
-    DISCOVERY_BUILTIN_PARTICIPANT_ANNOUNCER = 0x000100c2
-    DISCOVERY_BUILTIN_PARTICIPANT_DETECTOR = 0x000003c2
-    DISCOVERY_BUILTIN_PARTICIPANT_PROXY = 0x000004c2
-    DISCOVERY_METATRAFFIC_PARTICIPANT_ANNOUNCER = 0xff0003c2
-    DISCOVERY_METATRAFFIC_PARTICIPANT_DETECTOR = 0xff0004c2
-    METADATA = 0x000200c2
-    SERVICE_REQUEST_1 = 0x00020087
-    SERVICE_REQUEST_2 = 0x00020082
+    ENTITYID_BUILTIN_SDP_PARTICIPANT_WRITER = 0x000100c2
+    ENTITYID_BUILTIN_PUBLICATIONS_WRITER = 0x000003c2
+    ENTITYID_BUILTIN_SUBSCRIPTIONS_WRITER = 0x000004c2
+    ENTITYID_SEDP_BUILTIN_PUBLICATIONS_SECURE_WRITER = 0xff0003c2
+    ENTITYID_SEDP_BUILTIN_SUBSCRIPTIONS_SECURE_WRITER = 0xff0004c2
+    ENTITYID_P2P_BUILTIN_PARTICIPANT_MESSAGE_WRITER = 0x000200c2
+    ENTITYID_RTI_BUILTIN_SERVICE_REQUEST_WRITER = 0x00020082
+    ENTITYID_RTI_BUILTIN_SERVICE_REQUEST_READER = 0x00020087
 
 class ServiceKinds:
     ROUTING_SERVICE = 0x3
@@ -39,8 +40,8 @@ class RTPSFrameBuilder:
         entity_id_str, entity_id = self._parse_entity_id('rtps.sm.wrEntityId')
 
         if entity_id in (
-            EntityIds.SERVICE_REQUEST_1,
-            EntityIds.SERVICE_REQUEST_2,
+            EntityIds.ENTITYID_RTI_BUILTIN_SERVICE_REQUEST_WRITER,
+            EntityIds.ENTITYID_RTI_BUILTIN_SERVICE_REQUEST_READER,
         ):
             raise InvalidPCAPDataException("Service Request Frame.", logging.INFO)
 
@@ -96,14 +97,14 @@ class RTPSFrameBuilder:
             frame_type |= FrameTypes.ROUTING_SERVICE
 
         if entity_id in {
-            EntityIds.DISCOVERY_BUILTIN_PARTICIPANT_ANNOUNCER,
-            EntityIds.DISCOVERY_BUILTIN_PARTICIPANT_DETECTOR,
-            EntityIds.DISCOVERY_BUILTIN_PARTICIPANT_PROXY,
-            EntityIds.DISCOVERY_METATRAFFIC_PARTICIPANT_ANNOUNCER,
-            EntityIds.DISCOVERY_METATRAFFIC_PARTICIPANT_DETECTOR,
+            EntityIds.ENTITYID_BUILTIN_SDP_PARTICIPANT_WRITER,
+            EntityIds.ENTITYID_BUILTIN_PUBLICATIONS_WRITER,
+            EntityIds.ENTITYID_BUILTIN_SUBSCRIPTIONS_WRITER,
+            EntityIds.ENTITYID_SEDP_BUILTIN_PUBLICATIONS_SECURE_WRITER,
+            EntityIds.ENTITYID_SEDP_BUILTIN_SUBSCRIPTIONS_SECURE_WRITER,
         }:
             frame_type |= FrameTypes.DISCOVERY
-        elif entity_id == EntityIds.METADATA:
+        elif entity_id == EntityIds.ENTITYID_P2P_BUILTIN_PARTICIPANT_MESSAGE_WRITER:
             frame_type |= FrameTypes.META_DATA
         else:
             frame_type |= FrameTypes.USER_DATA
