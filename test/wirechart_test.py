@@ -17,9 +17,9 @@ import os
 import glob
 from pexpect.popen_spawn import PopenSpawn
 
-PCAP_FOLDER = ".\\pcap"
-TEST_INPUT_FOLDER = ".\\test\\test_input"
-TEST_OUTPUT_FOLDER = ".\\test\\test_output"
+PCAP_FOLDER = f"..{os.path.sep}pcap"
+TEST_INPUT_FOLDER = f".{os.path.sep}test_input"
+TEST_OUTPUT_FOLDER = f".{os.path.sep}test_output"
 
 
 def load_expectations(filepath):
@@ -40,7 +40,7 @@ def load_expectations(filepath):
 def validate_output(pcap_path, expectations):
     print(f"\n🔍 Validating {pcap_path}")
 
-    command = f"python wirechart.py --pcap \"{pcap_path}\" --console-log-level ERROR --file-log-level DEBUG"
+    command = f"python ..{os.path.sep}wirechart.py --pcap \"{pcap_path}\" --console-log-level ERROR --file-log-level DEBUG"
     child = PopenSpawn(command, encoding='utf-8', timeout=20)
 
     base_name = os.path.basename(pcap_path)
