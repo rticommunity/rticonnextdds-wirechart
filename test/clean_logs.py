@@ -11,6 +11,7 @@ def clean_log_file(file_path, overwrite=True):
 
     cleaned_lines = []
     inside_block = False
+    first_replacement = True
 
     for line in lines:
         stripped = line.strip()
@@ -28,6 +29,9 @@ def clean_log_file(file_path, overwrite=True):
             if inside_block:
                 # End of block — insert replacement line
                 cleaned_lines.append(replacement_line)
+                if first_replacement:
+                    cleaned_lines.append(r"Choose option \(a/b\):" + "\n")
+                    first_replacement = False
             inside_block = not inside_block
             continue  # Do not include separator lines
 
