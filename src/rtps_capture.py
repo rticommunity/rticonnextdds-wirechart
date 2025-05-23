@@ -157,26 +157,24 @@ class RTPSCapture:
         :param max_frames: Optional limit on number of packets
         """
         logger.always("Reading data from pcap file using the provided method...")
-        frame_data = read_pcap_method(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
-        self._process_frames(frame_data, fields)
+        frame_dict = read_pcap_method(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
+        self._process_frames(frame_dict)
 
-    def _process_frames(self, frame_data, fields):
+    def _process_frames(self, frame_dict):
         """
-        Processes raw frame data and populates the RTPSCapture object.
+        Processes frame dictionary list and populates the RTPSCapture object.
 
-        :param frame_data: List of raw frame data as strings
+        :param frame_data: List of dictionaries containing (field, value) pairs for each frame
         :param fields: Set of fields to extract
         """
-        if frame_data == ['']:
+        if not frame_dict:
             raise InvalidPCAPDataException("No RTPS frames to process")
 
-        total_frames = len(frame_data)
+        total_frames = len(frame_dict)
         progress_interval = max(total_frames // 10, 1)  # Avoid division by zero for small datasets
 
         frame_errors, frame_warnings, discovery_warnings = 0, 0, 0
-        for i, raw_frame in enumerate(frame_data):
-            values = raw_frame.split('\t')
-            frame = {field: value for field, value in zip(fields, values)}
+        for i, frame in enumerate(frame_dict):
             try:
                 self.add_frame(RTPSFrameBuilder(frame).build())  # Create a RTPSFrame object for each record
             except InvalidPCAPDataException as e:

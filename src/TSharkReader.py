@@ -27,7 +27,7 @@ class TsharkReader:
         :param start_frame: Optional start frame number
         :param finish_frame: Optional finish frame number
         :param max_frames: Optional limit on number of packets
-        :return: List of raw frame data as strings
+        :return: List of dictionaries (field, value) pairs for each frame
         """
         if not os.path.exists(pcap_file):
             logger.error(f"PCAP file {pcap_file} does not exist.")
@@ -61,9 +61,14 @@ class TsharkReader:
         logger.debug(f"Running command: {' '.join(cmd)}")
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            frame_data = result.stdout.strip().split('\n')
-            logger.always(f"tshark returned {len(frame_data)} frames")
-            return frame_data
+            raw_frames = result.stdout.strip().split('\n')
+            logger.always(f"tshark returned {len(raw_frames)} frames")
+
+            frame_dict = []
+            for raw_frame in raw_frames:
+                values = raw_frame.split('\t')
+                frame_dict.append({field: value for field, value in zip(fields, values)})
+            return frame_dict
         except subprocess.CalledProcessError as e:
             logger.error("Error running tshark.")
             raise e
