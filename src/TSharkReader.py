@@ -50,7 +50,9 @@ class TsharkReader:
             logger.error(f"PCAP file {pcap_file} does not exist.")
             raise FileNotFoundError(f"PCAP file {pcap_file} does not exist.")
 
-        cmd = ['tshark', '-r', pcap_file, '-T', 'fields']
+        # -2 performs a two-pass read of the pcap file, which collects all the discovery data
+        # https://www.wireshark.org/docs/man-pages/tshark.html
+        cmd = ['tshark', '-2', '-r', pcap_file, '-T', 'fields']
 
         # Add each field to the command
         for field in fields:
