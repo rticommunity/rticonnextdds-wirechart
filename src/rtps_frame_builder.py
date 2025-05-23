@@ -129,7 +129,7 @@ class RTPSFrameBuilder:
         sm_names = [s.strip() for s in info_column.split(',')]
         seq_numbers = list(map(int, self.frame_data.get('rtps.sm.seqNumber', '0').split(',')))
         sm_lengths = list(map(int, self.frame_data.get('rtps.sm.octetsToNextHeader', '0').split(',')))
-        udp_length = int(self.frame_data.get('udp.length', 0))
+        frame_length = int(self.frame_data.get('frame.len', 0))
 
         submessages = []
         seq_it = iter(seq_numbers)
@@ -139,7 +139,7 @@ class RTPSFrameBuilder:
                 continue
 
             if not submessages:
-                submessages.append(RTPSSubmessageBuilder(name, udp_length, seq_it, frame_type).build())
+                submessages.append(RTPSSubmessageBuilder(name, frame_length, seq_it, frame_type).build())
             else:
                 submessages[0].length -= length
                 submessages.append(RTPSSubmessageBuilder(name, length, seq_it, frame_type, True).build())
