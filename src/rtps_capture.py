@@ -54,17 +54,14 @@ class RTPSCapture:
     Provides methods to manage and analyze the captured frames.
     """
 
-    def __init__(self, display_filter='rtps', start_frame=None, finish_frame=None, max_frames=None):
+    def __init__(self):
         """
         Initializes an empty RTPSCapture object.
         """
-
-
         self.frames = []  # List to store RTPSFrame objects
         self.graph_edges = defaultdict(set)
         self.rs_guid_prefix = set()
         self.df = pd.DataFrame()  # DataFrame to store analysis results
-        #self._extract_rtps_frames(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
 
     def __eq__(self, value):
         if isinstance(value, RTPSCapture):
