@@ -54,19 +54,17 @@ class RTPSCapture:
     Provides methods to manage and analyze the captured frames.
     """
 
-    def __init__(self, pcap_file, fields=PCAP_FIELDS, display_filter='rtps', start_frame=None, finish_frame=None, max_frames=None):
+    def __init__(self, display_filter='rtps', start_frame=None, finish_frame=None, max_frames=None):
         """
         Initializes an empty RTPSCapture object.
         """
-        if not os.path.exists(pcap_file):
-            logger.error(f"PCAP file {pcap_file} does not exist.")
-            raise FileNotFoundError(f"PCAP file {pcap_file} does not exist.")
+
 
         self.frames = []  # List to store RTPSFrame objects
         self.graph_edges = defaultdict(set)
         self.rs_guid_prefix = set()
         self.df = pd.DataFrame()  # DataFrame to store analysis results
-        self._extract_rtps_frames(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
+        #self._extract_rtps_frames(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
 
     def __eq__(self, value):
         if isinstance(value, RTPSCapture):
@@ -149,86 +147,63 @@ class RTPSCapture:
         for frame in self.frames:
             print(frame)
 
-    def _extract_rtps_frames(self, pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
+    def extract_rtps_frames(self, read_pcap_method, pcap_file, fields=PCAP_FIELDS , display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
         """
-        Calls tshark to extract specified fields from a pcap file and returns a list of RTPSFrame objects.
+        Extracts RTPS frames from a pcap file by using an injected method to read the data.
 
+        :param read_pcap_method: Callable that reads the pcap file and returns raw frame data
         :param pcap_file: Path to the pcap file
-        :param fields: Set of fields to extract (e.g., ['_ws_col_Info', '_ws.col.Protocol'])
-        :param display_filter: Optional display filter (e.g., 'http')
+        :param fields: Set of fields to extract
+        :param display_filter: Optional display filter
+        :param start_frame: Optional start frame number
+        :param finish_frame: Optional finish frame number
         :param max_frames: Optional limit on number of packets
-        :return: List of RTPSFrame objects containing the extracted field values
         """
-        cmd = ['tshark', '-r', pcap_file, '-T', 'fields']
+        logger.always("Reading data from pcap file using the provided method...")
+        frame_data = read_pcap_method(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
+        self._process_frames(frame_data, fields)
 
-        # Add each field to the command
-        for field in fields:
-            cmd.extend(['-e', field])
+    def _process_frames(self, frame_data, fields):
+        """
+        Processes raw frame data and populates the RTPSCapture object.
 
-        filter_parts = []
+        :param frame_data: List of raw frame data as strings
+        :param fields: Set of fields to extract
+        """
+        if frame_data == ['']:
+            raise InvalidPCAPDataException("No RTPS frames to process")
 
-        if display_filter:
-            filter_parts.append(f"({display_filter})")
+        total_frames = len(frame_data)
+        progress_interval = max(total_frames // 10, 1)  # Avoid division by zero for small datasets
 
-        if start_frame:
-            filter_parts.append(f"(frame.number >= {start_frame})")
-
-        if finish_frame:
-            filter_parts.append(f"(frame.number <= {finish_frame})")
-
-        # Join all parts with "&&"
-        full_filter = " && ".join(filter_parts)
-
-        if full_filter:
-            cmd.extend(['-Y', full_filter])
-        if max_frames:
-            cmd.extend(['-c', str(max_frames)])
-
-        logger.debug(f"Running command: {' '.join(cmd)}")
-        try:
-            logger.always("Reading data from from pcap file...")
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            frame_data = result.stdout.strip().split('\n')
-            logger.always(f"tshark returned {len(frame_data)} frames")
-
-            if frame_data == ['']:
-                raise InvalidPCAPDataException("tshark returned no RTPS frames")
-
-            # Split each line into columns and create a list of RTPSFrame objects
-            total_frames = len(frame_data)
-            progress_interval = max(total_frames // 10, 1)  # Avoid division by zero for small datasets
-
-            frame_errors, frame_warnings, discovery_warnings = 0, 0, 0
-            for i, raw_frame in enumerate(frame_data):
-                values = raw_frame.split('\t')
-                frame = {field: value for field, value in zip(fields, values)}
-                try:
-                    self.add_frame(RTPSFrameBuilder(frame).build())  # Create a RTPSFrame object for each record
-                except InvalidPCAPDataException as e:
-                    if e.log_level == logging.ERROR:
-                        frame_errors += 1
-                    elif e.log_level == logging.WARNING:
-                        frame_warnings += 1
-                    logger.log(e.log_level, f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
-                    continue
-                except NoDiscoveryDataException as e:
-                    discovery_warnings += 1
-                    logger.warning(f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
-                    continue
-                except KeyError as e:
+        frame_errors, frame_warnings, discovery_warnings = 0, 0, 0
+        for i, raw_frame in enumerate(frame_data):
+            values = raw_frame.split('\t')
+            frame = {field: value for field, value in zip(fields, values)}
+            try:
+                self.add_frame(RTPSFrameBuilder(frame).build())  # Create a RTPSFrame object for each record
+            except InvalidPCAPDataException as e:
+                if e.log_level == logging.ERROR:
                     frame_errors += 1
-                    logger.debug(f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
-                    continue
-                # Print progress every 10%
-                if (i + 1) % progress_interval == 0 or (i + 1) == total_frames:
-                    percent = ((i + 1) * 100) // total_frames
-                    logger.always(f"Processing {percent}% complete")
-        except subprocess.CalledProcessError as e:
-            logger.error("Error running tshark.")
-            raise e
+                elif e.log_level == logging.WARNING:
+                    frame_warnings += 1
+                logger.log(e.log_level, f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
+                continue
+            except NoDiscoveryDataException as e:
+                discovery_warnings += 1
+                logger.warning(f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
+                continue
+            except KeyError as e:
+                frame_errors += 1
+                logger.debug(f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
+                continue
+            # Print progress every 10%
+            if (i + 1) % progress_interval == 0 or (i + 1) == total_frames:
+                percent = ((i + 1) * 100) // total_frames
+                logger.always(f"Processing {percent}% complete")
 
         logger.always(f"Discovery warnings: {discovery_warnings} | Frame warnings: {frame_warnings} | Frame errors: {frame_errors}")
-
+    # TODO: Refactor this method to its own class and extract methods for each step (irene)
     def analyze_capture(self):
         """
         Counts user messages and returns the data as a pandas DataFrame.
@@ -351,7 +326,7 @@ class RTPSCapture:
         if not duplicates.empty:
             print("Duplicate entries found:")
             print(duplicates)
-
+    # TODO: move the plot_* and print_* methods to a separate class (irene)
     def plot_multi_topic_graph(self):
         topic_node_counts = {
             topic: len(set([n for edge in edges for n in edge]))
@@ -454,16 +429,16 @@ class RTPSCapture:
 
         # Calculate total messages by topic and sort in descending order
         total_messages_by_topic = self.df.groupby('topic')['count'].sum().sort_values(ascending=False)
-        print(f"{" " * 2}Total messages by topic:")
+        print(f"{' ' * 2}Total messages by topic:")
         for topic, count in total_messages_by_topic.items():
-            print(f"{" " * 4}{topic}: {count}")
+            print(f"{' ' * 4}{topic}: {count}")
 
         # Calculate counts for each submessage type
         submessage_counts = self.df.groupby('sm', observed=False)['count'].sum()
-        print(f"{" " * 2}Submessage counts:")
+        print(f"{' ' * 2}Submessage counts:")
         for submsg in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
             if submsg in submessage_counts:
-                print(f"{" " * 4}{submsg}: {submessage_counts[submsg]}")
+                print(f"{' ' * 4}{submsg}: {submessage_counts[submsg]}")
         for submsg, count in submessage_counts.items():
             if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
                 print(f"  {submsg}: {count}")
@@ -480,20 +455,20 @@ class RTPSCapture:
 
         # Calculate total message length by topic and sort in descending order
         total_length_by_topic = self.df.groupby('topic')['length'].sum().sort_values(ascending=False)
-        print(f"{" " * 2}Total message length by topic:")
+        print(f"{' ' * 2}Total message length by topic:")
         for topic, length in total_length_by_topic.items():
-            print(f"{" " * 4}{topic}: {length:,} bytes")
+            print(f"{' ' * 4}{topic}: {length:,} bytes")
 
         # Calculate total lengths for each submessage type
         submessage_lengths = self.df.groupby('sm', observed=False)['length'].sum()
-        print(f"{" " * 2}Submessage lengths:")
+        print(f"{' ' * 2}Submessage lengths:")
         # Get all submessage types
         for submsg in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
             if submsg in submessage_lengths:
-                print(f"{" " * 4}{submsg}: {submessage_lengths[submsg]:,} bytes")
+                print(f"{' ' * 4}{submsg}: {submessage_lengths[submsg]:,} bytes")
         for submsg, length in submessage_lengths.items():
             if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
-                print(f"{" " * 4}{submsg}: {length:,} bytes")
+                print(f"{' ' * 4}{submsg}: {length:,} bytes")
         print()
 
     def plot_stats_by_frame_count(self, include_discovery=False, scale=PlotScale.LINEAR):

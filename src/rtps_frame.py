@@ -91,7 +91,7 @@ class RTPSFrame:
         return any(sm.sm_type == sm_type for sm in self.sm_list)
 
     def __str__(self):
-        result = [f"Frame: {self.frame_number:09} GUID_SRC: {guid_prefix(self.guid_src)} Frame Type: {self.frame_type.name}\n{" " * 2}Submessages ({len(self.sm_list)}):"]
+        result = [f"Frame: {self.frame_number:09} GUID_SRC: {guid_prefix(self.guid_src)} Frame Type: {self.frame_type.name}\n{' ' * 2}Submessages ({len(self.sm_list)}):"]
         for i, submessage in enumerate(self.sm_list, start=1):
-            result.append(f"{" " * 4}{i} {str(submessage)}")
+            result.append(f"{' ' * 4}{i} {str(submessage)}")
         return "\n".join(result) + "\n"

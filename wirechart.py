@@ -15,6 +15,7 @@
 import argparse
 import subprocess
 
+from src.TSharkReader import TsharkReader
 # Local Application Imports
 from src.log_handler import configure_root_logger, logging, get_log_level
 from src.menu import MenuOption, get_user_menu_choice
@@ -39,14 +40,17 @@ def main():
                           file_level=get_log_level(args.file_log_level))
 
     logger.debug(f"Command Arguments: {args}")
-    get_tshark_version()
+    TsharkReader.get_tshark_version()
     logger.always("Starting the PCAP analysis.")
 
     start, finish = None, None
     if args.frame_range:
         start, finish = parse_range(args.frame_range)
 
-    rtps_frames = RTPSCapture(args.pcap, start_frame=start, finish_frame=finish)
+    rtps_frames = RTPSCapture(start_frame=start, finish_frame=finish)
+    rtps_frames.extract_rtps_frames(TsharkReader.read_pcap,
+                                    args.pcap,
+                                    display_filter='rtps')
     rtps_frames.analyze_capture()  # Analyze the capture
 
     scale = PlotScale.LINEAR  # Default scale
@@ -110,15 +114,6 @@ def parse_range(value: str):
         raise ValueError(f"Invalid range: {value}. 'before' must be less than or equal to 'after'. Exiting program.")
 
     return before, after
-
-def get_tshark_version():
-    try:
-        output = subprocess.check_output(["tshark", "--version"], stderr=subprocess.STDOUT, text=True)
-        logger.always(output.splitlines()[0])
-    except FileNotFoundError:
-        logger.error("Error: tshark is not installed.")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Error running tshark: {e.output.strip()}")
 
 if __name__ == "__main__":
     try:

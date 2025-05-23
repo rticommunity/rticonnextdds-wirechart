@@ -21,7 +21,7 @@ from src.rtps_capture import PlotScale
 logger = logging.getLogger(__name__)
 
 class MenuOption(IntEnum):
-    INVALID = auto(-1)  # For clarity
+    INVALID = -1  # For clarity
     PRINT_CAPTURE_SUMMARY = auto()
     PRINT_TOPICS = auto()
     PRINT_STATS_COUNT = auto()
