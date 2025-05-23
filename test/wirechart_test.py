@@ -15,11 +15,14 @@
 
 import os
 import glob
+import argparse
 from pexpect.popen_spawn import PopenSpawn
 
-PCAP_FOLDER = ".\\pcap"
-TEST_INPUT_FOLDER = ".\\test\\test_input"
-TEST_OUTPUT_FOLDER = ".\\test\\test_output"
+PCAP_FOLDER = f"..{os.path.sep}pcap"
+TEST_INPUT_FOLDER = f".{os.path.sep}test_input"
+TEST_OUTPUT_FOLDER = f".{os.path.sep}test_output"
+MENU_LINE = r"Enter your choice \(0-10\):"
+INCLUDE_DISCOVERY = r"Choose option \(a/b\):"
 
 
 def load_expectations(filepath):
@@ -37,11 +40,11 @@ def load_expectations(filepath):
                 return [line.strip() for line in f if line.strip()]
 
 
-def validate_output(pcap_path, expectations):
-    print(f"\n🔍 Validating {pcap_path}")
+def validate_output(pcap_path, expectations, generated_test_files):
+    print(f"\n🔍 Processing {pcap_path}")
 
-    command = f"python wirechart.py --pcap \"{pcap_path}\" --console-log-level ERROR --file-log-level DEBUG"
-    child = PopenSpawn(command, encoding='utf-8', timeout=20)
+    command = f"python ..{os.path.sep}wirechart.py --pcap \"{pcap_path}\" --console-log-level NONE --file-log-level DEBUG"
+    child = PopenSpawn(command, encoding='utf-8', timeout=60)
 
     base_name = os.path.basename(pcap_path)
     log_path = os.path.join(TEST_OUTPUT_FOLDER, os.path.splitext(base_name)[0] + ".log")
@@ -50,18 +53,26 @@ def validate_output(pcap_path, expectations):
     with open(log_path, "w", encoding="utf-8") as log_file:
         child.logfile = log_file
 
-        inputs = ['0', '1', '2', '3', '10']
+        inputs = [['8', MENU_LINE],
+                  ['b', INCLUDE_DISCOVERY],
+                  ['0', MENU_LINE],
+                  ['1', MENU_LINE],
+                  ['2', MENU_LINE],
+                  ['3', MENU_LINE],
+                  ['10', MENU_LINE]]
         input_index = 0
 
         try:
             for expected in expectations:
-                # print(f"⏳ Expecting: {expected}")
+                if generated_test_files:
+                    expected = inputs[input_index][1]
                 child.expect(expected)
 
-                if "Enter your choice" in expected and input_index < len(inputs):
-                    # print(f"📝 Sending input: {inputs[input_index]}")
-                    child.sendline(inputs[input_index])
+                if expected in {MENU_LINE, INCLUDE_DISCOVERY} and input_index < len(inputs):
+                    child.sendline(inputs[input_index][0])
                     input_index += 1
+                    if generated_test_files and input_index == len(inputs):
+                        return True
 
             print(f"✅ Validation passed for {pcap_path}")
             return True
@@ -71,8 +82,7 @@ def validate_output(pcap_path, expectations):
             print(f"🧾 Last output: {child.before.strip()}")
             return False
 
-
-def main():
+def main(generated_test_files=False):
     tests_passed, tests_failed, tests_skipped = 0, 0, 0
     failed_tests = []
 
@@ -92,8 +102,8 @@ def main():
         # Load the expectations for the current pcap file (if it exists)
         expectations = load_expectations(expectations_path)
 
-        if expectations:
-            if validate_output(pcap, expectations):
+        if expectations or generated_test_files:
+            if validate_output(pcap, expectations, generated_test_files):
                 tests_passed += 1
             else:
                 tests_failed += 1
@@ -107,4 +117,9 @@ def main():
         print(f"❌ Failed tests: {', '.join(failed_tests)}")
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Run PCAP test validations.")
+    parser.add_argument('--generate-test-files', action='store_true',
+                        help='Skip output checking, just generate test output logs.')
+
+    args = parser.parse_args()
+    main(generated_test_files=args.generate_test_files)

@@ -17,6 +17,7 @@ import os
 
 TEST_ERROR = logging.CRITICAL + 10
 ALWAYS = TEST_ERROR + 10
+NONE = ALWAYS + 10
 
 def get_log_level(level_str: str) -> int:
     """
@@ -31,6 +32,9 @@ def get_log_level(level_str: str) -> int:
         "WARNING": logging.WARNING,
         "ERROR": logging.ERROR,
         "CRITICAL": logging.CRITICAL,
+        "TEST_ERROR": TEST_ERROR,
+        "ALWAYS": ALWAYS,
+        "NONE": NONE,
     }
 
     # Convert the input string to uppercase and return the corresponding log level
