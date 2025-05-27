@@ -18,6 +18,8 @@ import argparse
 from src.log_handler import configure_root_logger, logging, get_log_level
 from src.menu import MenuOption, get_user_menu_choice
 from src.rtps_capture import PlotScale, RTPSCapture
+from src.rtps_capture_analysis import RTPSCaptureAnalysis
+from src.rtps_display import RTPSDisplay
 from src.shared_utils import log_env_vars, create_output_path
 from src.readers.tshark_reader import TsharkReader
 
@@ -48,12 +50,15 @@ def main():
         start, finish = parse_range(args.frame_range)
 
     rtps_frames = RTPSCapture()
+    rtps_analysis = RTPSCaptureAnalysis()
+    rtps_display = RTPSDisplay(args.no_gui)
+
     rtps_frames.extract_rtps_frames(TsharkReader.read_pcap,
                                     args.pcap,
                                     display_filter='rtps',
                                     start_frame=start,
                                     finish_frame=finish)
-    rtps_frames.analyze_capture()  # Analyze the capture
+    rtps_analysis.analyze_capture(rtps_frames)  # Analyze the capture
 
     scale = PlotScale.LINEAR  # Default scale
     plot_discovery = False
@@ -61,27 +66,27 @@ def main():
         menu_choice, scale, plot_discovery, topic = get_user_menu_choice(scale, plot_discovery)
         match menu_choice:
             case MenuOption.PRINT_CAPTURE_SUMMARY:
-                rtps_frames.print_capture_summary()
+                rtps_display.print_capture_summary(rtps_frames)
             case MenuOption.PRINT_TOPICS:
-                rtps_frames.print_topics()
+                rtps_display.print_topics(rtps_frames)
             case MenuOption.PRINT_STATS_COUNT:
-                rtps_frames.print_stats()
+                rtps_display.print_stats(rtps_analysis)
             case MenuOption.PRINT_STATS_BYTES:
-                rtps_frames.print_stats_in_bytes()
+                rtps_display.print_stats_in_bytes(rtps_analysis)
             case MenuOption.PLOT_BAR_CHART_COUNT:
                 if not args.no_gui:
-                    rtps_frames.plot_stats_by_frame_count(plot_discovery, scale)
+                    rtps_display.plot_stats_by_frame_count(rtps_analysis, plot_discovery, scale)
             case MenuOption.PLOT_BAR_CHART_BYTES:
                 if not args.no_gui:
-                    rtps_frames.plot_stats_by_frame_length(plot_discovery, scale)
+                    rtps_display.plot_stats_by_frame_length(rtps_analysis, plot_discovery, scale)
             case MenuOption.PLOT_TOPOLOGY_GRAPH:
                 if not args.no_gui:
                     if topic:
-                        rtps_frames.plot_topic_graph(topic=topic)
+                        rtps_display.plot_topic_graph(rtps_analysis, topic=topic)
                     else:
-                        rtps_frames.plot_multi_topic_graph()
+                        rtps_display.plot_multi_topic_graph(rtps_analysis)
             case MenuOption.SAVE_EXCEL:
-                rtps_frames.save_to_excel(args.pcap, args.output, 'PCAPStats')
+                rtps_analysis.save_to_excel(args.pcap, args.output, 'PCAPStats')
             case MenuOption.EXIT:
                 print("Exiting program.")
                 break
