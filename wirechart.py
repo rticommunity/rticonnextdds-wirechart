@@ -13,13 +13,12 @@
 
 # Standard Library Imports
 import argparse
-import subprocess
 
 # Local Application Imports
 from src.log_handler import configure_root_logger, logging, get_log_level
 from src.menu import MenuOption, get_user_menu_choice
 from src.rtps_capture import PlotScale, RTPSCapture
-from src.shared_utils import create_output_path
+from src.shared_utils import log_env_vars, create_output_path
 from src.readers.tshark_reader import TsharkReader
 
 logger = logging.getLogger('Wirechart')
@@ -40,6 +39,7 @@ def main():
                           file_level=get_log_level(args.file_log_level))
 
     logger.debug(f"Command Arguments: {args}")
+    log_env_vars()  # Log environment variables for debugging
     TsharkReader.get_tshark_version()
     logger.always("Starting the PCAP analysis.")
 

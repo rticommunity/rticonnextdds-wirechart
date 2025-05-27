@@ -24,7 +24,8 @@ import os
 logger = logging.getLogger(__name__)
 
 DEV_DEBUG = os.getenv("DEV_DEBUG", "false").lower() == "true"
-logger.debug(f"DEV_DEBUG is set to {DEV_DEBUG}")
+def log_env_vars():
+    logger.debug(f"DEV_DEBUG is set to {DEV_DEBUG}")
 
 class FrameTypes(Flag):
     UNSET           = 0x0000
