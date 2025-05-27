@@ -28,6 +28,14 @@ from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_c
 
 logger = logging.getLogger(__name__)
 
+COLOR_PALETTE = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'magenta', 'gold',
+                 'teal', 'coral', 'olive', 'darkgreen', 'deepskyblue', 'mediumorchid']
+
+# colors = [
+#     "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2",
+#     "#7f7f7f", "#bcbd22", "#17becf", "#3a44b1", "#c43b2b", "#00996f", "#8b3cf9",
+#     "#cc6d30", "#139abf", "#86b84f", "#cc33cc", "#e0a000"]
+
 class PlotScale(Enum):
     LINEAR          = 'linear'
     LOGARITHMIC     = 'log'
@@ -126,8 +134,6 @@ class RTPSDisplay():
 
         # Define a color map for start nodes (sources)
         source_colors = {}
-        color_palette = ['red', 'blue', 'green', 'orange', 'purple', 'cyan', 'magenta',
-                        'gold', 'teal', 'coral', 'olive', 'darkgreen', 'deepskyblue', 'mediumorchid']
         color_index = 0
 
         # Set node labels and edge colors
@@ -137,7 +143,7 @@ class RTPSDisplay():
             node_labels[src] = "RS" if RTPSFrame.guid_prefix(src) in analysis.rs_guid_prefix else "DW"
             node_labels[dst] = "RS" if RTPSFrame.guid_prefix(dst) in analysis.rs_guid_prefix else "DR"
             if src not in source_colors:
-                source_colors[src] = color_palette[color_index % len(color_palette)]
+                source_colors[src] = COLOR_PALETTE[color_index % len(COLOR_PALETTE)]
                 color_index += 1
             edge_colors.append(source_colors[src])
 
@@ -290,31 +296,8 @@ class RTPSDisplay():
         total_metric_by_topic = pivot_df['TotalMetric']
         pivot_df = pivot_df.drop(columns=['TotalMetric'])  # Remove the helper column
 
-        # Define a consistent color mapping for submessages
-        colors = [
-            "#1f77b4",  # blue
-            "#ff7f0e",  # orange
-            "#2ca02c",  # green
-            "#d62728",  # red
-            "#9467bd",  # purple
-            "#8c564b",  # brown
-            "#e377c2",  # pink
-            "#7f7f7f",  # gray
-            "#bcbd22",  # lime
-            "#17becf",  # cyan
-            "#3a44b1",  # darker indigo
-            "#c43b2b",  # deeper coral
-            "#00996f",  # deeper teal
-            "#8b3cf9",  # darker violet
-            "#cc6d30",  # richer peach
-            "#139abf",  # deeper sky blue
-            "#86b84f",  # earthier green
-            "#cc33cc",  # richer magenta
-            "#e0a000"   # deeper sunflower yellow
-        ]
-
         # Map colors to submessages
-        color_mapping = {submsg: colors[i % len(colors)] for i, submsg in enumerate([str(s) for s in SUBMESSAGE_COMBINATIONS])}
+        color_mapping = {submsg: COLOR_PALETTE[i % len(COLOR_PALETTE)] for i, submsg in enumerate([str(s) for s in SUBMESSAGE_COMBINATIONS])}
 
         # Generate a list of colors for the submessage order
         plot_colors = [color_mapping[submsg] for submsg in submessage_order if submsg in color_mapping]
