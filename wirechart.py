@@ -74,17 +74,14 @@ def main():
             case MenuOption.PRINT_STATS_BYTES:
                 rtps_display.print_stats_in_bytes(rtps_analysis)
             case MenuOption.PLOT_BAR_CHART_COUNT:
-                if not args.no_gui:
-                    rtps_display.plot_stats_by_frame_count(rtps_analysis, plot_discovery, scale)
+                rtps_display.plot_stats_by_frame_count(rtps_analysis, plot_discovery, scale)
             case MenuOption.PLOT_BAR_CHART_BYTES:
-                if not args.no_gui:
-                    rtps_display.plot_stats_by_frame_length(rtps_analysis, plot_discovery, scale)
+                rtps_display.plot_stats_by_frame_length(rtps_analysis, plot_discovery, scale)
             case MenuOption.PLOT_TOPOLOGY_GRAPH:
-                if not args.no_gui:
-                    if topic:
-                        rtps_display.plot_topic_graph(rtps_analysis, topic=topic)
-                    else:
-                        rtps_display.plot_multi_topic_graph(rtps_analysis)
+                if topic:
+                    rtps_display.plot_topic_graph(rtps_analysis, topic=topic)
+                else:
+                    rtps_display.plot_multi_topic_graph(rtps_analysis)
             case MenuOption.SAVE_EXCEL:
                 rtps_analysis.save_to_excel(args.pcap, args.output, 'PCAPStats')
             case MenuOption.EXIT:

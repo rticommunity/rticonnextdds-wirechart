@@ -21,8 +21,7 @@ from matplotlib.ticker import StrMethodFormatter
 
 # Local Application Imports
 from src.log_handler import logging
-from src.rtps_frame import FrameTypes
-from src.shared_utils import guid_prefix
+from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.rtps_capture import RTPSCapture
 from src.rtps_capture_analysis import DISCOVERY_TOPIC, RTPSCaptureAnalysis
 from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
@@ -41,7 +40,7 @@ class RTPSDisplay():
         participants = set()
         for frame in capture.frames:
             if FrameTypes.DISCOVERY in frame.frame_type:
-                participants.add(frame.guid_prefix_and_entity_id()[0])
+                participants.add(frame.guid_prefix_and_entity_id(GUIDEntity.GUID_SRC)[0])
         return len(participants)
 
     def count_writers_and_readers(self, capture: RTPSCapture, include_builtin=False):
@@ -82,6 +81,10 @@ class RTPSDisplay():
             print(frame)
 
     def plot_multi_topic_graph(self, analysis: RTPSCaptureAnalysis):
+        if self.no_gui:
+            logger.warning("GUI is disabled. Cannot plot graphs.")
+            return
+
         topic_node_counts = {
             topic: len(set([n for edge in edges for n in edge]))
             for topic, edges in analysis.graph_edges.items()
@@ -102,6 +105,10 @@ class RTPSDisplay():
         Parameters:
             edge_tuples (set): Set of (source, target) tuples
         """
+        if self.no_gui:
+            logger.warning("GUI is disabled. Cannot plot graph.")
+            return
+
         ax_none = (ax is None)
 
         if topic not in analysis.graph_edges:
@@ -127,8 +134,8 @@ class RTPSDisplay():
         edge_colors = []
         node_labels = {}
         for src, dst in analysis.graph_edges[topic]:
-            node_labels[src] = "RS" if guid_prefix(src) in analysis.rs_guid_prefix else "DW"
-            node_labels[dst] = "RS" if guid_prefix(dst) in analysis.rs_guid_prefix else "DR"
+            node_labels[src] = "RS" if RTPSFrame.guid_prefix(src) in analysis.rs_guid_prefix else "DW"
+            node_labels[dst] = "RS" if RTPSFrame.guid_prefix(dst) in analysis.rs_guid_prefix else "DR"
             if src not in source_colors:
                 source_colors[src] = color_palette[color_index % len(color_palette)]
                 color_index += 1
@@ -226,9 +233,15 @@ class RTPSDisplay():
         print()
 
     def plot_stats_by_frame_count(self, analysis: RTPSCaptureAnalysis, include_discovery=False, scale=PlotScale.LINEAR):
+        if self.no_gui:
+            logger.warning("GUI is disabled. Cannot plot statistics.")
+            return
         self._plot_statistics(analysis, metric='count', include_discovery=include_discovery, scale=scale)
 
     def plot_stats_by_frame_length(self, analysis: RTPSCaptureAnalysis, include_discovery=False, scale=PlotScale.LINEAR):
+        if self.no_gui:
+            logger.warning("GUI is disabled. Cannot plot statistics.")
+            return
         self._plot_statistics(analysis, metric='length', include_discovery=include_discovery, scale=scale)
 
     # TODO: Ensure correct order of submessages in the plot

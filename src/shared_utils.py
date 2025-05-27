@@ -79,12 +79,3 @@ def create_output_path(pcap_file, output_path, extension, description=None):
     description_part = f"_{description}" if description else ""
     filename = f"{base_name}{description_part}.{extension}"
     return os.path.join(output_path, filename)
-
-def guid_prefix(guid):
-    """
-    Extracts the prefix from a GUID.
-    :param guid: The GUID to extract the prefix from.
-    :return: The prefix of the GUID.
-    """
-    # GUID is a 128-bit integer and the prefix is the upper 96 bits (12 bytes)
-    return guid >> 32

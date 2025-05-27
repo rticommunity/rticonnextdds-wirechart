@@ -11,12 +11,19 @@
 #
 ##############################################################################################
 
+# Standard Library Imports
+from enum import Enum, auto
+
 # Local Application Imports
 from src.log_handler import logging
-from src.shared_utils import guid_prefix, FrameTypes
+from src.shared_utils import FrameTypes
 from src.rtps_submessage import RTPSSubmessage
 
 logger = logging.getLogger(__name__)
+
+class GUIDEntity(Enum):
+    GUID_SRC = auto()
+    GUID_DST = auto()
 
 class RTPSFrame:
     """
@@ -67,6 +74,15 @@ class RTPSFrame:
             logger.error(f"Invalid submessage type: {sm}.")
             raise TypeError("Only RTPSFrame objects can be added to RTPSCapture.")
 
+    def get_topic(self):
+        """
+        Returns the topic of the first submessage in the frame if it exists.
+        If no submessage is present, returns None.
+        """
+        if self.sm_list:
+            return self.sm_list[0].topic
+        return None
+
     def list_topics(self):
         """
         Returns a list of unique topics from the RTPSFrame object.
@@ -76,9 +92,22 @@ class RTPSFrame:
 
         return set(sm.topic for sm in self.sm_list if sm.topic is not None)
 
-    def guid_prefix_and_entity_id(self):
+    @staticmethod
+    def guid_prefix(guid):
+        """
+        Extracts the prefix from a GUID.
+        :param guid: The GUID to extract the prefix from.
+        :return: The prefix of the GUID.
+        """
+        # GUID is a 128-bit integer and the prefix is the upper 96 bits (12 bytes)
+        return guid >> 32
+
+    def guid_prefix_and_entity_id(self, guid_entity=GUIDEntity.GUID_SRC):
+        guid = self.guid_src if guid_entity == GUIDEntity.GUID_SRC else self.guid_dst
+        if guid is None:
+            return None, None
         bitmask_32 = (1 << 32) - 1
-        return guid_prefix(self.guid_src), self.guid_src & bitmask_32
+        return RTPSFrame.guid_prefix(guid), guid & bitmask_32
 
 
     def contains_submessage(self, sm_type):
@@ -91,7 +120,8 @@ class RTPSFrame:
         return any(sm.sm_type == sm_type for sm in self.sm_list)
 
     def __str__(self):
-        result = [f"Frame: {self.frame_number:09} GUID_SRC: {guid_prefix(self.guid_src)} Frame Type: {self.frame_type.name}\n{' ' * 2}Submessages ({len(self.sm_list)}):"]
+        result = [f"Frame: {self.frame_number:09} GUID_SRC: {self.guid_prefix_and_entity_id(GUIDEntity.GUID_SRC)[0]} "
+                  f"Frame Type: {self.frame_type.name}\n{' ' * 2}Submessages ({len(self.sm_list)}):"]
         for i, submessage in enumerate(self.sm_list, start=1):
             result.append(f"{' ' * 4}{i} {str(submessage)}")
         return "\n".join(result) + "\n"
