@@ -18,6 +18,14 @@ import os
 # Local Application Imports
 from src.log_handler import logging
 
+# config.py
+import os
+
+logger = logging.getLogger(__name__)
+
+DEV_DEBUG = os.getenv("DEV_DEBUG", "false").lower() == "true"
+logger.debug(f"DEV_DEBUG is set to {DEV_DEBUG}")
+
 class FrameTypes(Flag):
     UNSET           = 0x0000
     USER_DATA       = 0x0001

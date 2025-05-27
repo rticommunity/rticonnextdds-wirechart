@@ -12,8 +12,6 @@
 ##############################################################################################
 
 # Standard Library Imports
-import os
-import subprocess
 from collections import defaultdict
 from enum import Enum, IntEnum
 
@@ -27,7 +25,7 @@ from matplotlib.ticker import StrMethodFormatter
 from src.log_handler import logging
 from src.rtps_frame import RTPSFrame, FrameTypes
 from src.rtps_frame_builder import RTPSFrameBuilder
-from src.shared_utils import InvalidPCAPDataException, NoDiscoveryDataException, create_output_path, guid_prefix
+from src.shared_utils import DEV_DEBUG, InvalidPCAPDataException, NoDiscoveryDataException, create_output_path, guid_prefix
 from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
 
 logger = logging.getLogger(__name__)
@@ -172,23 +170,33 @@ class RTPSCapture:
         total_frames = len(frame_dict)
         progress_interval = max(total_frames // 10, 1)  # Avoid division by zero for small datasets
 
-        frame_errors, frame_warnings, discovery_warnings = 0, 0, 0
+        exception_counts = {
+            "frame_critical_errors": 0,
+            "frame_errors": 0,
+            "frame_warnings": 0,
+            "discovery_warnings": 0
+        }
+
         for i, frame in enumerate(frame_dict):
             try:
                 self.add_frame(RTPSFrameBuilder(frame).build())  # Create a RTPSFrame object for each record
             except InvalidPCAPDataException as e:
-                if e.log_level == logging.ERROR:
-                    frame_errors += 1
-                elif e.log_level == logging.WARNING:
-                    frame_warnings += 1
                 logger.log(e.log_level, f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
+                if e.log_level == logging.CRITICAL:
+                    exception_counts["frame_critical_errors"] += 1
+                    if DEV_DEBUG:
+                        raise e
+                elif e.log_level == logging.ERROR:
+                    exception_counts["frame_errors"] += 1
+                elif e.log_level == logging.WARNING:
+                    exception_counts["frame_warnings"] += 1
                 continue
             except NoDiscoveryDataException as e:
-                discovery_warnings += 1
+                exception_counts["discovery_warnings"] += 1
                 logger.warning(f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
                 continue
             except KeyError as e:
-                frame_errors += 1
+                exception_counts["frame_errors"] += 1
                 logger.debug(f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
                 continue
             # Print progress every 10%
@@ -196,7 +204,10 @@ class RTPSCapture:
                 percent = ((i + 1) * 100) // total_frames
                 logger.always(f"Processing {percent}% complete")
 
-        logger.always(f"Discovery warnings: {discovery_warnings} | Frame warnings: {frame_warnings} | Frame errors: {frame_errors}")
+        logger.always(f"Discovery warnings: {exception_counts['discovery_warnings']} | "
+                      f"Critical errors: {exception_counts['frame_critical_errors']} | "
+                      f"Frame warnings: {exception_counts['frame_warnings']} | "
+                      f"Frame errors: {exception_counts['frame_errors']}")
     # TODO: Refactor this method to its own class and extract methods for each step (irene)
     def analyze_capture(self):
         """

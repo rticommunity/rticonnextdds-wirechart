@@ -77,8 +77,8 @@ class RTPSSubmessageBuilder:
             flags |= SubmessageTypes.GAP
 
         if flags in {SubmessageTypes.UNSET, SubmessageTypes.DISCOVERY}:
-            logger.error(f"Submessage type not set: {sm_type}.")
-            raise InvalidPCAPDataException(f"Submessage type not set: {sm_type}.", logging.ERROR)
+            logger.critical(f"Submessage type not detected: {sm_type}.")
+            raise InvalidPCAPDataException(f"Submessage type not detected: {sm_type}.", logging.CRITICAL)
 
         return flags
 

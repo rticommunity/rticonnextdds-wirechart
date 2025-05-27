@@ -16,6 +16,7 @@ from enum import Flag
 
 # Local Application Imports
 from src.log_handler import logging
+from src.shared_utils import DEV_DEBUG
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ def list_combinations_by_flag(flag: SubmessageTypes, combinations=SUBMESSAGE_COM
     if not result:
         logger.error(f"No combinations found with {'NOT ' if negate else ''}{flag}")
 
-    if __debug__:
+    if DEV_DEBUG:
         for combo in result:
             if combo not in combinations:
                 logger.error(f"Combination {combo} not found in the predefined list.")
