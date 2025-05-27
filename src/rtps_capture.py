@@ -24,7 +24,7 @@ from matplotlib.ticker import StrMethodFormatter
 # Local Application Imports
 from src.log_handler import logging
 from src.rtps_frame import RTPSFrame, FrameTypes
-from src.rtps_frame_builder import RTPSFrameBuilder
+from src.builders.rtps_frame_builder import RTPSFrameBuilder
 from src.shared_utils import DEV_DEBUG, InvalidPCAPDataException, NoDiscoveryDataException, create_output_path, guid_prefix
 from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
 

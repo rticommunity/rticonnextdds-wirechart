@@ -20,7 +20,7 @@ from src.log_handler import logging
 from src.rtps_frame import RTPSFrame, FrameTypes
 from src.shared_utils import InvalidPCAPDataException
 from src.rtps_submessage import SubmessageTypes
-from src.rtps_submessage_builder import RTPSSubmessageBuilder
+from src.builders.rtps_submessage_builder import RTPSSubmessageBuilder
 
 logger = logging.getLogger(__name__)
 
