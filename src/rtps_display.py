@@ -105,7 +105,7 @@ class RTPSDisplay():
         plt.tight_layout()
         plt.show()
 
-    def plot_topic_graph(self, analysis: RTPSAnalyzeCapture, topic = None, ax = None):
+    def plot_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str, ax: plt.Axes = None):
         """
         Draws a directed graph using edges provided in a set of tuples.
         Labels the first node in each tuple as 'DW' and the second as 'DR'.
@@ -122,9 +122,6 @@ class RTPSDisplay():
         if topic not in analysis.graph_edges:
             logger.always(f"Topic '{topic}' does not have a topology graph.")
             return
-
-        if not topic:
-            topic = max(analysis.graph_edges, key=lambda k: len(analysis.graph_edges[k]))
 
         G = nx.DiGraph()
         G.add_edges_from(analysis.graph_edges[topic])
