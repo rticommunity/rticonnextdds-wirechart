@@ -18,7 +18,7 @@ import argparse
 from src.log_handler import configure_root_logger, logging, get_log_level
 from src.menu import MenuOption, get_user_menu_choice
 from src.rtps_capture import PlotScale, RTPSCapture
-from src.rtps_capture_analysis import RTPSCaptureAnalysis
+from src.rtps_analyze_capture import RTPSAnalyzeCapture
 from src.rtps_display import RTPSDisplay
 from src.shared_utils import log_env_vars, create_output_path
 from src.readers.tshark_reader import TsharkReader
@@ -50,7 +50,7 @@ def main():
         start, finish = parse_range(args.frame_range)
 
     rtps_frames = RTPSCapture()
-    rtps_analysis = RTPSCaptureAnalysis()
+    rtps_analysis = RTPSAnalyzeCapture()
     rtps_display = RTPSDisplay(args.no_gui)
 
     rtps_frames.extract_rtps_frames(TsharkReader.read_pcap,

@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 DISCOVERY_TOPIC = "DISCOVERY"
 META_DATA_TOPIC = "META_DATA"
 
-class RTPSCaptureAnalysis:
+class RTPSAnalyzeCapture:
     def __init__(self):
         self.graph_edges = defaultdict(set)
         self.rs_guid_prefix = set()
@@ -70,12 +70,12 @@ class RTPSCaptureAnalysis:
             # Create a unique key using the GUIDs and IP addresses.  This is required in the event multiple interfaces are used.
             guid_key = (frame.guid_src, frame.ip_src, frame.guid_dst, frame.ip_dst)
             for sm in frame:
-                topic = RTPSCaptureAnalysis._get_topic(frame)
-                RTPSCaptureAnalysis._process_submessage(sm, sequence_numbers, durability_repairs, guid_key)
+                topic = RTPSAnalyzeCapture._get_topic(frame)
+                RTPSAnalyzeCapture._process_submessage(sm, sequence_numbers, durability_repairs, guid_key)
                 frame_classification |= sm.sm_type
                 sm_list.append({'topic': topic, 'sm': str(sm.sm_type), 'count': 1, 'length': sm.length})
 
-            RTPSCaptureAnalysis._log_classification(frame, frame_classification)
+            RTPSAnalyzeCapture._log_classification(frame, frame_classification)
 
         if not any(frame.get('topic') != 'DISCOVERY' for frame in sm_list):
             raise InvalidPCAPDataException("No RTPS user frames with associated discovery data")

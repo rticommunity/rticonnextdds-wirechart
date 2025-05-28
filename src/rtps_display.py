@@ -23,7 +23,7 @@ from matplotlib.ticker import StrMethodFormatter
 from src.log_handler import logging
 from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.rtps_capture import RTPSCapture
-from src.rtps_capture_analysis import DISCOVERY_TOPIC, RTPSCaptureAnalysis
+from src.rtps_analyze_capture import DISCOVERY_TOPIC, RTPSAnalyzeCapture
 from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
 
 logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ class RTPSDisplay():
         for frame in capture.frames:
             print(frame)
 
-    def plot_multi_topic_graph(self, analysis: RTPSCaptureAnalysis):
+    def plot_multi_topic_graph(self, analysis: RTPSAnalyzeCapture):
         if self.no_gui:
             logger.warning("GUI is disabled. Cannot plot graphs.")
             return
@@ -105,7 +105,7 @@ class RTPSDisplay():
         plt.tight_layout()
         plt.show()
 
-    def plot_topic_graph(self, analysis: RTPSCaptureAnalysis, topic = None, ax = None):
+    def plot_topic_graph(self, analysis: RTPSAnalyzeCapture, topic = None, ax = None):
         """
         Draws a directed graph using edges provided in a set of tuples.
         Labels the first node in each tuple as 'DW' and the second as 'DR'.
@@ -185,7 +185,7 @@ class RTPSDisplay():
             plt.tight_layout()
             plt.show()
 
-    def print_stats(self, analysis: RTPSCaptureAnalysis):
+    def print_stats(self, analysis: RTPSAnalyzeCapture):
         """
         Prints statistics about the PCAP data, including total messages,
         messages by topic, and messages by submessage type.
@@ -211,7 +211,7 @@ class RTPSDisplay():
                 print(f"  {submsg}: {count}")
         print()
 
-    def print_stats_in_bytes(self, analysis: RTPSCaptureAnalysis):
+    def print_stats_in_bytes(self, analysis: RTPSAnalyzeCapture):
         """
         Prints statistics about the PCAP data in bytes, including total message lengths,
         lengths by topic, and lengths by submessage type.
@@ -238,20 +238,20 @@ class RTPSDisplay():
                 print(f"{' ' * 4}{submsg}: {length:,} bytes")
         print()
 
-    def plot_stats_by_frame_count(self, analysis: RTPSCaptureAnalysis, include_discovery=False, scale=PlotScale.LINEAR):
+    def plot_stats_by_frame_count(self, analysis: RTPSAnalyzeCapture, include_discovery=False, scale=PlotScale.LINEAR):
         if self.no_gui:
             logger.warning("GUI is disabled. Cannot plot statistics.")
             return
         self._plot_statistics(analysis, metric='count', include_discovery=include_discovery, scale=scale)
 
-    def plot_stats_by_frame_length(self, analysis: RTPSCaptureAnalysis, include_discovery=False, scale=PlotScale.LINEAR):
+    def plot_stats_by_frame_length(self, analysis: RTPSAnalyzeCapture, include_discovery=False, scale=PlotScale.LINEAR):
         if self.no_gui:
             logger.warning("GUI is disabled. Cannot plot statistics.")
             return
         self._plot_statistics(analysis, metric='length', include_discovery=include_discovery, scale=scale)
 
     # TODO: Ensure correct order of submessages in the plot
-    def _plot_statistics(self, analysis: RTPSCaptureAnalysis, metric='count', include_discovery=False, scale=PlotScale.LINEAR):
+    def _plot_statistics(self, analysis: RTPSAnalyzeCapture, metric='count', include_discovery=False, scale=PlotScale.LINEAR):
         """
         Plots a stacked bar chart of submessage counts or lengths by topic.
 
