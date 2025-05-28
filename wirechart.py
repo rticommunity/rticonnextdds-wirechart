@@ -50,7 +50,6 @@ def main():
         start, finish = parse_range(args.frame_range)
 
     rtps_frames = RTPSCapture()
-    rtps_analysis = RTPSAnalyzeCapture()
     rtps_display = RTPSDisplay(args.no_gui)
 
     rtps_frames.extract_rtps_frames(TsharkReader.read_pcap,
@@ -58,7 +57,9 @@ def main():
                                     display_filter='rtps',
                                     start_frame=start,
                                     finish_frame=finish)
-    rtps_analysis.analyze_capture(rtps_frames)  # Analyze the capture
+
+    rtps_analysis = RTPSAnalyzeCapture(rtps_frames)
+    rtps_analysis.analyze_capture()
 
     scale = PlotScale.LINEAR  # Default scale
     plot_discovery = False

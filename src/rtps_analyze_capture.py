@@ -31,22 +31,21 @@ DISCOVERY_TOPIC = "DISCOVERY"
 META_DATA_TOPIC = "META_DATA"
 
 class RTPSAnalyzeCapture:
-    def __init__(self):
+    def __init__(self, capture: RTPSCapture):
         self.graph_edges = defaultdict(set)
         self.rs_guid_prefix = set()
         self.df = pd.DataFrame()  # DataFrame to store analysis results
+        self.capture = capture
 
-    def analyze_capture(self, capture: RTPSCapture):
+    def analyze_capture(self):
         """
         Analyzes the RTPSCapture object and populates the DataFrame with message counts and lengths.
         This method processes each frame in the capture, classifies submessages, and aggregates data.
-
-        :param capture: An RTPSCapture object containing the frames to analyze.
         """
-        sm_list = self._process_submessages(capture)
-        self._aggregate_data(capture, sm_list)
+        sm_list = self._process_submessages()
+        self._aggregate_data(sm_list)
 
-    def _process_submessages(self, capture: RTPSCapture) -> list:
+    def _process_submessages(self) -> list:
         """
         Counts user messages and returns the data as a pandas DataFrame.
         Ensures all unique topics are included, even if they have no messages.
@@ -63,7 +62,7 @@ class RTPSAnalyzeCapture:
         durability_repairs = defaultdict(int) # Dictionary to keep track of sequence numbers for durability repairs
 
         # Process the PCAP data to count messages and include lengths
-        for frame in capture.frames:
+        for frame in self.capture.frames:
             frame_classification = SubmessageTypes.UNSET
             self._set_routing_service_nodes(frame)
             self._set_graph_nodes(frame)
@@ -82,7 +81,7 @@ class RTPSAnalyzeCapture:
 
         return sm_list
 
-    def _aggregate_data(self, capture: RTPSCapture, sm_list: list):
+    def _aggregate_data(self, sm_list: list):
         # Convert the rows into a DataFrame
         self.df = pd.DataFrame(sm_list)
 
@@ -94,7 +93,7 @@ class RTPSAnalyzeCapture:
         all_rows.extend(self.include_missing_topics_and_sm(
             {DISCOVERY_TOPIC}, list_combinations_by_flag(SubmessageTypes.DISCOVERY)))
         all_rows.extend(self.include_missing_topics_and_sm(
-            capture.list_all_topics(), list_combinations_by_flag(SubmessageTypes.DISCOVERY, negate=True)))
+            self.capture.list_all_topics(), list_combinations_by_flag(SubmessageTypes.DISCOVERY, negate=True)))
 
         # Add missing rows with a count of 0 and length of 0
         if all_rows:
