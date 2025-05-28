@@ -57,6 +57,8 @@ SUBMESSAGE_COMBINATIONS = [
     SubmessageTypes.DATA | SubmessageTypes.BATCH,
     SubmessageTypes.DATA | SubmessageTypes.REPAIR,
     SubmessageTypes.DATA | SubmessageTypes.DURABLE | SubmessageTypes.REPAIR,
+    SubmessageTypes.DATA | SubmessageTypes.BATCH | SubmessageTypes.REPAIR,
+    SubmessageTypes.DATA | SubmessageTypes.BATCH | SubmessageTypes.DURABLE | SubmessageTypes.REPAIR,
     SubmessageTypes.DATA | SubmessageTypes.FRAGMENT | SubmessageTypes.REPAIR,
     SubmessageTypes.DATA | SubmessageTypes.FRAGMENT | SubmessageTypes.DURABLE | SubmessageTypes.REPAIR,
     SubmessageTypes.HEARTBEAT,
