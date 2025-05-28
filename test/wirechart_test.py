@@ -63,6 +63,8 @@ def validate_output(pcap_path, expectations, generated_test_files):
         input_index = 0
 
         try:
+            if generated_test_files:
+                expectations = range(0, len(inputs) - 1)
             for expected in expectations:
                 if generated_test_files:
                     expected = inputs[input_index][1]
@@ -102,7 +104,7 @@ def main(generated_test_files=False):
         # Load the expectations for the current pcap file (if it exists)
         expectations = load_expectations(expectations_path)
 
-        if expectations or generated_test_files:
+        if generated_test_files or expectations:
             if validate_output(pcap, expectations, generated_test_files):
                 tests_passed += 1
             else:
