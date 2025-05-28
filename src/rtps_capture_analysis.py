@@ -66,7 +66,7 @@ class RTPSCaptureAnalysis:
         for frame in capture.frames:
             frame_classification = SubmessageTypes.UNSET
             self._set_routing_service_nodes(frame)
-            self._set_graph_edges(frame)
+            self._set_graph_nodes(frame)
             # Create a unique key using the GUIDs and IP addresses.  This is required in the event multiple interfaces are used.
             guid_key = (frame.guid_src, frame.ip_src, frame.guid_dst, frame.ip_dst)
             for sm in frame:
@@ -121,16 +121,15 @@ class RTPSCaptureAnalysis:
             # Add the GUID prefix to the set of Routing Service GUID prefixes
             self.rs_guid_prefix.add(frame.guid_prefix_and_entity_id(GUIDEntity.GUID_SRC)[0])
 
-    def _set_graph_edges(self, frame: RTPSFrame):
+    def _set_graph_nodes(self, frame: RTPSFrame):
         """
         Sets the graph edges based on the frame's GUIDs and IP addresses.
         This method is called during the analysis of the capture to build the topology graph.
         """
-        # TODO: Probably want to just check for USER_DATA and ignore other flags
         # TODO: Add this check after the frame is classified as a repair?  Otherwise,
         # multicast frame repairs might be added to the graph, which doesn't accurately
         # represent the topology for a multicast writer.
-        if (FrameTypes.DISCOVERY not in frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
+        if (FrameTypes.USER_DATA == frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
             self.graph_edges[frame.get_topic()].add((frame.guid_src, frame.guid_dst))
 
     # Ensure all unique topics are included in the DataFrame
@@ -155,6 +154,7 @@ class RTPSCaptureAnalysis:
             # Not all submessages have a DST GUID, so we must only use the SRC GUID to key
             # the SN dictionary.  Since the SN of a writer is not dependent on the reader,
             # this approach is valid.
+            # d.update({k: 99 for k in d if k[0] == 'a'})
             sequence_numbers[guid_key] = sm.seq_num()
         elif (sm.sm_type & SubmessageTypes.DATA) and not (sm.sm_type & SubmessageTypes.FRAGMENT):
         # elif (sm.sm_type & SubmessageTypes.DATA):
