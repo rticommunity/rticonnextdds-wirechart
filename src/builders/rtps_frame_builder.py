@@ -135,7 +135,7 @@ class RTPSFrameBuilder:
         seq_it = iter(seq_numbers)
 
         for name, length in zip(sm_names, sm_lengths):
-            if name in ("INFO_TS", "INFO_DST"):
+            if name in ("INFO_DST", "INFO_SRC", "INFO_TS"):
                 continue
 
             if not submessages:

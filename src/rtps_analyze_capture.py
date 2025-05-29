@@ -194,8 +194,8 @@ class RTPSAnalyzeCapture:
     def _log_classification(frame: RTPSFrame, classification: SubmessageTypes):
         if classification & (SubmessageTypes.REPAIR | SubmessageTypes.DURABLE):
             classification &= (SubmessageTypes.DISCOVERY | SubmessageTypes.DATA |
-                               SubmessageTypes.FRAGMENT | SubmessageTypes.REPAIR |
-                               SubmessageTypes.DURABLE)
+                               SubmessageTypes.FRAGMENT | SubmessageTypes.BATCH |
+                               SubmessageTypes.REPAIR | SubmessageTypes.DURABLE)
             logger.info(f"Frame {frame.frame_number} classified as {classification}.")
 
     def save_to_excel(self, pcap_file, output_path, sheet_name="Sheet1"):
