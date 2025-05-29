@@ -3,4 +3,4 @@
 *.pcap*
 **/*output/*
 **/*__pycache__/*
-**/*pkl/*
+**/*test/*
