@@ -24,8 +24,10 @@ import os
 logger = logging.getLogger(__name__)
 
 DEV_DEBUG = os.getenv("DEV_DEBUG", "false").lower() == "true"
+TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
 def log_env_vars():
     logger.debug(f"DEV_DEBUG is set to {DEV_DEBUG}")
+    logger.debug(f"TEST_MODE is set to {TEST_MODE}")
 
 class FrameTypes(Flag):
     UNSET           = 0x0000

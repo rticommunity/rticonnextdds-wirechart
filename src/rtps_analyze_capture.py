@@ -23,7 +23,7 @@ from tqdm import tqdm
 # Local Application Imports
 from src.log_handler import logging
 from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
-from src.shared_utils import DEV_DEBUG, InvalidPCAPDataException, create_output_path
+from src.shared_utils import DEV_DEBUG, TEST_MODE, InvalidPCAPDataException, create_output_path
 from src.rtps_capture import RTPSCapture
 from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag, RTPSSubmessage
 
@@ -72,7 +72,7 @@ class RTPSAnalyzeCapture:
         repair_tracker = RepairTracker()
 
         # Process the PCAP data to count messages and include lengths
-        for frame in tqdm(self.capture.frames):
+        for frame in tqdm(self.capture.frames, disable=TEST_MODE):
             frame_classification = SubmessageTypes.UNSET
             self._set_routing_service_nodes(frame)
             self._set_graph_nodes(frame)
