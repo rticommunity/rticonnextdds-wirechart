@@ -8,6 +8,16 @@ Wirechart analyzes DDS traffic based on an input PCAP file.  It provides statics
 
 ## Requirements
 
+### Tkinter
+
+Install `Tkinter` first.  It should install by default in Windows.
+
+```bash
+# Linux
+sudo apt-get install python3-tk
+pip install --upgrade pillow
+```
+
 ### Python Dependencies
 The application requires the following Python libraries:
 

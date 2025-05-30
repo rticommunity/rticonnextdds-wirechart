@@ -13,8 +13,18 @@
 
 # Standard Library Imports
 from enum import Enum
+from platform import system
 
 # Third-Party Library Imports
+import matplotlib
+
+if system() == "Linux":
+    matplotlib.use("TkAgg")  # or "Qt5Agg"
+elif system() == "Windows":
+    matplotlib.use("TkAgg")
+# elif system() == "Darwin":  # macOS
+#     matplotlib.use("MacOSX")  # or another backend supported on macOS
+
 import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib.ticker import StrMethodFormatter
@@ -43,6 +53,7 @@ class PlotScale(Enum):
 class RTPSDisplay():
     def __init__(self, no_gui=False):
         self.no_gui = no_gui
+        logger.debug(f"Display backend used {matplotlib.get_backend()}")
 
     def count_participants(self, capture: RTPSCapture):
         participants = set()
