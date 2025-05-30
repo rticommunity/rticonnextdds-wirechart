@@ -206,7 +206,6 @@ class RTPSDisplay():
         for submsg, count in submessage_counts.items():
             if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
                 print(f"  {submsg}: {count}")
-        print()
 
     def print_stats_in_bytes(self, analysis: RTPSAnalyzeCapture):
         """
@@ -233,7 +232,6 @@ class RTPSDisplay():
         for submsg, length in submessage_lengths.items():
             if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
                 print(f"{' ' * 4}{submsg}: {length:,} bytes")
-        print()
 
     def plot_stats_by_frame_count(self, analysis: RTPSAnalyzeCapture, include_discovery=False, scale=PlotScale.LINEAR):
         if self.no_gui:
