@@ -15,6 +15,7 @@
 from enum import Enum
 
 # Third-Party Library Imports
+from tqdm import tqdm
 
 # Local Application Imports
 from src.log_handler import logging
@@ -94,9 +95,6 @@ class RTPSCapture:
         if not frame_dict:
             raise InvalidPCAPDataException("No RTPS frames to process")
 
-        total_frames = len(frame_dict)
-        progress_interval = max(total_frames // 10, 1)  # Avoid division by zero for small datasets
-
         exception_counts = {
             "frame_critical_errors": 0,
             "frame_errors": 0,
@@ -104,7 +102,7 @@ class RTPSCapture:
             "discovery_warnings": 0
         }
 
-        for i, frame in enumerate(frame_dict):
+        for frame in tqdm(frame_dict):
             try:
                 self.add_frame(RTPSFrameBuilder(frame).build())  # Create a RTPSFrame object for each record
             except InvalidPCAPDataException as e:
@@ -126,10 +124,6 @@ class RTPSCapture:
                 exception_counts["frame_errors"] += 1
                 logger.debug(f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
                 continue
-            # Print progress every 10%
-            if (i + 1) % progress_interval == 0 or (i + 1) == total_frames:
-                percent = ((i + 1) * 100) // total_frames
-                logger.always(f"Processing {percent}% complete")
 
         logger.always(f"Discovery warnings: {exception_counts['discovery_warnings']} | "
                       f"Critical errors: {exception_counts['frame_critical_errors']} | "

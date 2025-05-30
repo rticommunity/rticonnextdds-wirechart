@@ -17,6 +17,7 @@ import subprocess
 
 # Local Application Imports
 from src.log_handler import logging
+from src.shared_utils import InvalidPCAPDataException
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,10 @@ class TsharkReader:
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             raw_frames = result.stdout.strip().split('\n')
+
+            if raw_frames == ['']:
+                raise InvalidPCAPDataException("No RTPS frames found in the pcap file.", log_level=logging.ERROR)
+
             logger.always(f"tshark returned {len(raw_frames)} frames")
 
             frame_dict = []

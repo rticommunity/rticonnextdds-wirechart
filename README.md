@@ -15,24 +15,25 @@ The application requires the following Python libraries:
 - `matplotlib`: For generating visualizations.
 - `networkx`: For creating node/edge graphs.
 - `openpyxl`: For exporting data to Excel files.
+- `tqdm`: For status display bar.
 
 Install the dependencies using:
 
 ```bash
-pip install pandas matplotlib networkx openpyxl
+pip install pandas matplotlib networkx openpyxl tqdm
 ```
 
 ### External Tools
 
 - `tshark`: Required for extracting data from PCAP files.
-    - Install [Wireshark](https://www.wireshark.org/download.html), which typically includes `tshark`.
+    - Install [Wireshark](https://www.wireshark.org/download.html), which installs `tshark` by default.  See more details [here](https://tshark.dev/setup/install/) on installing `tshark` standalone from Wireshark.
     - Ensure `tshark` is accessible from your system's `PATH`.
 
 ## Usage
 
 ```bash
-usage: wirechart.py [-h] --pcap PCAP [--output OUTPUT] [--no-gui] [--frame-range FRAME_RANGE]
-                    [--console-log-level LEVEL] [--file-log-level LEVEL]
+usage: python3 wirechart.py [-h] --pcap PCAP [--output OUTPUT] [--no-gui] [--frame-range FRAME_RANGE]
+                            [--console-log-level LEVEL] [--file-log-level LEVEL]
 ```
 
 ### Argument Description

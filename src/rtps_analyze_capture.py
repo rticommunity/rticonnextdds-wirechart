@@ -18,6 +18,7 @@ from enum import IntEnum
 
 # Third-Party Library Imports
 import pandas as pd
+from tqdm import tqdm
 
 # Local Application Imports
 from src.log_handler import logging
@@ -71,7 +72,7 @@ class RTPSAnalyzeCapture:
         repair_tracker = RepairTracker()
 
         # Process the PCAP data to count messages and include lengths
-        for frame in self.capture.frames:
+        for frame in tqdm(self.capture.frames):
             frame_classification = SubmessageTypes.UNSET
             self._set_routing_service_nodes(frame)
             self._set_graph_nodes(frame)
@@ -229,8 +230,8 @@ class RTPSAnalyzeCapture:
     def _log_classification(frame: RTPSFrame, classification: SubmessageTypes):
         if classification & (SubmessageTypes.REPAIR | SubmessageTypes.DURABLE):
             classification &= (SubmessageTypes.DISCOVERY | SubmessageTypes.DATA |
-                               SubmessageTypes.FRAGMENT | SubmessageTypes.REPAIR |
-                               SubmessageTypes.DURABLE)
+                               SubmessageTypes.FRAGMENT | SubmessageTypes.BATCH |
+                               SubmessageTypes.REPAIR | SubmessageTypes.DURABLE)
             logger.info(f"Frame {frame.frame_number} classified as {classification}.")
 
     def save_to_excel(self, pcap_file, output_path, sheet_name="Sheet1"):
