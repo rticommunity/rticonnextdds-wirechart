@@ -12,7 +12,7 @@
 ##############################################################################################
 
 # Standard Library Imports
-from enum import Enum, auto
+from enum import IntEnum
 
 # Local Application Imports
 from src.log_handler import logging
@@ -21,9 +21,9 @@ from src.rtps_submessage import RTPSSubmessage
 
 logger = logging.getLogger(__name__)
 
-class GUIDEntity(Enum):
-    GUID_SRC = auto()
-    GUID_DST = auto()
+class GUIDEntity(IntEnum):
+    GUID_SRC = 0
+    GUID_DST = 1
 
 class RTPSFrame:
     """

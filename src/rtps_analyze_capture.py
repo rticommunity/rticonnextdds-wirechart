@@ -13,6 +13,7 @@
 
 # Standard Library Imports
 from collections import defaultdict
+from dataclasses import dataclass, field
 from enum import IntEnum
 
 # Third-Party Library Imports
@@ -22,7 +23,7 @@ from tqdm import tqdm
 # Local Application Imports
 from src.log_handler import logging
 from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
-from src.shared_utils import DEV_DEBUG, InvalidPCAPDataException, create_output_path
+from src.shared_utils import DEV_DEBUG, TEST_MODE, InvalidPCAPDataException, create_output_path
 from src.rtps_capture import RTPSCapture
 from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag, RTPSSubmessage
 
@@ -31,9 +32,23 @@ logger = logging.getLogger(__name__)
 DISCOVERY_TOPIC = "DISCOVERY"
 META_DATA_TOPIC = "META_DATA"
 
+@dataclass
+class FrameSequenceTracker:
+    frame_number: int
+    sequence_number: int
+
+@dataclass
+class RepairTracker:
+    last_heartbeat: dict = field(default_factory=dict)          # Tracks the last heartbeat for each GUID pair
+    last_acknack: dict = field(default_factory=dict)            # Tracks the last ACKNACK for each GUID pair
+    durability_sn: dict = field(default_factory=dict)           # Tracks the initial sequence number for durability repairs
+    durable_repairs_sent: dict = field(default_factory=dict)    # Tracks the sequence numbers of durable repairs sent for each GUID pair
+
+
 class RTPSAnalyzeCapture:
     def __init__(self, capture: RTPSCapture):
         self.graph_edges = defaultdict(set)
+        # TODO: Should this be a defaultdict of sets?
         self.rs_guid_prefix = set()
         self.df = pd.DataFrame()  # DataFrame to store analysis results
         self.capture = capture
@@ -48,30 +63,24 @@ class RTPSAnalyzeCapture:
 
     def _process_submessages(self) -> list:
         """
-        Counts user messages and returns the data as a pandas DataFrame.
-        Ensures all unique topics are included, even if they have no messages.
-        Orders the submessages based on SUBMESSAGE_ORDER and includes the length.
-
-        :param pcap_data: A list of dictionaries containing the extracted PCAP data.
-        :param unique_topics: A set of unique topics to initialize the DataFrame.
-        :return: A pandas DataFrame with columns ['Topic', 'Submessage', 'Count', 'Length'].
+        Counts user messages and preprocesses the data to convert to a pandas DataFrame.
+        Perform reliability/durability repair analysis.
         """
         logger.always("Analyzing capture data...")
 
         sm_list = []  # List to store rows for the DataFrame
-        sequence_numbers = defaultdict(int)  # Dictionary to store string keys and unsigned integer values
-        durability_repairs = defaultdict(int) # Dictionary to keep track of sequence numbers for durability repairs
+        repair_tracker = RepairTracker()
 
         # Process the PCAP data to count messages and include lengths
-        for frame in tqdm(self.capture.frames):
+        for frame in tqdm(self.capture.frames, disable=TEST_MODE):
             frame_classification = SubmessageTypes.UNSET
             self._set_routing_service_nodes(frame)
             self._set_graph_nodes(frame)
-            # Create a unique key using the GUIDs and IP addresses.  This is required in the event multiple interfaces are used.
-            guid_key = (frame.guid_src, frame.ip_src, frame.guid_dst, frame.ip_dst)
+            # Create a GUID key for the SRC and DST GUIDs
+            guid_key = (frame.guid_src, frame.guid_dst)
             for sm in frame:
                 topic = RTPSAnalyzeCapture._get_topic(frame)
-                RTPSAnalyzeCapture._process_submessage(sm, sequence_numbers, durability_repairs, guid_key)
+                RTPSAnalyzeCapture._process_submessage(frame.frame_number, sm, repair_tracker, guid_key)
                 frame_classification |= sm.sm_type
                 sm_list.append({'topic': topic, 'sm': str(sm.sm_type), 'count': 1, 'length': sm.length})
 
@@ -123,12 +132,9 @@ class RTPSAnalyzeCapture:
 
     def _set_graph_nodes(self, frame: RTPSFrame):
         """
-        Sets the graph edges based on the frame's GUIDs and IP addresses.
+        Sets the graph edges based on the frame's GUID.
         This method is called during the analysis of the capture to build the topology graph.
         """
-        # TODO: Add this check after the frame is classified as a repair?  Otherwise,
-        # multicast frame repairs might be added to the graph, which doesn't accurately
-        # represent the topology for a multicast writer.
         if (FrameTypes.USER_DATA == frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
             self.graph_edges[frame.get_topic()].add((frame.guid_src, frame.guid_dst))
 
@@ -142,39 +148,68 @@ class RTPSAnalyzeCapture:
         return missing_list
 
     @staticmethod
-    def _process_submessage(sm: RTPSSubmessage, sequence_numbers: dict, durability_repairs: dict, guid_key: tuple):
-        # Declare the GUIDKey enum for local scope
-        class GUIDKey(IntEnum):
-            GUID_SRC        = 0
-            IP_SRC          = 1
-            GUID_DST        = 2
-            IP_DST          = 3
-        # TODO: Verify not to do this with GAP
-        if sm.sm_type & SubmessageTypes.HEARTBEAT:
-            # Not all submessages have a DST GUID, so we must only use the SRC GUID to key
-            # the SN dictionary.  Since the SN of a writer is not dependent on the reader,
-            # this approach is valid.
-            # d.update({k: 99 for k in d if k[0] == 'a'})
-            sequence_numbers[guid_key] = sm.seq_num()
-        elif (sm.sm_type & SubmessageTypes.DATA) and not (sm.sm_type & SubmessageTypes.FRAGMENT):
-        # elif (sm.sm_type & SubmessageTypes.DATA):
-            # TODO: Not sure how to handle FRAGs, so ignoring them for now
-            # TODO: Discovery repairs?
-            # Check if this submessage is some form of a repair.  Not all HEARTBEATs have a GUID_DST,
-            # so we must consider the both cases where the GUID_DST is None and where it is not.
-            if sm.seq_num() <= max(sequence_numbers[guid_key],
-                                    sequence_numbers[guid_key[GUIDKey.GUID_SRC], guid_key[GUIDKey.IP_SRC], None, guid_key[GUIDKey.IP_DST]]):
-                sm.sm_type |= SubmessageTypes.REPAIR
-                # If this is a repair, there will be a GUID_DST, and we can key on the entire GUID_KEY
-                if sm.seq_num() <= durability_repairs[guid_key]:
-                    sm.sm_type |= SubmessageTypes.DURABLE
+    def _process_submessage(frame_number: int, sm: RTPSSubmessage, repair_tracker: RepairTracker, guid_key: tuple):
+
+        def get_heartbeat_sn(last_heartbeat: dict, guid_key: tuple) -> int:
+            """
+            Returns the maximum sequence number from the last heartbeat for the given GUID key.
+            Also checks for GUID_DST=None.  Raises KeyError if no sequence number is found.
+            """
+            seq_num = []
+            keys = [guid_key, (guid_key[GUIDEntity.GUID_SRC], None)]
+
+            for key in keys:
+                try:
+                    seq_num.append(last_heartbeat[key].sequence_number)
+                except KeyError:
+                    pass
+            if not seq_num:
+                raise KeyError(f"No heartbeat found for GUID key: {guid_key}")
+            # Return the maximum sequence number found
+            return max(seq_num)
+
+        # TODO: Not sure how to handle FRAGs, so ignoring them for now
+        if (sm.sm_type & SubmessageTypes.DATA) and not (sm.sm_type & SubmessageTypes.FRAGMENT):
+        # if (sm.sm_type & SubmessageTypes.DATA):
+            try:
+                # To qualify as a repair, the sequence number must be less than or equal to the last HEARTBEAT and
+                # must be sent after the last ACKNACK for this GUID pair.
+                if (sm.seq_num() <= get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key)) and \
+                   (repair_tracker.last_acknack[guid_key].frame_number > repair_tracker.last_heartbeat[guid_key].frame_number):
+                        sm.sm_type |= SubmessageTypes.REPAIR
+                        if sm.seq_num() <= repair_tracker.durability_sn[guid_key].sequence_number:
+                            if (guid_key in repair_tracker.durable_repairs_sent) and \
+                               (sm.seq_num() <= repair_tracker.durable_repairs_sent[guid_key]):
+                                # The durable repair has already been sent, so this is just a standard repair.
+                                pass
+                            else: # This is a durable repair
+                                sm.sm_type |= SubmessageTypes.DURABLE
+                                if guid_key in repair_tracker.durable_repairs_sent:
+                                    # Repairs should be sequential, but check just in case.
+                                    if sm.seq_num() > repair_tracker.durable_repairs_sent[guid_key]:
+                                        repair_tracker.durable_repairs_sent[guid_key] = sm.seq_num()
+                                else:
+                                    # If the key does not exist, this is likely the first time
+                                    # we are seeing this GUID pair.  Just add it.
+                                    repair_tracker.durable_repairs_sent[guid_key] = sm.seq_num()
+            except KeyError:
+                # If the key does not exist, it means this is the first time we are seeing this GUID pair.
+                # We can safely assume that this is not a repair.
+                pass
+        elif sm.sm_type & SubmessageTypes.HEARTBEAT:
+            repair_tracker.last_heartbeat[guid_key] = FrameSequenceTracker(frame_number, sm.seq_num())
         elif sm.sm_type & SubmessageTypes.ACKNACK:
+            repair_tracker.last_acknack[guid_key] = FrameSequenceTracker(frame_number, sm.seq_num())
             # Record the writer SN when the first non-zero ACKNACK is received.  All repairs with
             # a SN less than or equal to this number are considered durability repairs while all
             # repairs after this SN are considered standard repairs.
-            if sm.seq_num() > 0 and guid_key not in durability_repairs:
+            if sm.seq_num() > 0 and guid_key not in repair_tracker.durability_sn:
                 # Only add this for the first non-zero ACKNACK
-                durability_repairs[guid_key] = sequence_numbers[guid_key]
+                try:
+                    repair_tracker.durability_sn[guid_key] = FrameSequenceTracker(frame_number, get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key))
+                except KeyError:
+                    guid_key_str = [f"{x:#x}" for x in guid_key]
+                    logger.warning(f"ACKNACK received for GUID key {guid_key_str} without a previous HEARTBEAT.")
 
     @staticmethod
     def _get_topic(frame: RTPSFrame):

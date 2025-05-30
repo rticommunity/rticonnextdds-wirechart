@@ -21,7 +21,7 @@ from tqdm import tqdm
 from src.log_handler import logging
 from src.rtps_frame import RTPSFrame
 from src.builders.rtps_frame_builder import RTPSFrameBuilder
-from src.shared_utils import DEV_DEBUG, InvalidPCAPDataException, NoDiscoveryDataException
+from src.shared_utils import DEV_DEBUG, TEST_MODE, InvalidPCAPDataException, NoDiscoveryDataException
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class RTPSCapture:
             "discovery_warnings": 0
         }
 
-        for frame in tqdm(frame_dict):
+        for frame in tqdm(frame_dict, disable=TEST_MODE):
             try:
                 self.add_frame(RTPSFrameBuilder(frame).build())  # Create a RTPSFrame object for each record
             except InvalidPCAPDataException as e:
