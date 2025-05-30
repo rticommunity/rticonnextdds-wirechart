@@ -47,9 +47,13 @@ usage: python3 wirechart.py [-h] --pcap PCAP [--output OUTPUT] [--no-gui] [--fra
 --file-log-level    LEVEL                       Optional argument to specify the file log level (DEBUG, *INFO*, WARNING, ERROR, CRITICAL).
 </pre>
 
-## Known Issues
+## Details
 
-- Large Data (`DATA_FRAG` submessages)
-- NACK-only reliability
-- Topology graph with `BEST_EFFORT` reliability
-- Discovery repairs/durable repairs are not counted
+- **Length Calculation:** The size in bytes is calculated based on the entire frame size, including IP, UDP, and RTPS headers.  These lengths are attributed to the first RTPS submessage (often a `DATA` submessage).  Any subsequence submessages (e.g. a `PIGGYBACK_HEARTBEAT`) will be the actual submessage length.
+- **Node Graphs:**
+    - Node graphs will only be accurate for RELIABLE DW/DR pairs.  It's possible that a BEST_EFFORT DW/DR will display, but not guaranteed.  If the DW starts before the DR, a `GAP` submessage will be sent when the DR matches, which has the data required to show up on the node graph. See issues [4](https://github.com/rticommunity/rti-wirechart/issues/4) and [25](https://github.com/rticommunity/rti-wirechart/issues/25).
+    - Node graphs do not differentiate between domains.  For example, if the topic `Squares` is in both domains 0 and 1, they will display in the same graph. See issue [26](https://github.com/rticommunity/rti-wirechart/issues/26).
+
+### Known Issues
+
+- [Current List of Issues](https://github.com/rticommunity/rti-wirechart/issues)
