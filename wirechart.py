@@ -16,8 +16,8 @@ import argparse
 
 # Local Application Imports
 from src.log_handler import configure_root_logger, logging, get_log_level
-from src.menu import MenuOption, get_user_menu_choice
-from src.rtps_capture import PlotScale, RTPSCapture
+from src.menu import StandardMenuOption, MenuType, MenuState, get_user_menu_choice
+from src.rtps_capture import RTPSCapture
 from src.rtps_analyze_capture import RTPSAnalyzeCapture
 from src.rtps_display import RTPSDisplay
 from src.shared_utils import log_env_vars, create_output_path
@@ -61,39 +61,41 @@ def main():
     rtps_analysis = RTPSAnalyzeCapture(rtps_frames)
     rtps_analysis.analyze_capture()
 
-    scale = PlotScale.LINEAR  # Default scale
-    plot_discovery = False
+    state = MenuState()
     while True:
-        menu_choice, scale, plot_discovery, topic = get_user_menu_choice(scale, plot_discovery)
-        match menu_choice:
-            case MenuOption.PRINT_CAPTURE_SUMMARY:
-                rtps_display.print_capture_summary(rtps_frames)
-            case MenuOption.PRINT_TOPICS:
-                rtps_display.print_topics(rtps_frames)
-            case MenuOption.PRINT_STATS_COUNT:
-                rtps_display.print_stats(rtps_analysis)
-            case MenuOption.PRINT_STATS_BYTES:
-                rtps_display.print_stats_in_bytes(rtps_analysis)
-            case MenuOption.PLOT_BAR_CHART_COUNT:
-                rtps_display.plot_stats_by_frame_count(rtps_analysis, plot_discovery, scale)
-            case MenuOption.PLOT_BAR_CHART_BYTES:
-                rtps_display.plot_stats_by_frame_length(rtps_analysis, plot_discovery, scale)
-            case MenuOption.PLOT_TOPOLOGY_GRAPH:
-                if topic:
-                    rtps_display.plot_topic_graph(rtps_analysis, topic=topic)
-                else:
-                    rtps_display.plot_multi_topic_graph(rtps_analysis)
-            case MenuOption.SAVE_EXCEL:
-                rtps_analysis.save_to_excel(args.pcap, args.output, 'PCAPStats')
-            case MenuOption.EXIT:
-                print("Exiting program.")
-                break
-            case (MenuOption.INVALID |
-                  MenuOption.CHANGE_SCALE |
-                  MenuOption.TOGGLE_DISCOVERY):
-                continue
-            case _:
-                print("Unrecognized option.")
+        menu_choice, topic, state = get_user_menu_choice(state)
+        if state.menu_state == MenuType.STANDARD:
+            if not isinstance(menu_choice, StandardMenuOption):
+                raise ValueError(f"Invalid menu choice: {menu_choice}. Expected a StandardMenuOption.")
+            match menu_choice:
+                case StandardMenuOption.PRINT_CAPTURE_SUMMARY:
+                    rtps_display.print_capture_summary(rtps_frames)
+                case StandardMenuOption.PRINT_TOPICS:
+                    rtps_display.print_topics(rtps_frames)
+                case StandardMenuOption.PRINT_STATS_COUNT:
+                    rtps_display.print_stats(rtps_analysis)
+                case StandardMenuOption.PRINT_STATS_BYTES:
+                    rtps_display.print_stats_in_bytes(rtps_analysis)
+                case StandardMenuOption.PLOT_BAR_CHART_COUNT:
+                    rtps_display.plot_stats_by_frame_count(rtps_analysis, state.plot_discovery, state.scale)
+                case StandardMenuOption.PLOT_BAR_CHART_BYTES:
+                    rtps_display.plot_stats_by_frame_length(rtps_analysis, state.plot_discovery, state.scale)
+                case StandardMenuOption.PLOT_TOPOLOGY_GRAPH:
+                    if topic:
+                        rtps_display.plot_topic_graph(rtps_analysis, topic)
+                    else:
+                        rtps_display.plot_multi_topic_graph(rtps_analysis)
+                case StandardMenuOption.SAVE_EXCEL:
+                    rtps_analysis.save_to_excel(args.pcap, args.output, 'PCAPStats')
+                case StandardMenuOption.EXIT:
+                    print("Exiting program.")
+                    break
+                case (StandardMenuOption.INVALID |
+                    StandardMenuOption.CHANGE_SCALE |
+                    StandardMenuOption.TOGGLE_DISCOVERY):
+                    continue
+                case _:
+                    print("Unrecognized option.")
 
 def parse_range(value: str):
     if ':' not in value:
