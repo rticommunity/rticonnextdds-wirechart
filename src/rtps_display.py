@@ -134,7 +134,12 @@ class RTPSDisplay():
         }
         top_topics = sorted(topic_node_counts, key=topic_node_counts.get, reverse=True)[:6]
 
-        _ , axs = plt.subplots(2, 3, figsize=(18, 14))
+        # Create figure and axes
+        fig, axs = plt.subplots(2, 3, figsize=(18, 14))
+
+        # Set the main figure window title
+        fig.canvas.manager.set_window_title("RTPS Topology Graphs for Top Topics")
+
         for i, topic in enumerate(top_topics):
             self.plot_topic_graph(analysis, topic=topic, ax=axs.flatten()[i])
         plt.tight_layout()
@@ -194,6 +199,7 @@ class RTPSDisplay():
         # If no Axes passed, create a new figure and axes
         if ax_none:
             fig, ax = plt.subplots(figsize=(14, 10))
+            fig.canvas.manager.set_window_title(f"RTPS Topology Graph for Topic: {topic}")
 
         # Draw graph using the correct Axes
         nx.draw_networkx_nodes(G, pos, ax=ax, node_size=2000, node_color=node_colors, edgecolors='black')
@@ -416,6 +422,10 @@ class RTPSDisplay():
 
         # Disable scientific notation and format y-axis tick marks with commas
         ax.get_yaxis().set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+
+        # Set the window title
+        fig = ax.get_figure()
+        fig.canvas.manager.set_window_title(f"Submessage {metric.capitalize()} by Topic")
 
         # Adjust layout and show the plot
         plt.tight_layout()
