@@ -37,7 +37,7 @@ from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.rtps_capture import RTPSCapture
 from src.rtps_analyze_capture import DISCOVERY_TOPIC, RTPSAnalyzeCapture
 from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
-from src.shared_utils import TEST_MODE
+from src.shared_utils import TEST_MODE, display_text_popup
 
 logger = logging.getLogger(__name__)
 
@@ -57,21 +57,6 @@ class RTPSDisplay():
     def __init__(self, no_gui=False):
         self.no_gui = no_gui
         logger.debug(f"Display backend used {matplotlib.get_backend()}")
-
-    @staticmethod
-    def display_text_popup(title: str, text: str):
-        root = tk.Tk()
-        root.title(title)
-
-        # Make sure the window is always on top
-        root.attributes("-topmost", True)
-
-        text_area = ScrolledText(root, wrap=tk.WORD, width=100, height=60)
-        text_area.insert(tk.END, text)
-        text_area.pack(padx=10, pady=10)
-        text_area.config(state='disabled')  # make it read-only
-
-        root.mainloop()
 
     def count_participants(self, capture: RTPSCapture):
         participants = set()
@@ -115,7 +100,7 @@ class RTPSDisplay():
             lines.append(f"Total Writers: {num_writers} and Readers: {num_readers}")
             lines.append(f"Unique Topics: {len(capture.list_all_topics())}")
 
-            RTPSDisplay.display_text_popup("Capture Summary", "\n".join(lines))
+            display_text_popup("Capture Summary", "\n".join(lines))
 
     def print_topics(self, capture: RTPSCapture):
         if TEST_MODE:
@@ -125,7 +110,7 @@ class RTPSDisplay():
         else:
             lines = ["Topics:"]
             lines.extend(f"  - {topic}" for topic in sorted(capture.list_all_topics()))
-            RTPSDisplay.display_text_popup("Topics", "\n".join(lines))
+            display_text_popup("Topics", "\n".join(lines))
 
     def print_all_frames(self, capture: RTPSCapture):
         """
@@ -283,7 +268,7 @@ class RTPSDisplay():
                 if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
                     lines.append(f"  {submsg}: {count}")
 
-            RTPSDisplay.display_text_popup("Submessage Counts", "\n".join(lines))
+            display_text_popup("Submessage Counts", "\n".join(lines))
 
     def print_stats_in_bytes(self, analysis: RTPSAnalyzeCapture):
         """
@@ -333,7 +318,7 @@ class RTPSDisplay():
                 if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
                     lines.append(f"    {submsg}: {length:,} bytes")
 
-            RTPSDisplay.display_text_popup("Submessage Lengths", "\n".join(lines))
+            display_text_popup("Submessage Lengths", "\n".join(lines))
 
     def plot_stats_by_frame_count(self, analysis: RTPSAnalyzeCapture, include_discovery=False, scale=PlotScale.LINEAR):
         if self.no_gui:

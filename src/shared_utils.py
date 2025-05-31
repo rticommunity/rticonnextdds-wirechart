@@ -17,6 +17,8 @@ import os
 
 # Local Application Imports
 from src.log_handler import logging
+import tkinter as tk
+from tkinter.scrolledtext import ScrolledText
 
 # config.py
 import os
@@ -63,6 +65,20 @@ class NoDiscoveryDataException(Exception):
 
     def __str__(self):
         return self.message
+
+def display_text_popup(title: str, text: str):
+    root = tk.Tk()
+    root.title(title)
+
+    # Make sure the window is always on top
+    root.attributes("-topmost", True)
+
+    text_area = ScrolledText(root, wrap=tk.WORD, width=100, height=60)
+    text_area.insert(tk.END, text)
+    text_area.pack(padx=10, pady=10)
+    text_area.config(state='disabled')  # make it read-only
+
+    root.mainloop()
 
 def create_output_path(pcap_file, output_path, extension, description=None):
     """
