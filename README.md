@@ -33,6 +33,12 @@ Install the dependencies using:
 pip install pandas matplotlib networkx openpyxl tqdm
 ```
 
+[requirements.txt](./requirements.txt) will install the exact version of the tools above:
+
+```bash
+pip install -r requirements.txt
+```
+
 ### External Tools
 
 - `tshark`: Required for extracting data from PCAP files.
@@ -67,3 +73,12 @@ usage: python3 wirechart.py [-h] --pcap PCAP [--output OUTPUT] [--no-gui] [--fra
 ### Known Issues
 
 - [Current List of Issues](https://github.com/rticommunity/rti-wirechart/issues)
+
+### Test Versions
+
+- Windows 11
+    - tshark: 4.4.6
+    - Python: 3.12.0, 3.13.3
+- Ubuntu 22.04
+    - tshark: 4.4.6
+    - Python: 3.10.12
