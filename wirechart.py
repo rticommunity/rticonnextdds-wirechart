@@ -13,7 +13,6 @@
 
 # Standard Library Imports
 import argparse
-import time
 
 # Local Application Imports
 from src.log_handler import configure_root_logger, logging, get_log_level
@@ -95,7 +94,6 @@ def main():
                 continue
             case _:
                 print("Unrecognized option.")
-        time.sleep(1)
 
 def parse_range(value: str):
     if ':' not in value:
