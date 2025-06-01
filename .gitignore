@@ -1,5 +1,6 @@
 *.csv
 *.txt
+!config/requirements.txt
 *.pcap*
 **/*output/*
 **/*__pycache__/*

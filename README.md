@@ -32,11 +32,24 @@ Install the dependencies using:
 ```bash
 pip install pandas matplotlib networkx openpyxl tqdm
 ```
-
-[requirements.txt](./requirements.txt) will install the exact version of the tools above:
+#### Python Virtual Environment
+[requirements.txt](./config/requirements.txt) will install the exact version of the tools above:
 
 ```bash
-pip install -r requirements.txt
+cd <repo_root>
+
+# Create Python Virtual Environment
+python -m venv wirechart
+
+# Activate Virtual Environment
+wirechart\Scripts\activate      # Windows
+source wirechart/bin/activate   # Mac/Linux
+
+# Install Dependencies in Virtual Environment (on creation only)
+pip install -r config/requirements.txt
+
+# Exit Virtual Environment
+deactivate
 ```
 
 ### External Tools
