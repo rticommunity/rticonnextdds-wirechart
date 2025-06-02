@@ -8,6 +8,16 @@ Wirechart analyzes DDS traffic based on an input PCAP file.  It provides statics
 
 ## Requirements
 
+### Tkinter
+
+Install `Tkinter` first.  It should install by default in Windows.
+
+```bash
+# Linux
+sudo apt-get install python3-tk
+pip install --upgrade pillow
+```
+
 ### Python Dependencies
 The application requires the following Python libraries:
 
@@ -21,6 +31,25 @@ Install the dependencies using:
 
 ```bash
 pip install pandas matplotlib networkx openpyxl tqdm
+```
+#### Python Virtual Environment
+[requirements.txt](./config/requirements.txt) will install the exact version of the tools above:
+
+```bash
+cd <repo_root>
+
+# Create Python Virtual Environment
+python -m venv wirechart
+
+# Activate Virtual Environment
+wirechart\Scripts\activate      # Windows
+source wirechart/bin/activate   # Mac/Linux
+
+# Install Dependencies in Virtual Environment (on creation only)
+pip install -r config/requirements.txt
+
+# Exit Virtual Environment
+deactivate
 ```
 
 ### External Tools
@@ -57,3 +86,12 @@ usage: python3 wirechart.py [-h] --pcap PCAP [--output OUTPUT] [--no-gui] [--fra
 ### Known Issues
 
 - [Current List of Issues](https://github.com/rticommunity/rti-wirechart/issues)
+
+### Test Versions
+
+- Windows 11
+    - tshark: 4.4.6
+    - Python: 3.12.0, 3.13.3
+- Ubuntu 22.04
+    - tshark: 4.4.6
+    - Python: 3.10.12

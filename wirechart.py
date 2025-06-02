@@ -101,7 +101,7 @@ def main():
 
 def parse_range(value: str):
     if ':' not in value:
-        logger.error(f"Invalid range format: {value}. Expected format is 'before:after'.  Exiting program.")
+        logger.error(f"Invalid range format: {value}. Expected format is 'before:after'.  Exiting Wirechart.")
         raise ValueError(f"Invalid range format: {value}. Expected format is 'before:after'.")
 
     before, after = value.split(':', 1)
@@ -113,14 +113,14 @@ def parse_range(value: str):
             num = int(part)
             if num >= 0:
                 return num
-            logger.error(f"Invalid positive integer: {part}. Exiting program.")
-            raise ValueError(f"Invalid positive integer: {part}. Exiting program.")
+            logger.error(f"Invalid positive integer: {part}. Exiting Wirechart.")
+            raise ValueError(f"Invalid positive integer: {part}. Exiting Wirechart.")
 
     before = parse_part(before)
     after = parse_part(after)
     if before is not None and after is not None and before > after:
-        logger.error(f"Invalid range: {value}. 'before' must be less than or equal to 'after'. Exiting program.")
-        raise ValueError(f"Invalid range: {value}. 'before' must be less than or equal to 'after'. Exiting program.")
+        logger.error(f"Invalid range: {value}. 'before' must be less than or equal to 'after'. Exiting Wirechart.")
+        raise ValueError(f"Invalid range: {value}. 'before' must be less than or equal to 'after'. Exiting Wirechart.")
 
     return before, after
 
