@@ -13,6 +13,7 @@
 
 # Standard Library Imports
 import argparse
+import sys
 
 # Local Application Imports
 from src.log_handler import configure_root_logger, logging, get_log_level
@@ -42,6 +43,7 @@ def main():
 
     logger.debug(f"Command Arguments: {args}")
     log_env_vars()  # Log environment variables for debugging
+    logger.always(f"Python Version: {sys.version}")
     TsharkReader.get_tshark_version()
     logger.always("Starting the PCAP analysis.")
 
