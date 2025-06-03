@@ -53,6 +53,21 @@ class PlotScale(Enum):
     LINEAR          = 'linear'
     LOGARITHMIC     = 'log'
 
+def show_plot_on_top():
+    plt.show(block=False)  # Show without blocking the GUI
+
+    try:
+        manager = plt.get_current_fig_manager()
+        window = manager.window
+
+        # Bring the window to the front
+        window.lift()
+        window.focus_force()
+        window.attributes('-topmost', True)
+        window.after_idle(window.attributes, '-topmost', False)
+    except Exception as e:
+        print(f"Could not bring plot to front: {e}")
+
 class RTPSDisplay():
     def __init__(self, no_gui=False):
         self.no_gui = no_gui
@@ -99,8 +114,7 @@ class RTPSDisplay():
             num_writers, num_readers = self.count_writers_and_readers(capture)
             lines.append(f"Total Writers: {num_writers} and Readers: {num_readers}")
             lines.append(f"Unique Topics: {len(capture.list_all_topics())}")
-
-            display_text_popup("Capture Summary", "\n".join(lines))
+            return "\n".join(lines)
 
     def print_topics(self, capture: RTPSCapture):
         if TEST_MODE:
@@ -108,9 +122,9 @@ class RTPSDisplay():
             for topic in sorted(capture.list_all_topics()):
                 print(f"  - {topic}")
         else:
-            lines = ["Topics:"]
-            lines.extend(f"  - {topic}" for topic in sorted(capture.list_all_topics()))
-            display_text_popup("Topics", "\n".join(lines))
+            lines = []
+            lines.extend(sorted(capture.list_all_topics()))
+            return "\n".join(lines)
 
     def print_all_frames(self, capture: RTPSCapture):
         """
@@ -139,7 +153,7 @@ class RTPSDisplay():
         for i, topic in enumerate(top_topics):
             self.plot_topic_graph(analysis, topic=topic, ax=axs.flatten()[i])
         plt.tight_layout()
-        plt.show()
+        show_plot_on_top()
 
     def plot_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str, ax: plt.Axes = None):
         """
@@ -217,7 +231,7 @@ class RTPSDisplay():
 
         if ax_none:
             plt.tight_layout()
-            plt.show()
+            show_plot_on_top()
 
     def print_stats(self, analysis: RTPSAnalyzeCapture):
         """
@@ -268,7 +282,7 @@ class RTPSDisplay():
                 if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
                     lines.append(f"  {submsg}: {count}")
 
-            display_text_popup("Submessage Counts", "\n".join(lines))
+            return "\n".join(lines)
 
     def print_stats_in_bytes(self, analysis: RTPSAnalyzeCapture):
         """
@@ -318,7 +332,7 @@ class RTPSDisplay():
                 if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
                     lines.append(f"    {submsg}: {length:,} bytes")
 
-            display_text_popup("Submessage Lengths", "\n".join(lines))
+            return "\n".join(lines)
 
     def plot_stats_by_frame_count(self, analysis: RTPSAnalyzeCapture, include_discovery=False, scale=PlotScale.LINEAR):
         if self.no_gui:
@@ -425,4 +439,4 @@ class RTPSDisplay():
 
         # Adjust layout and show the plot
         plt.tight_layout()
-        plt.show()
+        show_plot_on_top()
