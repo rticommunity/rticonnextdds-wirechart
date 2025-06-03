@@ -86,3 +86,15 @@ def test_error(self, message, *args, **kws):
 
 # Add the custom function to the Logger class
 logging.Logger.test_error = test_error
+
+class TkinterTextHandler(logging.Handler):
+    def __init__(self, text_widget):
+        super().__init__()
+        self.text_widget = text_widget
+
+    def emit(self, record):
+        msg = self.format(record)
+        def append():
+            self.text_widget.insert("end", msg + "\n")
+            self.text_widget.see("end")
+        self.text_widget.after(0, append)

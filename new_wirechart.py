@@ -3,7 +3,7 @@ from tkinter import ttk, filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
 import threading
 from wirechart import parse_range
-from src.log_handler import configure_root_logger, get_log_level
+from src.log_handler import configure_root_logger, get_log_level, TkinterTextHandler
 from src.menu import MenuState, StandardMenuOption, MenuType
 from src.rtps_capture import RTPSCapture
 from src.rtps_display import RTPSDisplay
@@ -126,6 +126,26 @@ class WirechartApp:
         right_text = ScrolledText(menu_window, wrap=tk.WORD, width=120, height=50)
         right_text.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
 
+        # --- Bottom logger output window ---
+        logger_label = ttk.Label(menu_window, text="Logger Output", font=('TkDefaultFont', 10, 'bold'))
+        logger_label.grid(row=3, column=0, columnspan=2, sticky="w", padx=5)
+        logger_output = ScrolledText(menu_window, wrap=tk.WORD, height=8)
+        logger_output.grid(row=4, column=0, columnspan=2, sticky="nsew", padx=5, pady=(0, 5))
+
+        menu_window.rowconfigure(4, weight=1)
+
+        # Configure the logger to write to the ScrolledText widget
+        gui_handler = TkinterTextHandler(logger_output)
+        gui_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        gui_handler.setLevel(logging.ERROR)
+        logging.getLogger().addHandler(gui_handler)
+
+        # Ensure the logger is removed when the window is closed
+        def on_close():
+                logging.getLogger().removeHandler(gui_handler)
+                menu_window.destroy()
+        menu_window.protocol("WM_DELETE_WINDOW", on_close)
+
         state = MenuState()
 
         def update_boxes(left=None, right=None, left_label_text=None, right_label_text=None):
@@ -164,7 +184,7 @@ class WirechartApp:
                     case "Save to Excel":
                         analysis.save_to_excel(self.args['pcap'].get(), self.args['output'].get(), 'PCAPStats')
                     case "Exit":
-                        menu_window.destroy()
+                        on_close()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
