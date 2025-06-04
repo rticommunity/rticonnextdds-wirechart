@@ -3,7 +3,6 @@ from tkinter import ttk, filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
 from wirechart import parse_range
 from src.log_handler import configure_root_logger, get_log_level, TkinterTextHandler
-from src.menu import MenuState
 from src.rtps_capture import RTPSCapture
 from src.rtps_display import RTPSDisplay, PlotScale
 from src.rtps_analyze_capture import RTPSAnalyzeCapture
@@ -11,6 +10,8 @@ from src.readers.tshark_reader import TsharkReader
 from src.shared_utils import create_output_path
 import logging
 from enum import Enum, auto
+
+BUTTON_WIDTH = 17
 
 class MenuAction(Enum):
     CAPTURE_SUMMARY = auto()
@@ -20,6 +21,8 @@ class MenuAction(Enum):
     BAR_BYTES = auto()
     TOPOLOGY_GRAPH = auto()
     SAVE_TO_EXCEL = auto()
+    WIRESHARK_FILTER0 = auto()
+    WIRESHARK_FILTER1 = auto()
     EXIT = auto()
 
     def __str__(self):
@@ -31,6 +34,8 @@ class MenuAction(Enum):
             MenuAction.BAR_BYTES: "Bar Chart - Bytes",
             MenuAction.TOPOLOGY_GRAPH: "Topology Graph",
             MenuAction.SAVE_TO_EXCEL: "Save to Excel",
+            MenuAction.WIRESHARK_FILTER0: "Wireshark Filter 0",
+            MenuAction.WIRESHARK_FILTER1: "Wireshark Filter 1",
             MenuAction.EXIT: "Exit"
         }[self]
 
@@ -127,7 +132,7 @@ class WirechartApp:
 
     def launch_menu_gui(self, display, frames, analysis):
         menu_window = tk.Toplevel(self.root)
-        menu_window.title("Wirechart - Menu")
+        menu_window.title(f"{self.args['pcap'].get()} - Analysis")
 
         # Configure resizing grid
         menu_window.columnconfigure(0, weight=1)
@@ -149,6 +154,8 @@ class WirechartApp:
         right_text = ScrolledText(menu_window, wrap=tk.WORD, width=120, height=50)
         right_text.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
 
+        text_label_tuple = (left_label, left_text, right_label, right_text)
+
         # Add Boolean options side-by-side above the logger box
         checkbox_frame = ttk.Frame(menu_window)
         checkbox_frame.grid(row=2, column=0, columnspan=2, sticky="w", padx=5, pady=5)
@@ -158,12 +165,11 @@ class WirechartApp:
         ttk.Checkbutton(checkbox_frame, text="Include Discovery Traffic", variable=plot_discovery).pack(side="left", padx=10)
         ttk.Checkbutton(checkbox_frame, text="Use Log Scale", variable=log_scale).pack(side="left", padx=0)
 
-        # --- Bottom logger output window ---
+        # Logger Window
         logger_label = ttk.Label(menu_window, text="Logger Output", font=('TkDefaultFont', 10, 'bold'))
         logger_label.grid(row=4, column=0, columnspan=2, sticky="w", padx=5)
         logger_output = ScrolledText(menu_window, wrap=tk.WORD, height=8)
         logger_output.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=5, pady=(0, 5))
-
         menu_window.rowconfigure(5, weight=1)
 
         # Configure the logger to write to the ScrolledText widget
@@ -178,29 +184,17 @@ class WirechartApp:
             menu_window.destroy()
         menu_window.protocol("WM_DELETE_WINDOW", on_close)
 
-        def update_boxes(left=None, right=None, left_label_text=None, right_label_text=None):
-            if left_label_text is not None:
-                left_label.config(text=left_label_text)
-            if right_label_text is not None:
-                right_label.config(text=right_label_text)
-            if left is not None:
-                left_text.delete(1.0, tk.END)
-                left_text.insert(tk.END, left)
-            if right is not None:
-                right_text.delete(1.0, tk.END)
-                right_text.insert(tk.END, right)
-
-        update_boxes(left_label_text="Topics", left=display.print_topics(frames))
+        WirechartApp._update_boxes(text_label_tuple, left_label_text="Topics", left=display.print_topics(frames))
 
         def handle_option(choice):
             try:
                 match choice:
                     case MenuAction.CAPTURE_SUMMARY:
-                        update_boxes(right_label_text="Capture Summary", right=display.print_capture_summary(frames))
+                        WirechartApp._update_boxes(text_label_tuple, right_label_text="Capture Summary", right=display.print_capture_summary(frames))
                     case MenuAction.STATS_COUNT:
-                        update_boxes(right_label_text="Stats (Submessage Count)", right=display.print_stats(analysis))
+                        WirechartApp._update_boxes(text_label_tuple, right_label_text="Stats (Submessage Count)", right=display.print_stats(analysis))
                     case MenuAction.STATS_BYTES:
-                        update_boxes(right_label_text="Stats (Submessage Bytes)", right=display.print_stats_in_bytes(analysis))
+                        WirechartApp._update_boxes(text_label_tuple, right_label_text="Stats (Submessage Bytes)", right=display.print_stats_in_bytes(analysis))
                     case MenuAction.BAR_COUNT:
                         display.plot_stats_by_frame_count(analysis, plot_discovery.get(),
                                                           PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
@@ -209,17 +203,25 @@ class WirechartApp:
                                                            PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
                     case MenuAction.TOPOLOGY_GRAPH:
                         topic = tk.simpledialog.askstring("Enter Topic", "Enter a topic to plot (leave blank for top 6):", parent=menu_window)
-                        if topic:
-                            display.plot_topic_graph(analysis, topic)
-                        else:
-                            display.plot_multi_topic_graph(analysis)
+                        match topic:
+                            case None:
+                                pass
+                            case '':
+                                display.plot_multi_topic_graph(analysis)
+                            case _:
+                                display.plot_topic_graph(analysis, topic)
                     case MenuAction.SAVE_TO_EXCEL:
                         analysis.save_to_excel(self.args['pcap'].get(), self.args['output'].get(), 'PCAPStats')
+                    case MenuAction.WIRESHARK_FILTER0:
+                        pass
+                    case MenuAction.WIRESHARK_FILTER1:
+                        pass
                     case MenuAction.EXIT:
                         on_close()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
+        # Standard Buttons
         options = [
             MenuAction.CAPTURE_SUMMARY,
             MenuAction.STATS_COUNT,
@@ -227,21 +229,58 @@ class WirechartApp:
             MenuAction.BAR_COUNT,
             MenuAction.BAR_BYTES,
             MenuAction.TOPOLOGY_GRAPH,
+        ]
+        standard_button_frame = ttk.Frame(menu_window)
+        standard_button_frame.grid(row=3, column=0, columnspan=2, sticky="w", padx=5, pady=0)
+        WirechartApp._create_buttons(standard_button_frame, options, handle_option)
+
+        # Wireshark Buttons
+        options = [
+            MenuAction.WIRESHARK_FILTER0,
+            MenuAction.WIRESHARK_FILTER1
+        ]
+        wireshark_button_frame = ttk.Frame(menu_window)
+        wireshark_button_frame.grid(row=4, column=0, columnspan=2, sticky="w", padx=5, pady=10)
+        WirechartApp._create_buttons(wireshark_button_frame, options, handle_option, enable=False)
+
+        # Save_Excel and Exit button
+        options = [
             MenuAction.SAVE_TO_EXCEL,
             MenuAction.EXIT
         ]
+        exit_button_frame = ttk.Frame(menu_window)
+        exit_button_frame.grid(row=6, column=0, columnspan=2, sticky="e", padx=5, pady=10)
+        WirechartApp._create_buttons(exit_button_frame, options, handle_option)
 
+    @staticmethod
+    def _set_button_state(frame: ttk.Frame, state: bool):
+        for widget in frame.winfo_children():
+            if isinstance(widget, ttk.Button):
+                widget.config(state="disabled" if state else "normal")
 
-        # UI: Action buttons
-        button_frame = ttk.Frame(menu_window)
-        button_frame.grid(row=2, column=0, columnspan=2, pady=10)
-
+    @staticmethod
+    def _create_buttons(frame: ttk.Frame, options: list[MenuAction], command: callable, enable: bool = True):
         for opt in options:
             ttk.Button(
-                button_frame, 
+                frame,
                 text=str(opt),  # Uses __str__ if defined, otherwise .name
-                command=lambda o=opt: handle_option(o)
+                command=lambda o=opt: command(o),
+                state="normal" if enable else "disabled",
+                width=BUTTON_WIDTH
             ).pack(side="left", padx=5)
+
+    @staticmethod
+    def _update_boxes(text_label: tuple, left=None, right=None, left_label_text=None, right_label_text=None):
+        if left_label_text is not None:
+            text_label[0].config(text=left_label_text)
+        if right_label_text is not None:
+            text_label[2].config(text=right_label_text)
+        if left is not None:
+            text_label[1].delete(1.0, tk.END)
+            text_label[1].insert(tk.END, left)
+        if right is not None:
+            text_label[3].delete(1.0, tk.END)
+            text_label[3].insert(tk.END, right)
 
 if __name__ == "__main__":
     root = tk.Tk()
