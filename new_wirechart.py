@@ -1,17 +1,40 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from tkinter.scrolledtext import ScrolledText
-import threading
 from wirechart import parse_range
 from src.log_handler import configure_root_logger, get_log_level, TkinterTextHandler
-from src.menu import MenuState, StandardMenuOption, MenuType
+from src.menu import MenuState
 from src.rtps_capture import RTPSCapture
-from src.rtps_display import RTPSDisplay
+from src.rtps_display import RTPSDisplay, PlotScale
 from src.rtps_analyze_capture import RTPSAnalyzeCapture
 from src.readers.tshark_reader import TsharkReader
 from src.shared_utils import create_output_path
-import sys
 import logging
+from enum import Enum, auto
+
+class MenuAction(Enum):
+    CAPTURE_SUMMARY = auto()
+    STATS_COUNT = auto()
+    STATS_BYTES = auto()
+    BAR_COUNT = auto()
+    BAR_BYTES = auto()
+    TOPOLOGY_GRAPH = auto()
+    SAVE_TO_EXCEL = auto()
+    EXIT = auto()
+
+    def __str__(self):
+        return {
+            MenuAction.CAPTURE_SUMMARY: "Capture Summary",
+            MenuAction.STATS_COUNT: "Stats - Count",
+            MenuAction.STATS_BYTES: "Stats - Bytes",
+            MenuAction.BAR_COUNT: "Bar Chart - Count",
+            MenuAction.BAR_BYTES: "Bar Chart - Bytes",
+            MenuAction.TOPOLOGY_GRAPH: "Topology Graph",
+            MenuAction.SAVE_TO_EXCEL: "Save to Excel",
+            MenuAction.EXIT: "Exit"
+        }[self]
+
+
 
 logger = logging.getLogger('Wirechart')
 
@@ -67,7 +90,7 @@ class WirechartApp:
         ttk.Button(frame, text="Run Analysis", command=self.run_analysis).grid(row=6, column=1, pady=10)
 
     def browse_pcap(self):
-        filename = filedialog.askopenfilename(title="Select PCAP File", filetypes=[("PCAP files", "*.pcap")])
+        filename = filedialog.askopenfilename(title="Select PCAP File", filetypes=[("PCAP Files", "*.pcap*")])
         if filename:
             self.args['pcap'].set(filename)
 
@@ -126,13 +149,22 @@ class WirechartApp:
         right_text = ScrolledText(menu_window, wrap=tk.WORD, width=120, height=50)
         right_text.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
 
+        # Add Boolean options side-by-side above the logger box
+        checkbox_frame = ttk.Frame(menu_window)
+        checkbox_frame.grid(row=2, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+
+        plot_discovery = tk.BooleanVar(value=False)
+        log_scale = tk.BooleanVar(value=False)
+        ttk.Checkbutton(checkbox_frame, text="Include Discovery Traffic", variable=plot_discovery).pack(side="left", padx=10)
+        ttk.Checkbutton(checkbox_frame, text="Use Log Scale", variable=log_scale).pack(side="left", padx=0)
+
         # --- Bottom logger output window ---
         logger_label = ttk.Label(menu_window, text="Logger Output", font=('TkDefaultFont', 10, 'bold'))
-        logger_label.grid(row=3, column=0, columnspan=2, sticky="w", padx=5)
+        logger_label.grid(row=4, column=0, columnspan=2, sticky="w", padx=5)
         logger_output = ScrolledText(menu_window, wrap=tk.WORD, height=8)
-        logger_output.grid(row=4, column=0, columnspan=2, sticky="nsew", padx=5, pady=(0, 5))
+        logger_output.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=5, pady=(0, 5))
 
-        menu_window.rowconfigure(4, weight=1)
+        menu_window.rowconfigure(5, weight=1)
 
         # Configure the logger to write to the ScrolledText widget
         gui_handler = TkinterTextHandler(logger_output)
@@ -142,11 +174,9 @@ class WirechartApp:
 
         # Ensure the logger is removed when the window is closed
         def on_close():
-                logging.getLogger().removeHandler(gui_handler)
-                menu_window.destroy()
+            logging.getLogger().removeHandler(gui_handler)
+            menu_window.destroy()
         menu_window.protocol("WM_DELETE_WINDOW", on_close)
-
-        state = MenuState()
 
         def update_boxes(left=None, right=None, left_label_text=None, right_label_text=None):
             if left_label_text is not None:
@@ -165,40 +195,53 @@ class WirechartApp:
         def handle_option(choice):
             try:
                 match choice:
-                    case "Capture Summary":
+                    case MenuAction.CAPTURE_SUMMARY:
                         update_boxes(right_label_text="Capture Summary", right=display.print_capture_summary(frames))
-                    case "Stats - Count":
+                    case MenuAction.STATS_COUNT:
                         update_boxes(right_label_text="Stats (Submessage Count)", right=display.print_stats(analysis))
-                    case "Stats - Bytes":
+                    case MenuAction.STATS_BYTES:
                         update_boxes(right_label_text="Stats (Submessage Bytes)", right=display.print_stats_in_bytes(analysis))
-                    case "Bar Chart - Count":
-                        display.plot_stats_by_frame_count(analysis, state.plot_discovery, state.scale)
-                    case "Bar Chart - Bytes":
-                        display.plot_stats_by_frame_length(analysis, state.plot_discovery, state.scale)
-                    case "Topology Graph":
-                        topic = tk.simpledialog.askstring("Enter Topic", "Enter a topic to plot (leave blank for all):", parent=menu_window)
+                    case MenuAction.BAR_COUNT:
+                        display.plot_stats_by_frame_count(analysis, plot_discovery.get(),
+                                                          PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
+                    case MenuAction.BAR_BYTES:
+                        display.plot_stats_by_frame_length(analysis, plot_discovery.get(),
+                                                           PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
+                    case MenuAction.TOPOLOGY_GRAPH:
+                        topic = tk.simpledialog.askstring("Enter Topic", "Enter a topic to plot (leave blank for top 6):", parent=menu_window)
                         if topic:
                             display.plot_topic_graph(analysis, topic)
                         else:
                             display.plot_multi_topic_graph(analysis)
-                    case "Save to Excel":
+                    case MenuAction.SAVE_TO_EXCEL:
                         analysis.save_to_excel(self.args['pcap'].get(), self.args['output'].get(), 'PCAPStats')
-                    case "Exit":
+                    case MenuAction.EXIT:
                         on_close()
             except Exception as e:
                 messagebox.showerror("Error", str(e))
 
         options = [
-            "Capture Summary", "Stats - Count", "Stats - Bytes",
-            "Bar Chart - Count", "Bar Chart - Bytes", "Topology Graph", "Save to Excel", "Exit"
+            MenuAction.CAPTURE_SUMMARY,
+            MenuAction.STATS_COUNT,
+            MenuAction.STATS_BYTES,
+            MenuAction.BAR_COUNT,
+            MenuAction.BAR_BYTES,
+            MenuAction.TOPOLOGY_GRAPH,
+            MenuAction.SAVE_TO_EXCEL,
+            MenuAction.EXIT
         ]
+
 
         # UI: Action buttons
         button_frame = ttk.Frame(menu_window)
         button_frame.grid(row=2, column=0, columnspan=2, pady=10)
 
         for opt in options:
-            ttk.Button(button_frame, text=opt, command=lambda o=opt: handle_option(o)).pack(side="left", padx=5)
+            ttk.Button(
+                button_frame, 
+                text=str(opt),  # Uses __str__ if defined, otherwise .name
+                command=lambda o=opt: handle_option(o)
+            ).pack(side="left", padx=5)
 
 if __name__ == "__main__":
     root = tk.Tk()
