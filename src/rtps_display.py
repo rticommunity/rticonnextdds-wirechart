@@ -122,9 +122,7 @@ class RTPSDisplay():
             for topic in sorted(capture.list_all_topics()):
                 print(f"  - {topic}")
         else:
-            lines = []
-            lines.extend(sorted(capture.list_all_topics()))
-            return "\n".join(lines)
+            return sorted(capture.list_all_topics())
 
     def print_all_frames(self, capture: RTPSCapture):
         """

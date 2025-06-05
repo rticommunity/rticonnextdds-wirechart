@@ -160,7 +160,7 @@ class AnalysisGui:
             menu_window.destroy()
         menu_window.protocol("WM_DELETE_WINDOW", on_close)
 
-        text_handles.update_left(label_text="Topics", text=self.topics)
+        text_handles.update_left(label_text="Topics", text="\n".join(self.topics))
 
         def handle_option(choice):
             try:
@@ -178,7 +178,7 @@ class AnalysisGui:
                         self.display.plot_stats_by_frame_length(self.analysis, plot_discovery.get(),
                                                             PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
                     case MenuAction.TOPOLOGY_GRAPH:
-                        dialog = DropdownDialog(menu_window, "Enter Topic", "Enter a Topic to Plot:", ["Top 6"] + self.topics.splitlines())
+                        dialog = DropdownDialog(menu_window, "Enter Topic", "Enter a Topic to Plot:", ["Top 6"] + self.topics)
                         if dialog.selection:
                             topic = dialog.selection
                             if topic == "Top 6":
