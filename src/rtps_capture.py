@@ -140,3 +140,27 @@ class RTPSCapture:
         for frame in self.frames:
             topics.update(frame.list_topics())
         return topics
+
+    def list_repairs(self):
+        """
+        Returns a list of all repair submessages in the frame.
+        """
+        repairs = []
+        for frame in self.frames:
+            for sm in frame.sm_list:
+                if sm.is_repair():
+                    repairs.append(frame)
+                    break
+        return repairs
+
+    def list_durable_repairs(self):
+        """
+        Returns a list of all durable repair submessages in the frame.
+        """
+        durable_repairs = []
+        for frame in self.frames:
+            for sm in frame.sm_list:
+                if sm.is_durable_repair():
+                    durable_repairs.append(frame)
+                    break
+        return durable_repairs

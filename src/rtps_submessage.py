@@ -151,3 +151,15 @@ class RTPSSubmessage():
         if SubmessageTypes.GAP & self.sm_type:
             return self.seq_num_tuple[0], self.seq_num_tuple[1]
         return None, None
+
+    def is_repair(self):
+        """
+        Returns True if the submessage is a repair submessage, False otherwise.
+        """
+        return SubmessageTypes.REPAIR & self.sm_type and not SubmessageTypes.DURABLE & self.sm_type
+
+    def is_durable_repair(self):
+        """
+        Returns True if the submessage is a durable repair submessage, False otherwise.
+        """
+        return SubmessageTypes.DURABLE & self.sm_type and SubmessageTypes.REPAIR & self.sm_type

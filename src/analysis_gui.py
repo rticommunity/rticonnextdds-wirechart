@@ -25,10 +25,11 @@ import logging
 from enum import Enum, auto
 from src.wireshark_filters import WiresharkFilters
 from src.dropdown_dialog import DropdownDialog
+from src.rtps_frame import RTPSFrame
 
 logger = logging.getLogger('Wirechart')
 
-BUTTON_WIDTH = 17
+BUTTON_WIDTH = 18
 
 class MenuAction(Enum):
     CAPTURE_SUMMARY = auto()
@@ -37,6 +38,8 @@ class MenuAction(Enum):
     BAR_COUNT = auto()
     BAR_BYTES = auto()
     TOPOLOGY_GRAPH = auto()
+    SHOW_REPAIRS = auto()
+    SHOW_DURABLE_REPAIRS = auto()
     SAVE_TO_EXCEL = auto()
     WIRESHARK_UNIQUE_ENDPOINTS = auto()
     WIRESHARK_TOPIC_ENDPOINTS = auto()
@@ -50,6 +53,8 @@ class MenuAction(Enum):
             MenuAction.BAR_COUNT: "Bar Chart - Count",
             MenuAction.BAR_BYTES: "Bar Chart - Bytes",
             MenuAction.TOPOLOGY_GRAPH: "Topology Graph",
+            MenuAction.SHOW_REPAIRS: "List Repairs",
+            MenuAction.SHOW_DURABLE_REPAIRS: "List Durable Repairs",
             MenuAction.SAVE_TO_EXCEL: "Save to Excel",
             MenuAction.WIRESHARK_UNIQUE_ENDPOINTS: "Unique Endpoints",
             MenuAction.WIRESHARK_TOPIC_ENDPOINTS: "Endpoints Filter",
@@ -93,7 +98,7 @@ class TextWindowHandles:
         self.update_right(label_text="", text="")
 
 class AnalysisGui:
-    def __init__(self, root, frames, analysis, display, args):
+    def __init__(self, root: tk.Tk, frames: RTPSFrame, analysis: RTPSAnalyzeCapture, display: RTPSDisplay, args):
         self.root = root
         self.display = display
         self.frames = frames
@@ -160,7 +165,7 @@ class AnalysisGui:
             menu_window.destroy()
         menu_window.protocol("WM_DELETE_WINDOW", on_close)
 
-        text_handles.update_left(label_text="Topics", text="\n".join(self.topics))
+        text_handles.update_left(label_text=f"{len(self.topics)} Topics Found", text="\n".join(self.topics))
 
         def handle_option(choice):
             try:
@@ -185,6 +190,16 @@ class AnalysisGui:
                                 self.display.plot_multi_topic_graph(self.analysis)
                             else:
                                 self.display.plot_topic_graph(self.analysis, topic)
+                    case MenuAction.SHOW_REPAIRS:
+                        repairs = self.frames.list_repairs()
+                        repair_string = "\n".join(str(obj) for obj in repairs)
+                        text_handles.update_right("Repair Samples",
+                                                  repair_string if repair_string else "No repairs found.")
+                    case MenuAction.SHOW_DURABLE_REPAIRS:
+                        durable_repairs = self.frames.list_durable_repairs()
+                        durable_repair_string = "\n".join(str(obj) for obj in durable_repairs)
+                        text_handles.update_right("Durable Repair Samples",
+                                                  durable_repair_string if durable_repair_string else "No durable repairs found.")
                     case MenuAction.SAVE_TO_EXCEL:
                         self.analysis.save_to_excel(self.args['pcap'].get(), self.args['output'].get(), 'PCAPStats')
                     case MenuAction.WIRESHARK_UNIQUE_ENDPOINTS:
@@ -216,6 +231,8 @@ class AnalysisGui:
             MenuAction.BAR_COUNT,
             MenuAction.BAR_BYTES,
             MenuAction.TOPOLOGY_GRAPH,
+            MenuAction.SHOW_REPAIRS,
+            MenuAction.SHOW_DURABLE_REPAIRS
         ]
         standard_button_frame = ttk.Frame(menu_window)
         standard_button_frame.grid(row=3, column=0, columnspan=2, sticky="w", padx=5, pady=0)
