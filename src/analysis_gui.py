@@ -165,7 +165,8 @@ class AnalysisGui:
             menu_window.destroy()
         menu_window.protocol("WM_DELETE_WINDOW", on_close)
 
-        text_handles.update_left(label_text=f"{len(self.topics)} Topics Found", text="\n".join(self.topics))
+        text_handles.update_left(label_text=f"{len(self.topics)} Topic{'s' if len(self.topics) != 1 else ''} Found",
+                                 text="\n".join(self.topics))
 
         def handle_option(choice):
             try:
