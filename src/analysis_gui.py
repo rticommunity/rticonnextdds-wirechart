@@ -52,10 +52,45 @@ class MenuAction(Enum):
             MenuAction.TOPOLOGY_GRAPH: "Topology Graph",
             MenuAction.SAVE_TO_EXCEL: "Save to Excel",
             MenuAction.WIRESHARK_UNIQUE_ENDPOINTS: "Unique Endpoints",
-            MenuAction.WIRESHARK_TOPIC_ENDPOINTS: "Topic Endpoints",
+            MenuAction.WIRESHARK_TOPIC_ENDPOINTS: "Endpoints Filter",
             MenuAction.EXIT: "Exit"
         }[self]
 
+class TextWindowHandles:
+    left_label: ttk.Label
+    left_text: ScrolledText
+    right_label: ttk.Label
+    right_text: ScrolledText
+
+    def __init__(self, left_label, left_text, right_label, right_text):
+        self.left_label = left_label
+        self.left_text = left_text
+        self.right_label = right_label
+        self.right_text = right_text
+
+    def update_left(self, label_text=None, text=None):
+        if label_text is not None:
+            self.left_label.config(text=label_text)
+        if text is not None:
+            self.left_text.config(state='normal')
+            self.left_text.delete(1.0, tk.END)
+            self.left_text.insert(tk.END, text)
+            self.left_text.config(state='disabled')
+
+    def update_right(self, label_text=None, text=None):
+        if label_text is not None:
+            self.right_label.config(text=label_text)
+        if text is not None:
+            self.right_text.config(state='normal')
+            self.right_text.delete(1.0, tk.END)
+            self.right_text.insert(tk.END, text)
+            self.right_text.config(state='disabled')
+
+    def clear_left(self):
+        self.update_left(label_text="", text="")
+
+    def clear_right(self):
+        self.update_right(label_text="", text="")
 
 class AnalysisGui:
     def __init__(self, root, frames, analysis, display, args):
@@ -95,7 +130,7 @@ class AnalysisGui:
         right_text = ScrolledText(menu_window, wrap=tk.WORD, width=128, height=50, state="disabled")
         right_text.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
 
-        text_label_tuple = (left_label, left_text, right_label, right_text)
+        text_handles = TextWindowHandles(left_label, left_text, right_label, right_text)
 
         # Add Boolean options side-by-side above the logger box
         checkbox_frame = ttk.Frame(menu_window)
@@ -125,17 +160,17 @@ class AnalysisGui:
             menu_window.destroy()
         menu_window.protocol("WM_DELETE_WINDOW", on_close)
 
-        AnalysisGui._update_boxes(text_label_tuple, left_label_text="Topics", left=self.topics)
+        text_handles.update_left(label_text="Topics", text=self.topics)
 
         def handle_option(choice):
             try:
                 match choice:
                     case MenuAction.CAPTURE_SUMMARY:
-                        AnalysisGui._update_boxes(text_label_tuple, right_label_text="Capture Summary", right=self.display.print_capture_summary(self.frames))
+                        text_handles.update_right("Capture Summary", self.display.print_capture_summary(self.frames))
                     case MenuAction.STATS_COUNT:
-                        AnalysisGui._update_boxes(text_label_tuple, right_label_text="Stats (Submessage Count)", right=self.display.print_stats(self.analysis))
+                        text_handles.update_right("Stats (Submessage Count)", self.display.print_stats(self.analysis))
                     case MenuAction.STATS_BYTES:
-                        AnalysisGui._update_boxes(text_label_tuple, right_label_text="Stats (Submessage Bytes)", right=self.display.print_stats_in_bytes(self.analysis))
+                        text_handles.update_right("Stats (Submessage Bytes)", self.display.print_stats_in_bytes(self.analysis))
                     case MenuAction.BAR_COUNT:
                         self.display.plot_stats_by_frame_count(self.analysis, plot_discovery.get(),
                                                             PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
@@ -150,26 +185,24 @@ class AnalysisGui:
                                 self.display.plot_multi_topic_graph(self.analysis)
                             else:
                                 self.display.plot_topic_graph(self.analysis, topic)
-                        else:
-                            pass
                     case MenuAction.SAVE_TO_EXCEL:
                         self.analysis.save_to_excel(self.args['pcap'].get(), self.args['output'].get(), 'PCAPStats')
                     case MenuAction.WIRESHARK_UNIQUE_ENDPOINTS:
                         dialog = DropdownDialog(menu_window, "Choose a Topic", "Please select a topic:", self.topics)
                         if dialog.selection:
                             topic = dialog.selection
-                            AnalysisGui._update_boxes(text_label_tuple, right_label_text=f"Unique Endpoints for Topic: {topic}",
-                                                      right=self.wireshark_filters.print_all_unique_endpoints(topic))
+                            text_handles.update_right(f"Unique Endpoints for Topic: {topic}",
+                                                      self.wireshark_filters.print_all_unique_endpoints(topic))
                         else:
-                            AnalysisGui._update_boxes(text_label_tuple, right_label_text="", right="")
+                            text_handles.clear_right()
                     case MenuAction.WIRESHARK_TOPIC_ENDPOINTS:
                         dialog = DropdownDialog(menu_window, "Choose a Topic", "Please select a topic:", self.topics)
                         if dialog.selection:
                             topic = dialog.selection
-                            AnalysisGui._update_boxes(text_label_tuple, right_label_text=f"Unique Endpoints for Topic: {topic}",
-                                                      right=self.wireshark_filters.all_endpoints_filter(topic))
+                            text_handles.update_right(f"Wireshark Endpoint Filter for Topic: {topic}",
+                                                      self.wireshark_filters.all_endpoints_filter(topic))
                         else:
-                            AnalysisGui._update_boxes(text_label_tuple, right_label_text="", right="")
+                            text_handles.clear_right()
                     case MenuAction.EXIT:
                         on_close()
             except Exception as e:
@@ -222,20 +255,3 @@ class AnalysisGui:
                 state="normal" if enable else "disabled",
                 width=BUTTON_WIDTH
             ).pack(side="left", padx=5)
-
-    @staticmethod
-    def _update_boxes(text_label: tuple, left=None, right=None, left_label_text=None, right_label_text=None):
-        if left_label_text is not None:
-            text_label[0].config(text=left_label_text)
-        if right_label_text is not None:
-            text_label[2].config(text=right_label_text)
-        if left is not None:
-            text_label[1].config(state='normal')
-            text_label[1].delete(1.0, tk.END)
-            text_label[1].insert(tk.END, left)
-            text_label[1].config(state='disabled')
-        if right is not None:
-            text_label[3].config(state='normal')
-            text_label[3].delete(1.0, tk.END)
-            text_label[3].insert(tk.END, right)
-            text_label[3].config(state='disabled')
