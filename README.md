@@ -1,4 +1,4 @@
-<img src="img/wirechart_icon.jpg">
+<img src="./img/wirechart_icon.png">
 
 # Wirechart
 
