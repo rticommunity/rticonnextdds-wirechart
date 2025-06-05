@@ -1,0 +1,296 @@
+##############################################################################################
+# (c) 2025-2025 Copyright, Real-Time Innovations, Inc. (RTI) All rights reserved.
+#
+# RTI grants Licensee a license to use, modify, compile, and create derivative works of the
+# software solely for use with RTI Connext DDS. Licensee may redistribute copies of the
+# software, provided that all such copies are subject to this license. The software is
+# provided "as is", with no warranty of any type, including any warranty for fitness for any
+# purpose. RTI is under no obligation to maintain or support the software. RTI shall not be
+# liable for any incidental or consequential damages arising out of the use or inability to
+# use the software.
+#
+##############################################################################################
+
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+from tkinter.scrolledtext import ScrolledText
+from wirechart import parse_range
+from src.log_handler import configure_root_logger, get_log_level, TkinterTextHandler
+from src.rtps_capture import RTPSCapture
+from src.rtps_display import RTPSDisplay, PlotScale
+from src.rtps_analyze_capture import RTPSAnalyzeCapture
+from src.readers.tshark_reader import TsharkReader
+from src.shared_utils import create_output_path
+import logging
+from enum import Enum, auto
+
+BUTTON_WIDTH = 17
+
+class MenuAction(Enum):
+    CAPTURE_SUMMARY = auto()
+    STATS_COUNT = auto()
+    STATS_BYTES = auto()
+    BAR_COUNT = auto()
+    BAR_BYTES = auto()
+    TOPOLOGY_GRAPH = auto()
+    SAVE_TO_EXCEL = auto()
+    WIRESHARK_FILTER0 = auto()
+    WIRESHARK_FILTER1 = auto()
+    EXIT = auto()
+
+    def __str__(self):
+        return {
+            MenuAction.CAPTURE_SUMMARY: "Capture Summary",
+            MenuAction.STATS_COUNT: "Stats - Count",
+            MenuAction.STATS_BYTES: "Stats - Bytes",
+            MenuAction.BAR_COUNT: "Bar Chart - Count",
+            MenuAction.BAR_BYTES: "Bar Chart - Bytes",
+            MenuAction.TOPOLOGY_GRAPH: "Topology Graph",
+            MenuAction.SAVE_TO_EXCEL: "Save to Excel",
+            MenuAction.WIRESHARK_FILTER0: "Wireshark Filter 0",
+            MenuAction.WIRESHARK_FILTER1: "Wireshark Filter 1",
+            MenuAction.EXIT: "Exit"
+        }[self]
+
+
+
+logger = logging.getLogger('Wirechart')
+
+class ConfigGui:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Wirechart - Input Configuration")
+
+        self.args = {
+            'pcap': tk.StringVar(),
+            'output': tk.StringVar(value='output'),
+            'no_gui': tk.BooleanVar(),
+            'frame_range': tk.StringVar(),
+            'console_log_level': tk.StringVar(value='ERROR'),
+            'file_log_level': tk.StringVar(value='INFO')
+        }
+
+        self.build_input_gui()
+
+    def build_input_gui(self):
+        frame = ttk.Frame(self.root, padding=20)
+        frame.grid(row=0, column=0)
+
+        ttk.Label(frame, text="PCAP File:").grid(row=0, column=0, sticky="w")
+        pcap_entry = ttk.Entry(frame, textvariable=self.args['pcap'], width=40)
+        pcap_entry.grid(row=0, column=1)
+        ttk.Button(frame, text="Browse", command=self.browse_pcap).grid(row=0, column=2)
+
+        ttk.Label(frame, text="Output Directory:").grid(row=1, column=0, sticky="w")
+        ttk.Entry(frame, textvariable=self.args['output'], width=40).grid(row=1, column=1)
+
+        # Frame Range
+        ttk.Label(frame, text="Frame Range:").grid(row=2, column=0, sticky="w")
+
+        self.args['frame_start'] = tk.StringVar()
+        self.args['frame_end'] = tk.StringVar()
+        range_frame = ttk.Frame(frame)
+        range_frame.grid(row=2, column=1, sticky="w")
+        ttk.Entry(range_frame, textvariable=self.args['frame_start'], width=10).grid(row=0, column=0)
+        ttk.Label(range_frame, text=":").grid(row=0, column=1)
+        ttk.Entry(range_frame, textvariable=self.args['frame_end'], width=10).grid(row=0, column=2)
+
+        ttk.Label(frame, text="Console Log Level:").grid(row=3, column=0, sticky="w")
+        ttk.Combobox(frame, textvariable=self.args['console_log_level'],
+                     values=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]).grid(row=3, column=1)
+
+        ttk.Label(frame, text="File Log Level:").grid(row=4, column=0, sticky="w")
+        ttk.Combobox(frame, textvariable=self.args['file_log_level'],
+                     values=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]).grid(row=4, column=1)
+
+        ttk.Checkbutton(frame, text="Disable GUI plotting (--no-gui)", variable=self.args['no_gui']).grid(row=5, column=1, sticky='w')
+
+        ttk.Button(frame, text="Run Analysis", command=self.run_analysis).grid(row=6, column=1, pady=10)
+
+    def browse_pcap(self):
+        filename = filedialog.askopenfilename(title="Select PCAP File", filetypes=[("PCAP Files", "*.pcap*")])
+        if filename:
+            self.args['pcap'].set(filename)
+
+    def run_analysis(self):
+        try:
+            output_log_path = create_output_path(self.args['pcap'].get(), self.args['output'].get(), 'log')
+            configure_root_logger(
+                output_log_path,
+                console_level=get_log_level(self.args['console_log_level'].get()),
+                file_level=get_log_level(self.args['file_log_level'].get())
+            )
+
+            start, finish = None, None
+            if self.args['frame_range'].get():
+                start, finish = parse_range(self.args['frame_range'].get())
+
+            TsharkReader.get_tshark_version()
+            rtps_frames = RTPSCapture()
+            rtps_display = RTPSDisplay(self.args['no_gui'].get())
+            rtps_frames.extract_rtps_frames(
+                TsharkReader.read_pcap,
+                self.args['pcap'].get(),
+                display_filter='rtps',
+                start_frame=start,
+                finish_frame=finish
+            )
+            rtps_analysis = RTPSAnalyzeCapture(rtps_frames)
+            rtps_analysis.analyze_capture()
+
+            self.launch_menu_gui(rtps_display, rtps_frames, rtps_analysis)
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+    def launch_menu_gui(self, display, frames, analysis):
+        menu_window = tk.Toplevel(self.root)
+        menu_window.title(f"{self.args['pcap'].get()} - Analysis")
+
+        # Configure resizing grid
+        menu_window.columnconfigure(0, weight=1)
+        menu_window.columnconfigure(1, weight=1)
+        menu_window.rowconfigure(1, weight=1)
+
+        # Labels for text boxes
+        left_label = ttk.Label(menu_window, font=('TkDefaultFont', 10, 'bold'))
+        left_label.grid(row=0, column=0, padx=5, pady=(5, 0), sticky="w")
+
+        right_label = ttk.Label(menu_window, font=('TkDefaultFont', 10, 'bold'))
+        right_label.grid(row=0, column=1, padx=5, pady=(5, 0), sticky="w")
+
+        # Left text box
+        left_text = ScrolledText(menu_window, wrap=tk.WORD, width=60, height=50)
+        left_text.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
+
+        # Right text box
+        right_text = ScrolledText(menu_window, wrap=tk.WORD, width=120, height=50)
+        right_text.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
+
+        text_label_tuple = (left_label, left_text, right_label, right_text)
+
+        # Add Boolean options side-by-side above the logger box
+        checkbox_frame = ttk.Frame(menu_window)
+        checkbox_frame.grid(row=2, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+
+        plot_discovery = tk.BooleanVar(value=False)
+        log_scale = tk.BooleanVar(value=False)
+        ttk.Checkbutton(checkbox_frame, text="Include Discovery Traffic", variable=plot_discovery).pack(side="left", padx=10)
+        ttk.Checkbutton(checkbox_frame, text="Use Log Scale", variable=log_scale).pack(side="left", padx=0)
+
+        # Logger Window
+        logger_label = ttk.Label(menu_window, text="Logger Output", font=('TkDefaultFont', 10, 'bold'))
+        logger_label.grid(row=4, column=0, columnspan=2, sticky="w", padx=5)
+        logger_output = ScrolledText(menu_window, wrap=tk.WORD, height=8)
+        logger_output.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=5, pady=(0, 5))
+        menu_window.rowconfigure(5, weight=1)
+
+        # Configure the logger to write to the ScrolledText widget
+        gui_handler = TkinterTextHandler(logger_output)
+        gui_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        gui_handler.setLevel(logging.ERROR)
+        logging.getLogger().addHandler(gui_handler)
+
+        # Ensure the logger is removed when the window is closed
+        def on_close():
+            logging.getLogger().removeHandler(gui_handler)
+            menu_window.destroy()
+        menu_window.protocol("WM_DELETE_WINDOW", on_close)
+
+        ConfigGui._update_boxes(text_label_tuple, left_label_text="Topics", left=display.print_topics(frames))
+
+        def handle_option(choice):
+            try:
+                match choice:
+                    case MenuAction.CAPTURE_SUMMARY:
+                        ConfigGui._update_boxes(text_label_tuple, right_label_text="Capture Summary", right=display.print_capture_summary(frames))
+                    case MenuAction.STATS_COUNT:
+                        ConfigGui._update_boxes(text_label_tuple, right_label_text="Stats (Submessage Count)", right=display.print_stats(analysis))
+                    case MenuAction.STATS_BYTES:
+                        ConfigGui._update_boxes(text_label_tuple, right_label_text="Stats (Submessage Bytes)", right=display.print_stats_in_bytes(analysis))
+                    case MenuAction.BAR_COUNT:
+                        display.plot_stats_by_frame_count(analysis, plot_discovery.get(),
+                                                          PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
+                    case MenuAction.BAR_BYTES:
+                        display.plot_stats_by_frame_length(analysis, plot_discovery.get(),
+                                                           PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
+                    case MenuAction.TOPOLOGY_GRAPH:
+                        topic = tk.simpledialog.askstring("Enter Topic", "Enter a topic to plot (leave blank for top 6):", parent=menu_window)
+                        match topic:
+                            case None:
+                                pass
+                            case '':
+                                display.plot_multi_topic_graph(analysis)
+                            case _:
+                                display.plot_topic_graph(analysis, topic)
+                    case MenuAction.SAVE_TO_EXCEL:
+                        analysis.save_to_excel(self.args['pcap'].get(), self.args['output'].get(), 'PCAPStats')
+                    case MenuAction.WIRESHARK_FILTER0:
+                        pass
+                    case MenuAction.WIRESHARK_FILTER1:
+                        pass
+                    case MenuAction.EXIT:
+                        on_close()
+            except Exception as e:
+                messagebox.showerror("Error", str(e))
+
+        # Standard Buttons
+        options = [
+            MenuAction.CAPTURE_SUMMARY,
+            MenuAction.STATS_COUNT,
+            MenuAction.STATS_BYTES,
+            MenuAction.BAR_COUNT,
+            MenuAction.BAR_BYTES,
+            MenuAction.TOPOLOGY_GRAPH,
+        ]
+        standard_button_frame = ttk.Frame(menu_window)
+        standard_button_frame.grid(row=3, column=0, columnspan=2, sticky="w", padx=5, pady=0)
+        ConfigGui._create_buttons(standard_button_frame, options, handle_option)
+
+        # Wireshark Buttons
+        options = [
+            MenuAction.WIRESHARK_FILTER0,
+            MenuAction.WIRESHARK_FILTER1
+        ]
+        wireshark_button_frame = ttk.Frame(menu_window)
+        wireshark_button_frame.grid(row=4, column=0, columnspan=2, sticky="w", padx=5, pady=10)
+        ConfigGui._create_buttons(wireshark_button_frame, options, handle_option, enable=False)
+
+        # Save_Excel and Exit button
+        options = [
+            MenuAction.SAVE_TO_EXCEL,
+            MenuAction.EXIT
+        ]
+        exit_button_frame = ttk.Frame(menu_window)
+        exit_button_frame.grid(row=6, column=0, columnspan=2, sticky="e", padx=5, pady=10)
+        ConfigGui._create_buttons(exit_button_frame, options, handle_option)
+
+    @staticmethod
+    def _set_button_state(frame: ttk.Frame, state: bool):
+        for widget in frame.winfo_children():
+            if isinstance(widget, ttk.Button):
+                widget.config(state="disabled" if state else "normal")
+
+    @staticmethod
+    def _create_buttons(frame: ttk.Frame, options: list[MenuAction], command: callable, enable: bool = True):
+        for opt in options:
+            ttk.Button(
+                frame,
+                text=str(opt),  # Uses __str__ if defined, otherwise .name
+                command=lambda o=opt: command(o),
+                state="normal" if enable else "disabled",
+                width=BUTTON_WIDTH
+            ).pack(side="left", padx=5)
+
+    @staticmethod
+    def _update_boxes(text_label: tuple, left=None, right=None, left_label_text=None, right_label_text=None):
+        if left_label_text is not None:
+            text_label[0].config(text=left_label_text)
+        if right_label_text is not None:
+            text_label[2].config(text=right_label_text)
+        if left is not None:
+            text_label[1].delete(1.0, tk.END)
+            text_label[1].insert(tk.END, left)
+        if right is not None:
+            text_label[3].delete(1.0, tk.END)
+            text_label[3].insert(tk.END, right)
