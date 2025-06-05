@@ -114,7 +114,7 @@ class RTPSSubmessage():
                     self.length == other.length and
                     self.seq_num_tuple == other.seq_num_tuple)
         return False
-    
+
     def __str__(self):
         return (f"Type: {self.sm_type.name}, Topic: {self.topic}, "
                 f"Length: {self.length}, Seq Number: {self.seq_num_tuple}")

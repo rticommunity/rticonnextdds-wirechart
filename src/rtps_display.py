@@ -187,8 +187,8 @@ class RTPSDisplay():
         edge_colors = []
         node_labels = {}
         for src, dst in analysis.graph_edges[topic]:
-            node_labels[src] = "RS" if RTPSFrame.guid_prefix(src) in analysis.rs_guid_prefix else "DW"
-            node_labels[dst] = "RS" if RTPSFrame.guid_prefix(dst) in analysis.rs_guid_prefix else "DR"
+            node_labels[src] = "RS" if RTPSFrame.static_guid_prefix_and_entity_id(src)[0] in analysis.rs_guid_prefix else "DW"
+            node_labels[dst] = "RS" if RTPSFrame.static_guid_prefix_and_entity_id(dst)[0] in analysis.rs_guid_prefix else "DR"
             if src not in source_colors:
                 source_colors[src] = COLOR_PALETTE[color_index % len(COLOR_PALETTE)]
                 color_index += 1

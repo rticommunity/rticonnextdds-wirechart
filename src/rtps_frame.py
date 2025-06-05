@@ -93,21 +93,21 @@ class RTPSFrame:
         return set(sm.topic for sm in self.sm_list if sm.topic is not None)
 
     @staticmethod
-    def guid_prefix(guid):
+    def static_guid_prefix_and_entity_id(guid):
         """
         Extracts the prefix from a GUID.
         :param guid: The GUID to extract the prefix from.
         :return: The prefix of the GUID.
         """
         # GUID is a 128-bit integer and the prefix is the upper 96 bits (12 bytes)
-        return guid >> 32
+        bitmask_32 = (1 << 32) - 1
+        return guid >> 32, guid & bitmask_32
 
     def guid_prefix_and_entity_id(self, guid_entity=GUIDEntity.GUID_SRC):
         guid = self.guid_src if guid_entity == GUIDEntity.GUID_SRC else self.guid_dst
         if guid is None:
             return None, None
-        bitmask_32 = (1 << 32) - 1
-        return RTPSFrame.guid_prefix(guid), guid & bitmask_32
+        return RTPSFrame.static_guid_prefix_and_entity_id(guid)
 
 
     def contains_submessage(self, sm_type):
