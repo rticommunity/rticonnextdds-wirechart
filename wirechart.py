@@ -11,121 +11,15 @@
 #
 ##############################################################################################
 
-# Standard Library Imports
-import argparse
-import sys
+# Third-Party Library Imports
+import tkinter as tk
 
-# Local Application Imports
-from src.log_handler import configure_root_logger, logging, get_log_level
-from src.menu import StandardMenuOption, MenuType, MenuState, get_user_menu_choice
-from src.rtps_capture import RTPSCapture
-from src.rtps_analyze_capture import RTPSAnalyzeCapture
-from src.rtps_display import RTPSDisplay
-from src.shared_utils import log_env_vars, create_output_path
-from src.readers.tshark_reader import TsharkReader
-
-logger = logging.getLogger('Wirechart')
-
-def main():
-    parser = argparse.ArgumentParser(description="Extract unique topics from a pcap file.")
-    parser.add_argument('--pcap', type=str, required=True, help='Required argument. Specify the PCAP file.')
-    parser.add_argument('--output', type=str, default='output', help='Specify an output file for PCAP statistics.')
-    parser.add_argument('--no-gui', action='store_true', default=False, help='Disable GUI-based plotting.')
-    parser.add_argument('--frame-range', type=str, default=None, help='Specify a range of frames to analyze in the format START:FINISH.')
-    parser.add_argument('--console-log-level', type=str, default='ERROR', help='Specify the console log level (DEBUG, INFO, WARNING, *ERROR*, CRITICAL).')
-    parser.add_argument('--file-log-level', type=str, default='INFO', help='Specify the file log level (DEBUG, *INFO*, WARNING, ERROR, CRITICAL).')
-    args = parser.parse_args()
-
-    # Configure the logger
-    configure_root_logger(create_output_path(args.pcap, args.output, 'log'),
-                          console_level=get_log_level(args.console_log_level),
-                          file_level=get_log_level(args.file_log_level))
-
-    logger.debug(f"Command Arguments: {args}")
-    log_env_vars()  # Log environment variables for debugging
-    logger.always(f"Python Version: {sys.version}")
-    TsharkReader.get_tshark_version()
-    logger.always("Starting the PCAP analysis.")
-
-    start, finish = None, None
-    if args.frame_range:
-        start, finish = parse_range(args.frame_range)
-
-    rtps_frames = RTPSCapture()
-    rtps_display = RTPSDisplay(args.no_gui)
-
-    rtps_frames.extract_rtps_frames(TsharkReader.read_pcap,
-                                    args.pcap,
-                                    display_filter='rtps',
-                                    start_frame=start,
-                                    finish_frame=finish)
-
-    rtps_analysis = RTPSAnalyzeCapture(rtps_frames)
-    rtps_analysis.analyze_capture()
-
-    state = MenuState()
-    while True:
-        menu_choice, topic, state = get_user_menu_choice(state)
-        if state.menu_state == MenuType.STANDARD:
-            if not isinstance(menu_choice, StandardMenuOption):
-                raise ValueError(f"Invalid menu choice: {menu_choice}. Expected a StandardMenuOption.")
-            match menu_choice:
-                case StandardMenuOption.PRINT_CAPTURE_SUMMARY:
-                    rtps_display.print_capture_summary(rtps_frames)
-                case StandardMenuOption.PRINT_TOPICS:
-                    rtps_display.print_topics(rtps_frames)
-                case StandardMenuOption.PRINT_STATS_COUNT:
-                    rtps_display.print_stats(rtps_analysis)
-                case StandardMenuOption.PRINT_STATS_BYTES:
-                    rtps_display.print_stats_in_bytes(rtps_analysis)
-                case StandardMenuOption.PLOT_BAR_CHART_COUNT:
-                    rtps_display.plot_stats_by_frame_count(rtps_analysis, state.plot_discovery, state.scale)
-                case StandardMenuOption.PLOT_BAR_CHART_BYTES:
-                    rtps_display.plot_stats_by_frame_length(rtps_analysis, state.plot_discovery, state.scale)
-                case StandardMenuOption.PLOT_TOPOLOGY_GRAPH:
-                    if topic:
-                        rtps_display.plot_topic_graph(rtps_analysis, topic)
-                    else:
-                        rtps_display.plot_multi_topic_graph(rtps_analysis)
-                case StandardMenuOption.SAVE_EXCEL:
-                    rtps_analysis.save_to_excel(args.pcap, args.output, 'PCAPStats')
-                case StandardMenuOption.EXIT:
-                    print("Exiting program.")
-                    break
-                case (StandardMenuOption.INVALID |
-                    StandardMenuOption.CHANGE_SCALE |
-                    StandardMenuOption.TOGGLE_DISCOVERY):
-                    continue
-                case _:
-                    print("Unrecognized option.")
-
-def parse_range(value: str):
-    if ':' not in value:
-        logger.error(f"Invalid range format: {value}. Expected format is 'before:after'.  Exiting Wirechart.")
-        raise ValueError(f"Invalid range format: {value}. Expected format is 'before:after'.")
-
-    before, after = value.split(':', 1)
-
-    def parse_part(part):
-        if part == '':
-            return None
-        if part.isdigit():
-            num = int(part)
-            if num >= 0:
-                return num
-            logger.error(f"Invalid positive integer: {part}. Exiting Wirechart.")
-            raise ValueError(f"Invalid positive integer: {part}. Exiting Wirechart.")
-
-    before = parse_part(before)
-    after = parse_part(after)
-    if before is not None and after is not None and before > after:
-        logger.error(f"Invalid range: {value}. 'before' must be less than or equal to 'after'. Exiting Wirechart.")
-        raise ValueError(f"Invalid range: {value}. 'before' must be less than or equal to 'after'. Exiting Wirechart.")
-
-    return before, after
+# Project-Specific Imports
+from src.config_gui import ConfigGui
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logger.error(e)
+    root = tk.Tk()
+    icon = tk.PhotoImage(file="./img/wirechart_icon.png")
+    root.iconphoto(True, icon)
+    app = ConfigGui(root)
+    root.mainloop()

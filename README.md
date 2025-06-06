@@ -61,19 +61,17 @@ deactivate
 ## Usage
 
 ```bash
-usage: python3 wirechart.py [-h] --pcap PCAP [--output OUTPUT] [--no-gui] [--frame-range FRAME_RANGE]
-                            [--console-log-level LEVEL] [--file-log-level LEVEL]
+usage: python3 wirechart.py
 ```
 
-### Argument Description
+### Configuration Description
 
 <pre>
---pcap              /path/to/pcap_file.pcap     Required argument to specify the PCAP file.
---output            /path/to/output_dir         Optional argument to specify an output path for statistics and logs.  Default is 'output'.
---no-gui                                        Optional argument to limit output to only the console.
---frame-range       FIRST_FRAME:LAST_FRAME      Optional argument to specify the range of frames (inclusive) to analyze.
---console-log-level LEVEL                       Optional argument to specify the console log level (DEBUG, INFO, WARNING, *ERROR*, CRITICAL).
---file-log-level    LEVEL                       Optional argument to specify the file log level (DEBUG, *INFO*, WARNING, ERROR, CRITICAL).
+PCAP File               Required to specify the PCAP file.
+Output                  Specify an output path for statistics and logs.  Default is 'output'.
+Frame Range             Specify the range of frames (inclusive) to analyze.  Default is all frames.
+Console Log Level       Specify the console log level (DEBUG, INFO, WARNING, *ERROR*, CRITICAL).
+File Log Level          Specify the file log level (DEBUG, *INFO*, WARNING, ERROR, CRITICAL).
 </pre>
 
 ## Details
