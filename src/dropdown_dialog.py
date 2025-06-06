@@ -11,6 +11,7 @@
 #
 ##############################################################################################
 
+# Third-Party Library Imports
 import tkinter as tk
 from tkinter import ttk, simpledialog
 
@@ -28,7 +29,6 @@ class DropdownDialog(simpledialog.Dialog):
         self.dropdown = ttk.Combobox(master, textvariable=self.var, values=self.options, state="readonly", width=64)
         self.dropdown.grid(row=1, column=0, padx=5, pady=5)
         self.dropdown.current(0)  # Set default selection
-
         return self.dropdown  # initial focus
 
     def apply(self):

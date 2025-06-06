@@ -19,7 +19,6 @@
 # Local Application Imports
 from src.log_handler import logging
 from src.rtps_frame import RTPSFrame
-from src.shared_utils import display_text_popup
 
 logger = logging.getLogger(__name__)
 

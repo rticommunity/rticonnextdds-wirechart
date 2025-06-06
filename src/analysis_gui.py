@@ -11,18 +11,19 @@
 #
 ##############################################################################################
 
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-from tkinter.scrolledtext import ScrolledText
-from wirechart import parse_range
-from src.log_handler import configure_root_logger, get_log_level, TkinterTextHandler
-from src.rtps_capture import RTPSCapture
-from src.rtps_display import RTPSDisplay, PlotScale
-from src.rtps_analyze_capture import RTPSAnalyzeCapture
-from src.readers.tshark_reader import TsharkReader
-from src.shared_utils import create_output_path
+# Standard Library Imports
 import logging
 from enum import Enum, auto
+
+# Third-Party Library Imports
+import tkinter as tk
+from tkinter import ttk, messagebox
+from tkinter.scrolledtext import ScrolledText
+
+# Project-Specific Imports
+from src.log_handler import TkinterTextHandler
+from src.rtps_display import RTPSDisplay, PlotScale
+from src.rtps_analyze_capture import RTPSAnalyzeCapture
 from src.wireshark_filters import WiresharkFilters
 from src.dropdown_dialog import DropdownDialog
 from src.rtps_frame import RTPSFrame

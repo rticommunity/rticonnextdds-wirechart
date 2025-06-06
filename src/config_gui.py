@@ -11,18 +11,20 @@
 #
 ##############################################################################################
 
+# Standard Library Imports
+import logging
+
+# Third-Party Library Imports
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-from tkinter.scrolledtext import ScrolledText
-from wirechart import parse_range
-from src.log_handler import configure_root_logger, get_log_level, TkinterTextHandler
+
+# Project-Specific Imports
+from src.log_handler import configure_root_logger, get_log_level
 from src.rtps_capture import RTPSCapture
-from src.rtps_display import RTPSDisplay, PlotScale
+from src.rtps_display import RTPSDisplay
 from src.rtps_analyze_capture import RTPSAnalyzeCapture
 from src.readers.tshark_reader import TsharkReader
 from src.shared_utils import create_output_path
-import logging
-from enum import Enum, auto
 from src.analysis_gui import AnalysisGui
 
 logger = logging.getLogger(__name__)
@@ -63,7 +65,7 @@ class ConfigGui:
         range_frame = ttk.Frame(frame)
         range_frame.grid(row=2, column=1, sticky="w", padx=(10, 0))
         ttk.Entry(range_frame, textvariable=self.args['frame_start'], width=10).grid(row=0, column=0, sticky="w")
-        ttk.Label(range_frame, text=":").grid(row=0, column=1, padx=5)
+        ttk.Label(range_frame, text="-").grid(row=0, column=1, padx=5)
         ttk.Entry(range_frame, textvariable=self.args['frame_end'], width=10).grid(row=0, column=2, sticky="w")
 
         # Console Log Level
@@ -95,9 +97,10 @@ class ConfigGui:
                 file_level=get_log_level(self.args['file_log_level'].get())
             )
 
-            start, finish = None, None
-            if self.args['frame_range'].get():
-                start, finish = parse_range(self.args['frame_range'].get())
+            start = int(self.args['frame_start'].get()) if self.args['frame_start'].get().isdigit() else None
+            finish = int(self.args['frame_end'].get()) if self.args['frame_end'].get().isdigit() else None
+            if start is not None and finish is not None and start > finish:
+                raise ValueError("Start frame cannot be greater than finish frame.")
 
             TsharkReader.get_tshark_version()
             rtps_frames = RTPSCapture()

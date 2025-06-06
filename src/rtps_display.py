@@ -37,7 +37,7 @@ from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.rtps_capture import RTPSCapture
 from src.rtps_analyze_capture import DISCOVERY_TOPIC, RTPSAnalyzeCapture
 from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
-from src.shared_utils import TEST_MODE, display_text_popup
+from src.shared_utils import TEST_MODE
 
 logger = logging.getLogger(__name__)
 
