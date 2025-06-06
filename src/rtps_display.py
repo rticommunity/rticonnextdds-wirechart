@@ -99,30 +99,18 @@ class RTPSDisplay():
         """
         Prints a summary of the RTPSCapture, including the number of frames and unique topics.
         """
-        if TEST_MODE:
-            print(f"Total Frames: {len(capture.frames)}")
-            print(f"Total Participants: {self.count_participants(capture)}")
-            num_writers, num_readers = self.count_writers_and_readers(capture)
-            print(f"Total Writers: {num_writers} and Readers: {num_readers}")
-            print(f"Unique Topics: {len(capture.list_all_topics())}")
-        else:
-            lines = [
-                f"Total Frames: {len(capture.frames)}",
-                f"Total Participants: {self.count_participants(capture)}"
-            ]
+        lines = [
+            f"Total Frames: {len(capture.frames)}",
+            f"Total Participants: {self.count_participants(capture)}"
+        ]
 
-            num_writers, num_readers = self.count_writers_and_readers(capture)
-            lines.append(f"Total Writers: {num_writers} and Readers: {num_readers}")
-            lines.append(f"Unique Topics: {len(capture.list_all_topics())}")
-            return "\n".join(lines)
+        num_writers, num_readers = self.count_writers_and_readers(capture)
+        lines.append(f"Total Writers: {num_writers} and Readers: {num_readers}")
+        lines.append(f"Unique Topics: {len(capture.list_all_topics())}")
+        return "\n".join(lines)
 
     def print_topics(self, capture: RTPSCapture):
-        if TEST_MODE:
-            print("Topics:")
-            for topic in sorted(capture.list_all_topics()):
-                print(f"  - {topic}")
-        else:
-            return sorted(capture.list_all_topics())
+        return sorted(capture.list_all_topics())
 
     def print_all_frames(self, capture: RTPSCapture):
         """
@@ -236,101 +224,58 @@ class RTPSDisplay():
         Prints statistics about the PCAP data, including total messages,
         messages by topic, and messages by submessage type.
         """
-        if TEST_MODE:
-            # Calculate total messages
-            total_messages = analysis.df['count'].sum()
-            print(f"Total number of messages: {total_messages}")
+        lines = []
+        # Calculate total messages
+        total_messages = analysis.df['count'].sum()
+        lines.append(f"Total number of messages: {total_messages}")
 
-            # Calculate total messages by topic and sort in descending order
-            total_messages_by_topic = analysis.df.groupby('topic')['count'].sum().sort_values(ascending=False)
-            print(f"{' ' * 2}Total messages by topic:")
-            for topic, count in total_messages_by_topic.items():
-                print(f"{' ' * 4}{topic}: {count}")
+        # Total messages by topic
+        total_messages_by_topic = analysis.df.groupby('topic')['count'].sum().sort_values(ascending=False)
+        lines.append("  Total messages by topic:")
+        for topic, count in total_messages_by_topic.items():
+            lines.append(f"    {topic}: {count}")
 
-            # Calculate counts for each submessage type
-            submessage_counts = analysis.df.groupby('sm', observed=False)['count'].sum()
-            print(f"{' ' * 2}Submessage counts:")
-            for submsg in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
-                if submsg in submessage_counts:
-                    print(f"{' ' * 4}{submsg}: {submessage_counts[submsg]}")
-            for submsg, count in submessage_counts.items():
-                if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
-                    print(f"  {submsg}: {count}")
-        else:
-            lines = []
-            # Calculate total messages
-            total_messages = analysis.df['count'].sum()
-            lines.append(f"Total number of messages: {total_messages}")
+        # Submessage counts
+        submessage_counts = analysis.df.groupby('sm', observed=False)['count'].sum()
+        lines.append("  Submessage counts:")
+        for submsg in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
+            if submsg in submessage_counts:
+                lines.append(f"    {submsg}: {submessage_counts[submsg]}")
 
-            # Total messages by topic
-            total_messages_by_topic = analysis.df.groupby('topic')['count'].sum().sort_values(ascending=False)
-            lines.append("  Total messages by topic:")
-            for topic, count in total_messages_by_topic.items():
-                lines.append(f"    {topic}: {count}")
+        # Include any submessages not in SUBMESSAGE_COMBINATIONS
+        for submsg, count in submessage_counts.items():
+            if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
+                lines.append(f"  {submsg}: {count}")
 
-            # Submessage counts
-            submessage_counts = analysis.df.groupby('sm', observed=False)['count'].sum()
-            lines.append("  Submessage counts:")
-            for submsg in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
-                if submsg in submessage_counts:
-                    lines.append(f"    {submsg}: {submessage_counts[submsg]}")
-
-            # Include any submessages not in SUBMESSAGE_COMBINATIONS
-            for submsg, count in submessage_counts.items():
-                if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
-                    lines.append(f"  {submsg}: {count}")
-
-            return "\n".join(lines)
+        return "\n".join(lines)
 
     def print_stats_in_bytes(self, analysis: RTPSAnalyzeCapture):
         """
         Prints statistics about the PCAP data in bytes, including total message lengths,
         lengths by topic, and lengths by submessage type.
         """
-        if TEST_MODE:
-            # Calculate total message length
-            total_length = analysis.df['length'].sum()
-            print(f"Total message length: {total_length:,} bytes")
+        lines = []
+        # Calculate total message length
+        total_length = analysis.df['length'].sum()
+        lines.append(f"Total message length: {total_length:,} bytes")
 
-            # Calculate total message length by topic and sort in descending order
-            total_length_by_topic = analysis.df.groupby('topic')['length'].sum().sort_values(ascending=False)
-            print(f"{' ' * 2}Total message length by topic:")
-            for topic, length in total_length_by_topic.items():
-                print(f"{' ' * 4}{topic}: {length:,} bytes")
+        # Total message length by topic
+        total_length_by_topic = analysis.df.groupby('topic')['length'].sum().sort_values(ascending=False)
+        lines.append("  Total message length by topic:")
+        for topic, length in total_length_by_topic.items():
+            lines.append(f"    {topic}: {length:,} bytes")
 
-            # Calculate total lengths for each submessage type
-            submessage_lengths = analysis.df.groupby('sm', observed=False)['length'].sum()
-            print(f"{' ' * 2}Submessage lengths:")
-            # Get all submessage types
-            for submsg in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
-                if submsg in submessage_lengths:
-                    print(f"{' ' * 4}{submsg}: {submessage_lengths[submsg]:,} bytes")
-            for submsg, length in submessage_lengths.items():
-                if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
-                    print(f"{' ' * 4}{submsg}: {length:,} bytes")
-        else:
-            lines = []
-            # Calculate total message length
-            total_length = analysis.df['length'].sum()
-            lines.append(f"Total message length: {total_length:,} bytes")
+        # Submessage lengths
+        submessage_lengths = analysis.df.groupby('sm', observed=False)['length'].sum()
+        lines.append("  Submessage lengths:")
+        for submsg in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
+            if submsg in submessage_lengths:
+                lines.append(f"    {submsg}: {submessage_lengths[submsg]:,} bytes")
+        for submsg, length in submessage_lengths.items():
+            if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
+                lines.append(f"    {submsg}: {length:,} bytes")
 
-            # Total message length by topic
-            total_length_by_topic = analysis.df.groupby('topic')['length'].sum().sort_values(ascending=False)
-            lines.append("  Total message length by topic:")
-            for topic, length in total_length_by_topic.items():
-                lines.append(f"    {topic}: {length:,} bytes")
-
-            # Submessage lengths
-            submessage_lengths = analysis.df.groupby('sm', observed=False)['length'].sum()
-            lines.append("  Submessage lengths:")
-            for submsg in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
-                if submsg in submessage_lengths:
-                    lines.append(f"    {submsg}: {submessage_lengths[submsg]:,} bytes")
-            for submsg, length in submessage_lengths.items():
-                if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
-                    lines.append(f"    {submsg}: {length:,} bytes")
-
-            return "\n".join(lines)
+        return "\n".join(lines)
 
     def plot_stats_by_frame_count(self, analysis: RTPSAnalyzeCapture, include_discovery=False, scale=PlotScale.LINEAR):
         if self.no_gui:
