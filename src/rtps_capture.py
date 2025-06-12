@@ -33,8 +33,7 @@ DISCOVERY_TOPIC = "DISCOVERY"
 META_DATA_TOPIC = "META_DATA"
 
 # tshark seems to return commands in a hierarchy, i.e. frame -> udp -> rtps so order matters
-PCAP_FIELDS = list(['frame.number', 'frame.len',
-                    'ip.src', 'ip.dst',
+PCAP_FIELDS = list(['frame.number', 'frame.len', 'rtps.domain_id',
                     'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',        # Writer GUID
                     'rtps.guidPrefix.dst', 'rtps.sm.rdEntityId',        # Reader GUID
                     'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader',

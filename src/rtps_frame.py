@@ -30,10 +30,9 @@ class RTPSFrame:
     Represents a single frame extracted from a PCAP file.
     """
 
-    def __init__(self, frame_number, ip_src, ip_dst, guid_src, guid_dst, frame_type, sm_list):
+    def __init__(self, frame_number, domain_id, guid_src, guid_dst, frame_type, sm_list):
         self.frame_number = frame_number
-        self.ip_src = ip_src
-        self.ip_dst = ip_dst
+        self.domain_id = domain_id
         self.guid_src = guid_src
         self.guid_dst = guid_dst
         self.frame_type = frame_type
@@ -56,6 +55,7 @@ class RTPSFrame:
     def __eq__(self, value):
         if isinstance(value, RTPSFrame):
             return (self.frame_number == value.frame_number and
+                    self.domain_id == value.domain_id and
                     self.guid_src == value.guid_src and
                     self.guid_dst == value.guid_dst and
                     self.sm_list == value.sm_list and
@@ -120,7 +120,7 @@ class RTPSFrame:
         return any(sm.sm_type == sm_type for sm in self.sm_list)
 
     def __str__(self):
-        result = [f"Frame: {self.frame_number:09} GUID_SRC: {self.guid_prefix_and_entity_id(GUIDEntity.GUID_SRC)[0]} "
+        result = [f"Frame: {self.frame_number:09} Domain: {self.domain_id} GUID_SRC: {hex(self.guid_prefix_and_entity_id(GUIDEntity.GUID_SRC)[0])} "
                   f"Frame Type: {self.frame_type.name}\n{' ' * 2}Submessages ({len(self.sm_list)}):"]
         for i, submessage in enumerate(self.sm_list, start=1):
             result.append(f"{' ' * 4}{i} {str(submessage)}")

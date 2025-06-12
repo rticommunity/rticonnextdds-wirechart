@@ -48,9 +48,8 @@ class RTPSFrameBuilder:
         self._validate_frame_data()
 
         frame_number = int(self.frame_data.get('frame.number', 0))
-        ip_src = self._parse_ip('ip.src')
-        ip_dst = self._parse_ip('ip.dst')
-        entity_id_str, entity_id = self._parse_entity_id('rtps.sm.wrEntityId')
+        domain_id = int(self.frame_data.get('rtps.domain_id', 0).split(',')[0])
+        _ , entity_id = self._parse_entity_id('rtps.sm.wrEntityId')
 
         if entity_id in (
             EntityIds.ENTITYID_RTI_BUILTIN_SERVICE_REQUEST_WRITER,
@@ -64,8 +63,7 @@ class RTPSFrameBuilder:
 
         return RTPSFrame(
             frame_number=frame_number,
-            ip_src=ip_src,
-            ip_dst=ip_dst,
+            domain_id=domain_id,
             guid_src=guid_src,
             guid_dst=guid_dst,
             frame_type=frame_type,
