@@ -163,3 +163,14 @@ class RTPSSubmessage():
         Returns True if the submessage is a durable repair submessage, False otherwise.
         """
         return SubmessageTypes.DURABLE & self.sm_type and SubmessageTypes.REPAIR & self.sm_type
+
+    def to_dict(self):
+        """
+        Returns a dictionary representation of the RTPSSubmessage.
+        """
+        return {
+            "topic": self.topic,
+            "length": self.length,
+            "sm_type": self.sm_type.name,
+            "seq_num": list(self.seq_num_tuple)
+        }

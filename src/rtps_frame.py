@@ -125,3 +125,18 @@ class RTPSFrame:
         for i, submessage in enumerate(self.sm_list, start=1):
             result.append(f"{' ' * 4}{i} {str(submessage)}")
         return "\n".join(result) + "\n"
+
+    def to_dict(self):
+        """
+        Converts the RTPSFrame object to a dictionary representation.
+
+        :return: Dictionary representation of the RTPSFrame.
+        """
+        return {
+            'frame_number': self.frame_number,
+            'domain_id': self.domain_id,
+            'guid_src': self.guid_src,
+            'guid_dst': self.guid_dst,
+            'frame_type': self.frame_type.name,
+            'submessages': [sm.to_dict() for sm in self.sm_list]
+        }

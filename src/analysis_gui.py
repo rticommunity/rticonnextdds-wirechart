@@ -26,7 +26,7 @@ from src.rtps_display import RTPSDisplay, PlotScale
 from src.rtps_analyze_capture import RTPSAnalyzeCapture
 from src.wireshark_filters import WiresharkFilters
 from src.dropdown_dialog import DropdownDialog
-from src.rtps_frame import RTPSFrame
+from src.rtps_capture import RTPSCapture
 
 logger = logging.getLogger('Wirechart')
 
@@ -44,6 +44,7 @@ class MenuAction(Enum):
     SAVE_TO_EXCEL = auto()
     WIRESHARK_UNIQUE_ENDPOINTS = auto()
     WIRESHARK_TOPIC_ENDPOINTS = auto()
+    EXPORT_JSON = auto()  # Placeholder for future JSON export functionality
     EXIT = auto()
 
     def __str__(self):
@@ -59,6 +60,7 @@ class MenuAction(Enum):
             MenuAction.SAVE_TO_EXCEL: "Save to Excel",
             MenuAction.WIRESHARK_UNIQUE_ENDPOINTS: "Unique Endpoints",
             MenuAction.WIRESHARK_TOPIC_ENDPOINTS: "Endpoints Filter",
+            MenuAction.EXPORT_JSON: "Export to JSON",
             MenuAction.EXIT: "Exit"
         }[self]
 
@@ -99,7 +101,7 @@ class TextWindowHandles:
         self.update_right(label_text="", text="")
 
 class AnalysisGui:
-    def __init__(self, root: tk.Tk, frames: RTPSFrame, analysis: RTPSAnalyzeCapture, display: RTPSDisplay, args):
+    def __init__(self, root: tk.Tk, frames: RTPSCapture, analysis: RTPSAnalyzeCapture, display: RTPSDisplay, args):
         self.root = root
         self.display = display
         self.frames = frames
@@ -220,6 +222,8 @@ class AnalysisGui:
                                                       self.wireshark_filters.all_endpoints_filter(topic))
                         else:
                             text_handles.clear_right()
+                    case MenuAction.EXPORT_JSON:
+                        self.frames.export_to_json(self.args['output'].get())
                     case MenuAction.EXIT:
                         on_close()
             except Exception as e:
@@ -251,6 +255,7 @@ class AnalysisGui:
 
         # Save_Excel and Exit button
         options = [
+            MenuAction.EXPORT_JSON,
             MenuAction.SAVE_TO_EXCEL,
             MenuAction.EXIT
         ]

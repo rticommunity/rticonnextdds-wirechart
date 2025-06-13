@@ -103,10 +103,9 @@ class ConfigGui:
                 raise ValueError("Start frame cannot be greater than finish frame.")
 
             TsharkReader.get_tshark_version()
-            rtps_frames = RTPSCapture()
+            rtps_frames = RTPSCapture(self.args['pcap'].get())
             rtps_frames.extract_rtps_frames(
                 TsharkReader.read_pcap,
-                self.args['pcap'].get(),
                 display_filter='rtps',
                 start_frame=start,
                 finish_frame=finish

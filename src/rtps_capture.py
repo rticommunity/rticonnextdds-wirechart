@@ -12,7 +12,9 @@
 ##############################################################################################
 
 # Standard Library Imports
+import json
 from enum import Enum
+from pathlib import Path
 
 # Third-Party Library Imports
 from tqdm import tqdm
@@ -45,10 +47,11 @@ class RTPSCapture:
     Provides methods to manage and analyze the captured frames.
     """
 
-    def __init__(self):
+    def __init__(self, pcap_path):
         """
         Initializes an empty RTPSCapture object.
         """
+        self.pcap_file_path = Path(pcap_path)
         self.frames = []  # List to store RTPSFrame objects
 
     def __eq__(self, value):
@@ -68,12 +71,11 @@ class RTPSCapture:
         else:
             raise TypeError("Only RTPSFrame objects can be added to RTPSCapture.")
 
-    def extract_rtps_frames(self, read_pcap_method, pcap_file, fields=PCAP_FIELDS , display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
+    def extract_rtps_frames(self, read_pcap_method, fields=PCAP_FIELDS , display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
         """
         Extracts RTPS frames from a pcap file by using an injected method to read the data.
 
         :param read_pcap_method: Callable that reads the pcap file and returns raw frame data
-        :param pcap_file: Path to the pcap file
         :param fields: Set of fields to extract
         :param display_filter: Optional display filter
         :param start_frame: Optional start frame number
@@ -81,7 +83,7 @@ class RTPSCapture:
         :param max_frames: Optional limit on number of packets
         """
         logger.always("Reading data from pcap file using the provided method...")
-        frame_dict = read_pcap_method(pcap_file, fields, display_filter, start_frame, finish_frame, max_frames)
+        frame_dict = read_pcap_method(str(self.pcap_file_path), fields, display_filter, start_frame, finish_frame, max_frames)
         self._process_frames(frame_dict)
 
     def _process_frames(self, frame_dict):
@@ -163,3 +165,13 @@ class RTPSCapture:
                     durable_repairs.append(frame)
                     break
         return durable_repairs
+
+    def export_to_json(self, output_path):
+        """
+        Exports the RTPSCapture object to a JSON file.
+
+        :param output_path: The path to the file to export to.
+        """
+        output_path = Path(output_path) / (f"{self.pcap_file_path.stem}.json")
+        with open(output_path, 'w') as f:
+            json.dump([frame.to_dict() for frame in self.frames], f, indent=2)
