@@ -248,3 +248,23 @@ class RTPSAnalyzeCapture:
             logger.always(f"DataFrame successfully written to {filename} in sheet '{sheet_name}'.")
         except Exception as e:
             logger.error(f"Error writing DataFrame to Excel: {e}")
+
+    def to_json(self):
+        """
+        Converts the RTPSAnalyzeCapture object to a JSON-serializable dictionary.
+        This method is useful for exporting the analysis results in a structured format.
+        :return: A dictionary representation of the RTPSAnalyzeCapture object.
+        """
+        def serialize_graph_edges():
+            serialized = {}
+            for key, edge_set in self.graph_edges.items():
+                # Convert each tuple in the set to a list
+                serialized[key] = [list(t) for t in edge_set]
+            return serialized
+
+        return {
+            'nodes_edges': serialize_graph_edges(),
+            'rs_guid_prefix': list(self.rs_guid_prefix),
+            'statistics': self.df.to_dict(orient='records'),  # Convert DataFrame to a list of dictionaries
+            **self.capture.to_json()
+        }

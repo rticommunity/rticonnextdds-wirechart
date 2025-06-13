@@ -13,6 +13,7 @@
 
 # Standard Library Imports
 import logging
+import json
 from enum import Enum, auto
 
 # Third-Party Library Imports
@@ -24,6 +25,7 @@ from tkinter.scrolledtext import ScrolledText
 from src.log_handler import TkinterTextHandler
 from src.rtps_display import RTPSDisplay, PlotScale
 from src.rtps_analyze_capture import RTPSAnalyzeCapture
+from src.shared_utils import create_output_path
 from src.wireshark_filters import WiresharkFilters
 from src.dropdown_dialog import DropdownDialog
 from src.rtps_capture import RTPSCapture
@@ -223,7 +225,14 @@ class AnalysisGui:
                         else:
                             text_handles.clear_right()
                     case MenuAction.EXPORT_JSON:
-                        self.frames.export_to_json(self.args['output'].get())
+                        output = create_output_path(str(self.args['pcap'].get()), str(self.args['output'].get()), 'json')
+                        data = self.analysis.to_json()
+                        try:
+                            with open(output, 'w') as f:
+                                json.dump(data, f, indent=2)
+                            messagebox.showinfo("Export Successful", f"Data exported to {output}")
+                        except Exception as e:
+                            messagebox.showerror("Export Failed", f"Failed to export data to {output}. Error: {str(e)}")
                     case MenuAction.EXIT:
                         on_close()
             except Exception as e:

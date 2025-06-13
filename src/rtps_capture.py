@@ -166,12 +166,10 @@ class RTPSCapture:
                     break
         return durable_repairs
 
-    def export_to_json(self, output_path):
+    def to_json(self):
         """
-        Exports the RTPSCapture object to a JSON file.
+        Exports the RTPSCapture object to a JSON-compatible dictionary.
 
-        :param output_path: The path to the file to export to.
+        :return: A JSON-compatible dictionary representation of the object.
         """
-        output_path = Path(output_path) / (f"{self.pcap_file_path.stem}.json")
-        with open(output_path, 'w') as f:
-            json.dump([frame.to_dict() for frame in self.frames], f, indent=2)
+        return {"frames": [frame.to_dict() for frame in self.frames]}
