@@ -17,13 +17,14 @@
 # Third-Party Library Imports
 
 # Local Application Imports
+from src.flex_dictionary import FlexDict
 from src.log_handler import logging
 from src.rtps_frame import RTPSFrame
 
 logger = logging.getLogger(__name__)
 
 class WiresharkFilters:
-    def __init__(self, endpoints: dict):
+    def __init__(self, endpoints: FlexDict):
         if not endpoints:
             raise ValueError("Endpoints must be a non-empty dictionary.")
 
