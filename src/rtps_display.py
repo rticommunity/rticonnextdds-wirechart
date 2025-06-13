@@ -14,6 +14,7 @@
 # Standard Library Imports
 from enum import Enum
 from platform import system
+from typing import Union
 
 # Third-Party Library Imports
 import matplotlib
@@ -32,6 +33,7 @@ import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 
 # Local Application Imports
+from src.flex_dictionary import FlexDict
 from src.log_handler import logging
 from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.rtps_capture import RTPSCapture
@@ -124,11 +126,13 @@ class RTPSDisplay():
             logger.warning("GUI is disabled. Cannot plot graphs.")
             return
 
-        topic_node_counts = {
-            topic: len(set([n for edge in edges for n in edge]))
-            for topic, edges in analysis.graph_edges.items()
-        }
-        top_topics = sorted(topic_node_counts, key=topic_node_counts.get, reverse=True)[:6]
+        # topic_node_counts = {
+        #     topic: len(set([n for edge in edges for n in edge]))
+        #     for topic, edges in analysis.graph_edges.items()
+        # }
+        # top_topics = sorted(topic_node_counts, key=topic_node_counts.get, reverse=True)[:6]
+
+        largest_topics = analysis.graph_edges.most_nodes(top_n=6)
 
         # Create figure and axes
         fig, axs = plt.subplots(2, 3, figsize=(18, 14))
@@ -136,12 +140,12 @@ class RTPSDisplay():
         # Set the main figure window title
         fig.canvas.manager.set_window_title("RTPS Topology Graphs for Top Topics")
 
-        for i, topic in enumerate(top_topics):
-            self.plot_topic_graph(analysis, topic=topic, ax=axs.flatten()[i])
+        for i, key in enumerate(largest_topics):
+            self.plot_topic_graph(analysis, topic=key.topic, domain=key.domain, ax=axs.flatten()[i])
         plt.tight_layout()
         show_plot_on_top()
 
-    def plot_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str, ax: plt.Axes = None):
+    def plot_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str, domain: Union[int, slice] = slice(None), ax: plt.Axes = None):
         """
         Draws a directed graph using edges provided in a set of tuples.
         Labels the first node in each tuple as 'DW' and the second as 'DR'.
@@ -155,12 +159,17 @@ class RTPSDisplay():
 
         ax_none = (ax is None)
 
-        if topic not in analysis.graph_edges:
+        # Ensure the topic exists in the graph edges
+        if not analysis.graph_edges.key_present(topic=topic, domain=domain):
             logger.always(f"Topic '{topic}' does not have a topology graph.")
             return
 
+        edges = analysis.graph_edges[topic, domain]
+        if isinstance(topic, slice) or isinstance(domain, slice):
+            edges = FlexDict.flatten_dict(edges)
+
         G = nx.DiGraph()
-        G.add_edges_from(analysis.graph_edges[topic])
+        G.add_edges_from(edges)
 
         # Layout
         pos = nx.spring_layout(G, k=4, iterations=100, seed=42)
@@ -172,7 +181,7 @@ class RTPSDisplay():
         # Set node labels and edge colors
         edge_colors = []
         node_labels = {}
-        for src, dst in analysis.graph_edges[topic]:
+        for src, dst in edges:
             node_labels[src] = "RS" if RTPSFrame.static_guid_prefix_and_entity_id(src)[0] in analysis.rs_guid_prefix else "DW"
             node_labels[dst] = "RS" if RTPSFrame.static_guid_prefix_and_entity_id(dst)[0] in analysis.rs_guid_prefix else "DR"
             if src not in source_colors:
@@ -204,7 +213,7 @@ class RTPSDisplay():
             G,
             pos,
             ax=ax,
-            edgelist=list(analysis.graph_edges[topic]),
+            edgelist=list(edges),
             edge_color=edge_colors,
             arrowstyle='-|>',
             arrowsize=20,
@@ -212,7 +221,10 @@ class RTPSDisplay():
             node_size=2000
         )
 
-        ax.set_title(f"Topic: {topic}", fontsize=14)
+        topic_label = topic if isinstance(topic, str) else "All Topics"
+        domain_label = domain if isinstance(domain, int) else "All Domains"
+
+        ax.set_title(f"Topic: {topic_label}, Domain: {domain_label}", fontsize=14)
         ax.axis('off')
 
         if ax_none:

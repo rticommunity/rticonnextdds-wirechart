@@ -137,7 +137,9 @@ class RTPSAnalyzeCapture:
         This method is called during the analysis of the capture to build the topology graph.
         """
         if (FrameTypes.USER_DATA == frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
-            self.graph_edges[frame.get_topic()].add((frame.guid_src, frame.guid_dst))
+            self.graph_edges.setdefault(
+                Key(frame.get_topic(), frame.get_domain_id()), set()).add(
+                (frame.guid_src, frame.guid_dst))
 
     # Ensure all unique topics are included in the DataFrame
     def include_missing_topics_and_sm(self, all_topics, sm_list):
