@@ -12,7 +12,6 @@
 ##############################################################################################
 
 # Standard Library Imports
-import json
 from enum import Enum
 from pathlib import Path
 
@@ -51,6 +50,9 @@ class RTPSCapture:
         """
         Initializes an empty RTPSCapture object.
         """
+        if not Path(pcap_path).is_file():
+            raise FileNotFoundError(f"PCAP file does not exist: {pcap_path}")
+
         self.pcap_file_path = Path(pcap_path)
         self.frames = []  # List to store RTPSFrame objects
 
