@@ -65,9 +65,22 @@ class FlexDict(dict):
         else:
             return list({k.domain for k in self.keys() if k.topic == topic})
 
-    def most_nodes(self, top_n=6):
-        """Return the top `top_n` keys with the largest sets."""
-        sorted_items = sorted(self.items(), key=lambda item: len(item[1]), reverse=True)
+    def most_nodes(self, top_n=6, topic=None, domain=None):
+        """
+        Return the top `top_n` keys with the largest sets,
+        optionally filtered by `topic` or `domain`.
+        """
+        # Filter items based on provided topic and/or domain
+        filtered_items = [
+            (key, value) for key, value in self.items()
+            if (topic is None or key.topic == topic) and
+            (domain is None or key.domain == domain)
+        ]
+
+        # Sort by length of set (value), descending
+        sorted_items = sorted(filtered_items, key=lambda item: len(item[1]), reverse=True)
+
+        # Return only the keys of the top_n items
         return [key for key, _ in sorted_items[:top_n]]
 
     def get_elements_as_set(self, topic=None, domain=None) -> set:
@@ -123,3 +136,6 @@ if __name__ == "__main__":
     print(d.get_elements_as_set(domain=1))          # {'data1', 'data3'}
     print(d.get_elements_as_set())                  # {'data1', 'data2', 'data3'}
     print(d.get_elements_as_set(topic='network', domain=1))  # {'data1'}
+
+    print("\nToDict:")
+    print(d.to_dict())
