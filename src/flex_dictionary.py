@@ -1,28 +1,103 @@
 class FlexDictKey:
+    """
+    Represents a composite key for the FlexDict class, consisting of a topic and a domain.
+
+    Attributes:
+        topic: The topic part of the key.
+        domain: The domain part of the key.
+    """
+
     def __init__(self, topic, domain) -> None:
+        """
+        Initializes a FlexDictKey instance.
+
+        Args:
+            topic: The topic part of the key.
+            domain: The domain part of the key.
+
+        Raises:
+            ValueError: If either topic or domain is None.
+        """
         if topic is None or domain is None:
             raise ValueError("Both topic and domain must be specified (None is not allowed).")
         self.topic = topic
         self.domain = domain
 
     def __hash__(self) -> int:
+        """
+        Returns a hash value for the key, allowing it to be used in dictionaries.
+
+        Returns:
+            int: The hash value of the key.
+        """
         return hash((self.topic, self.domain))
 
     def __eq__(self, other) -> bool:
+        """
+        Checks equality between two FlexDictKey instances.
+
+        Args:
+            other: Another FlexDictKey instance.
+
+        Returns:
+            bool: True if the keys are equal, False otherwise.
+        """
         if isinstance(other, FlexDictKey):
             return (self.topic, self.domain) == (other.topic, other.domain)
         return False
 
     def matches(self, topic=None, domain=None) -> bool:
-        """Check if key matches given topic/domain; None means 'any'."""
+        """
+        Checks if the key matches the given topic and/or domain.
+
+        Args:
+            topic: The topic to match (or None to ignore).
+            domain: The domain to match (or None to ignore).
+
+        Returns:
+            bool: True if the key matches, False otherwise.
+        """
         return ((topic is None or self.topic == topic) and
                 (domain is None or self.domain == domain))
 
     def __repr__(self) -> str:
+        """
+        Returns a string representation of the key.
+
+        Returns:
+            str: The string representation of the key.
+        """
         return f"Key({self.topic}, {self.domain})"
 
+
 class FlexDict(dict):
+    """
+    A specialized dictionary that uses composite keys (FlexDictKey) and supports slicing-like behavior.
+
+    Methods:
+        __getitem__: Retrieves values based on composite keys or slices.
+        __setitem__: Sets values using composite keys.
+        key_present: Checks if a key or slice exists in the dictionary.
+        related_keys: Retrieves related keys based on topic or domain.
+        most_nodes: Returns the top N keys with the largest set values.
+        get_elements_as_set: Retrieves all elements for a specific topic and/or domain.
+        to_dict: Converts the dictionary into a JSON-serializable format.
+        flatten_dict: Flattens a nested dictionary into a single-level dictionary.
+    """
+
     def __getitem__(self, key) -> dict:
+        """
+        Retrieves values based on composite keys or slices.
+
+        Args:
+            key: A tuple (topic, domain), a FlexDictKey, or None for wildcard access.
+
+        Returns:
+            dict or set: The value(s) associated with the key or slice.
+
+        Raises:
+            KeyError: If the key is invalid or not found.
+        """
         if isinstance(key, tuple) and len(key) == 2:
             topic, domain = key
 
@@ -46,17 +121,45 @@ class FlexDict(dict):
             raise KeyError(f"Invalid key type: {type(key)}")
 
     def __setitem__(self, key, value) -> None:
+        """
+        Sets values using composite keys.
+
+        Args:
+            key: A tuple (topic, domain) or a FlexDictKey.
+            value: The value to associate with the key.
+        """
         if isinstance(key, tuple) and len(key) == 2:
             topic, domain = key
             key = FlexDictKey(topic, domain)
         super().__setitem__(key, value)
 
     def key_present(self, topic=None, domain=None) -> bool:
-        """Returns True if any key matches the given topic/domain pattern."""
+        """
+        Checks if any key matches the given topic and/or domain.
+
+        Args:
+            topic: The topic to match (or None to ignore).
+            domain: The domain to match (or None to ignore).
+
+        Returns:
+            bool: True if any matching key exists, False otherwise.
+        """
         return any(k.matches(topic, domain) for k in self.keys())
 
     def related_keys(self, *, topic=None, domain=None) -> list:
-        """Return domains for a topic, or topics for a domain (one of topic/domain must be given)."""
+        """
+        Retrieves related keys based on topic or domain.  Exactly one of topic or domain must be specified.
+
+        Args:
+            topic: The topic to match (or None to ignore).
+            domain: The domain to match (or None to ignore).
+
+        Returns:
+            list: A list of related keys.
+
+        Raises:
+            ValueError: If neither or both topic and domain are provided.
+        """
         if (topic is None) == (domain is None):
             raise ValueError("Specify exactly one of 'topic' or 'domain'")
 
@@ -67,24 +170,35 @@ class FlexDict(dict):
 
     def most_nodes(self, top_n=6, topic=None, domain=None):
         """
-        Return the top `top_n` keys with the largest sets,
-        optionally filtered by `topic` or `domain`.
+        Returns the top N keys with the most set elements, optionally filtered by topic or domain.
+
+        Args:
+            top_n: The number of keys to return.
+            topic: The topic to filter by (or None to ignore).
+            domain: The domain to filter by (or None to ignore).
+
+        Returns:
+            list: A list of the top N keys.
         """
-        # Filter items based on provided topic and/or domain
         filtered_items = [
             (key, value) for key, value in self.items()
             if (topic is None or key.topic == topic) and
             (domain is None or key.domain == domain)
         ]
-
-        # Sort by length of set (value), descending
         sorted_items = sorted(filtered_items, key=lambda item: len(item[1]), reverse=True)
-
-        # Return only the keys of the top_n items
         return [key for key, _ in sorted_items[:top_n]]
 
     def get_elements_as_set(self, topic=None, domain=None) -> set:
-        """Return a flattened set of all values matching the topic/domain pattern."""
+        """
+        Retrieves a flattened set of all values matching the topic/domain pattern.
+
+        Args:
+            topic: The topic to match (or None to ignore).
+            domain: The domain to match (or None to ignore).
+
+        Returns:
+            set: A set of all matching elements.
+        """
         result = self[topic, domain]
         if isinstance(result, dict):
             return self.flatten_dict(result)
@@ -92,7 +206,12 @@ class FlexDict(dict):
             return result
 
     def to_dict(self) -> dict:
-        """Convert FlexDict to nested dict for JSON serialization."""
+        """
+        Converts the FlexDict to a nested dictionary for JSON serialization.
+
+        Returns:
+            dict: A JSON-serializable representation of the dictionary.
+        """
         output = {}
         for key, value in self.items():
             topic = key.topic
@@ -111,11 +230,22 @@ class FlexDict(dict):
 
     @staticmethod
     def flatten_dict(input_dict) -> set:
-        """Flatten nested dict values into a single set."""
+        """
+        Flattens a nested dictionary structure into a single-level set.
+
+        Args:
+            input_dict: The nested dictionary to flatten.
+
+        Returns:
+            set: A flattened set of all unique values.
+        """
         return set().union(*input_dict.values())
 
 
 if __name__ == "__main__":
+    """
+    Example usage of the FlexDict class.
+    """
     d = FlexDict()
     d['network', 1] = set(['data1'])
     d['network', 2] = set(['data2'])
