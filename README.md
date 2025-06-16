@@ -76,7 +76,9 @@ File Log Level          Specify the file log level (DEBUG, *INFO*, WARNING, ERRO
 
 ## Details
 
-- **Length Calculation:** The size in bytes is calculated based on the entire frame size, including IP, UDP, and RTPS headers.  These lengths are attributed to the first RTPS submessage (often a `DATA` submessage).  Any subsequence submessages (e.g. a `PIGGYBACK_HEARTBEAT`) will be the actual submessage length.
+- **Length Calculation:** The size in bytes is calculated based on the entire frame size, including IP, UDP, and RTPS headers.  The cumulative header length is attributed to the first RTPS entity submessage (often a `DATA` submessage).  Interpreter submessages (e.g. `INTO_TS`) are also attributed to the first entity submessage.  Any subsequence submessages (e.g. a `PIGGYBACK_HEARTBEAT`) will be the actual submessage length.  For example, if a frame has `INFO_TS`, `DATA`, and `HEARTBEAT` submessages, the length of each submessage will be:
+    - `DATA`: Length of IP, UDP, and RTPS headers + Length of `INFO_TS` + Length of `DATA`
+    - `HEARTBEAT` Length of `HEARTBEAT`
 - **Node Graphs:**
     - Node graphs will only be accurate for RELIABLE DW/DR pairs.  It's possible that a BEST_EFFORT DW/DR will display, but not guaranteed.  If the DW starts before the DR, a `GAP` submessage will be sent when the DR matches, which has the data required to show up on the node graph. See issues [4](https://github.com/rticommunity/rti-wirechart/issues/4) and [25](https://github.com/rticommunity/rti-wirechart/issues/25).
     - Node graphs do not differentiate between domains.  For example, if the topic `Squares` is in both domains 0 and 1, they will display in the same graph. See issue [26](https://github.com/rticommunity/rti-wirechart/issues/26).
