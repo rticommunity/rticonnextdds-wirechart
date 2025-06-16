@@ -126,12 +126,6 @@ class RTPSDisplay():
             logger.warning("GUI is disabled. Cannot plot graphs.")
             return
 
-        # topic_node_counts = {
-        #     topic: len(set([n for edge in edges for n in edge]))
-        #     for topic, edges in analysis.graph_edges.items()
-        # }
-        # top_topics = sorted(topic_node_counts, key=topic_node_counts.get, reverse=True)[:6]
-
         largest_topics = analysis.graph_edges.most_nodes(top_n=6)
 
         # Create figure and axes
@@ -145,7 +139,7 @@ class RTPSDisplay():
         plt.tight_layout()
         show_plot_on_top()
 
-    def plot_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str, domain: Union[int, slice] = slice(None), ax: plt.Axes = None):
+    def plot_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str=None, domain: int=None, ax: plt.Axes = None):
         """
         Draws a directed graph using edges provided in a set of tuples.
         Labels the first node in each tuple as 'DW' and the second as 'DR'.
@@ -164,9 +158,7 @@ class RTPSDisplay():
             logger.always(f"Topic '{topic}' does not have a topology graph.")
             return
 
-        edges = analysis.graph_edges[topic, domain]
-        if isinstance(topic, slice) or isinstance(domain, slice):
-            edges = FlexDict.flatten_dict(edges)
+        edges = analysis.graph_edges.get_elements_as_set(topic=topic, domain=domain)
 
         G = nx.DiGraph()
         G.add_edges_from(edges)

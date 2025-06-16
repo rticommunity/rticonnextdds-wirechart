@@ -1,137 +1,92 @@
 class FlexDictKey:
-    def __init__(self, topic, domain):
+    def __init__(self, topic, domain) -> None:
+        if topic is None or domain is None:
+            raise ValueError("Both topic and domain must be specified (None is not allowed).")
         self.topic = topic
         self.domain = domain
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.topic, self.domain))
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if isinstance(other, FlexDictKey):
             return (self.topic, self.domain) == (other.topic, other.domain)
         return False
 
-    def matches(self, topic=None, domain=None):
-        """For partial matching (for slicing-like behavior)."""
+    def matches(self, topic=None, domain=None) -> bool:
+        """Check if key matches given topic/domain; None means 'any'."""
         return ((topic is None or self.topic == topic) and
                 (domain is None or self.domain == domain))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Key({self.topic}, {self.domain})"
 
 class FlexDict(dict):
-    def __getitem__(self, key):
-        # If key is tuple of length 2
+    def __getitem__(self, key) -> dict:
         if isinstance(key, tuple) and len(key) == 2:
             topic, domain = key
 
-            # Handle slicing when topic or domain is a slice
-            if isinstance(topic, slice) or isinstance(domain, slice):
-                topic_filter = (lambda k: True) if isinstance(topic, slice) else (lambda k: k.topic == topic)
-                domain_filter = (lambda k: True) if isinstance(domain, slice) else (lambda k: k.domain == domain)
+            # Handle wildcard (None) access
+            result = {k: v for k, v in self.items() if k.matches(topic, domain)}
 
-                result = {k: v for k, v in self.items() if topic_filter(k) and domain_filter(k)}
+            if topic is None and domain is None:
+                return result  # Full dict
+            elif topic is None:
+                return {k.topic: v for k, v in result.items()}
+            elif domain is None:
+                return {k.domain: v for k, v in result.items()}
+            else:
+                # Exact match: should return set, not dict
+                return super().__getitem__(FlexDictKey(topic, domain))
 
-                # Flatten results if only one side is sliced
-                if isinstance(topic, slice) and not isinstance(domain, slice):
-                    return {k.topic: v for k, v in result.items()}
-                elif not isinstance(topic, slice) and isinstance(domain, slice):
-                    return {k.domain: v for k, v in result.items()}
-                else:
-                    return result
-
-            # No slices: wrap key and do exact lookup
-            wrapped_key = FlexDictKey(topic, domain)
-            return super().__getitem__(wrapped_key)
-
-        # If key is already a Key instance (no slicing support here)
         elif isinstance(key, FlexDictKey):
             return super().__getitem__(key)
 
         else:
             raise KeyError(f"Invalid key type: {type(key)}")
-    
-    def __setitem__(self, key, value):
+
+    def __setitem__(self, key, value) -> None:
         if isinstance(key, tuple) and len(key) == 2:
             topic, domain = key
             key = FlexDictKey(topic, domain)
         super().__setitem__(key, value)
 
     def key_present(self, topic=None, domain=None) -> bool:
-        """
-        Check if any key matches the given topic and/or domain,
-        where topic and/or domain can be values or slice objects.
-        Returns True if any matching key exists, False otherwise.
+        """Returns True if any key matches the given topic/domain pattern."""
+        return any(k.matches(topic, domain) for k in self.keys())
 
-        Examples:
-        key_or_slice_present(topic='network', domain=1)
-        key_or_slice_present(topic='network', domain=slice(None))
-        key_or_slice_present(topic=slice(None), domain=2)
-        """
-
-        if topic is None and domain is None:
-            return False  # no criteria to match
-
-        # If no slices, just check exact key
-        if not isinstance(topic, slice) and not isinstance(domain, slice):
-            return FlexDictKey(topic, domain) in self
-
-        # Otherwise check if any key matches the slice pattern
-        for k in self.keys():
-            topic_match = (True if topic is None or isinstance(topic, slice) else k.topic == topic)
-            domain_match = (True if domain is None or isinstance(domain, slice) else k.domain == domain)
-
-            # For slices, treat them as wildcard (match anything)
-            # You could expand this later to handle specific slice ranges if desired
-
-            if topic_match and domain_match:
-                return True
-
-        return False
-
-    def related_keys(self, *, topic=None, domain=None):
-        """
-        If 'domain' is provided, returns list of all topics containing that domain.
-        If 'topic' is provided, returns list of all domains for that topic.
-        Exactly one of 'topic' or 'domain' must be provided.
-        """
+    def related_keys(self, *, topic=None, domain=None) -> list:
+        """Return domains for a topic, or topics for a domain (one of topic/domain must be given)."""
         if (topic is None) == (domain is None):
             raise ValueError("Specify exactly one of 'topic' or 'domain'")
 
         if domain is not None:
-            # Return topics that have this domain
-            return list({key.topic for key in self.keys() if key.domain == domain})
-
-        if topic is not None:
-            # Return domains associated with this topic
-            return list({key.domain for key in self.keys() if key.topic == topic})
+            return list({k.topic for k in self.keys() if k.domain == domain})
+        else:
+            return list({k.domain for k in self.keys() if k.topic == topic})
 
     def most_nodes(self, top_n=6):
-        """
-        Return a list of the top `top_n` Keys sorted descending
-        by the size of their corresponding set values.
-        """
-        # Sort items by length of set (value), descending
-        sorted_items = sorted(
-            self.items(),
-            key=lambda item: len(item[1]),
-            reverse=True
-        )
-        
-        # Extract just the keys for top_n items
-        return [key for key, value in sorted_items[:top_n]]
-    
-    def to_dict(self):
+        """Return the top `top_n` keys with the largest sets."""
+        sorted_items = sorted(self.items(), key=lambda item: len(item[1]), reverse=True)
+        return [key for key, _ in sorted_items[:top_n]]
+
+    def get_elements_as_set(self, topic=None, domain=None) -> set:
+        """Return a flattened set of all values matching the topic/domain pattern."""
+        result = self[topic, domain]
+        if isinstance(result, dict):
+            return self.flatten_dict(result)
+        else:
+            return result
+
+    def to_dict(self) -> dict:
+        """Convert FlexDict to nested dict for JSON serialization."""
         output = {}
         for key, value in self.items():
             topic = key.topic
-            domain = str(key.domain)  # convert domain to string for JSON safety
+            domain = str(key.domain)  # JSON-friendly
             output.setdefault(topic, {})[domain] = list(value)
 
-        # Collect all unique domains
         all_domains = {domain for topic in output for domain in output[topic]}
-
-        # Build reversed dict: domain -> topic -> list
         return {
             domain: {
                 topic: sorted(output[topic][domain])
@@ -140,26 +95,31 @@ class FlexDict(dict):
             }
             for domain in sorted(all_domains)
         }
-    
+
     @staticmethod
-    def flatten_dict(input_dict):
-        """
-        Flattens a nested dictionary structure into a single-level dictionary.
-        The keys are tuples of (topic, domain) and the values are lists.
-        """
+    def flatten_dict(input_dict) -> set:
+        """Flatten nested dict values into a single set."""
         return set().union(*input_dict.values())
 
 
 if __name__ == "__main__":
     d = FlexDict()
-    d['network', 1] = 'data1'
-    d['network', 2] = 'data2'
-    d['storage', 1] = 'data3'
+    d['network', 1] = set(['data1'])
+    d['network', 2] = set(['data2'])
+    d['storage', 1] = set(['data3'])
+    d['external', 4] = set(['data4'])
 
-    print(d['network', 1])    # 'data1'
-    print(d['network', :])    # All entries with topic 'network'
-    print(d[:, 1])            # All entries in domain 1
-    # print(d[:, :])          # Everything
+    print(d['network', 1])    # {'data1'}
+    print(d[None, 1])         # {'network': {'data1'}, 'storage': {'data3'}}
+    print(d['network', None]) # {1: {'data1'}, 2: {'data2'}}
+    print(d[None, None])      # All entries (full dict)
 
+    print("\nRelated Keys:")
     print(d.related_keys(topic='network'))  # [1, 2]
     print(d.related_keys(domain=1))         # ['network', 'storage']
+
+    print("\nGet Elements as Set:")
+    print(d.get_elements_as_set(topic='network'))   # {'data1', 'data2'}
+    print(d.get_elements_as_set(domain=1))          # {'data1', 'data3'}
+    print(d.get_elements_as_set())                  # {'data1', 'data2', 'data3'}
+    print(d.get_elements_as_set(topic='network', domain=1))  # {'data1'}
