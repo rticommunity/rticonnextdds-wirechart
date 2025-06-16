@@ -21,6 +21,7 @@ import pandas as pd
 from tqdm import tqdm
 
 # Local Application Imports
+from src.flex_dictionary import FlexDictKey, FlexDict
 from src.log_handler import logging
 from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.shared_utils import DEV_DEBUG, TEST_MODE, InvalidPCAPDataException, create_output_path
@@ -47,7 +48,7 @@ class RepairTracker:
 
 class RTPSAnalyzeCapture:
     def __init__(self, capture: RTPSCapture):
-        self.graph_edges = defaultdict(set)
+        self.graph_edges = FlexDict()
         # TODO: Should this be a defaultdict of sets?
         self.rs_guid_prefix = set()
         self.df = pd.DataFrame()  # DataFrame to store analysis results
@@ -136,7 +137,14 @@ class RTPSAnalyzeCapture:
         This method is called during the analysis of the capture to build the topology graph.
         """
         if (FrameTypes.USER_DATA == frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
-            self.graph_edges[frame.get_topic()].add((frame.guid_src, frame.guid_dst))
+            key = FlexDictKey(frame.get_topic(), frame.get_domain_id())
+            try:
+                # Attempt to add the edge to the graph edge set.
+                self.graph_edges[key].add((frame.guid_src, frame.guid_dst))
+            except KeyError:
+                # If the key/set does not exist, create it.
+                self.graph_edges[key] = {(frame.guid_src, frame.guid_dst)}
+
 
     # Ensure all unique topics are included in the DataFrame
     def include_missing_topics_and_sm(self, all_topics, sm_list):
@@ -255,15 +263,8 @@ class RTPSAnalyzeCapture:
         This method is useful for exporting the analysis results in a structured format.
         :return: A dictionary representation of the RTPSAnalyzeCapture object.
         """
-        def serialize_graph_edges():
-            serialized = {}
-            for key, edge_set in self.graph_edges.items():
-                # Convert each tuple in the set to a list
-                serialized[key] = [list(t) for t in edge_set]
-            return serialized
-
         return {
-            'nodes_edges': serialize_graph_edges(),
+            'nodes_edges': self.graph_edges.to_dict(),
             'rs_guid_prefix': list(self.rs_guid_prefix),
             'statistics': self.df.to_dict(orient='records'),  # Convert DataFrame to a list of dictionaries
             **self.capture.to_json()

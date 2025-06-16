@@ -82,6 +82,12 @@ class RTPSFrame:
         if self.sm_list:
             return self.sm_list[0].topic
         return None
+    
+    def get_domain_id(self):
+        """
+        Returns the domain ID of the frame.
+        """
+        return self.domain_id
 
     def list_topics(self):
         """
