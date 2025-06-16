@@ -1,4 +1,4 @@
-class Key:
+class FlexDictKey:
     def __init__(self, topic, domain):
         self.topic = topic
         self.domain = domain
@@ -7,7 +7,7 @@ class Key:
         return hash((self.topic, self.domain))
 
     def __eq__(self, other):
-        if isinstance(other, Key):
+        if isinstance(other, FlexDictKey):
             return (self.topic, self.domain) == (other.topic, other.domain)
         return False
 
@@ -41,11 +41,11 @@ class FlexDict(dict):
                     return result
 
             # No slices: wrap key and do exact lookup
-            wrapped_key = Key(topic, domain)
+            wrapped_key = FlexDictKey(topic, domain)
             return super().__getitem__(wrapped_key)
 
         # If key is already a Key instance (no slicing support here)
-        elif isinstance(key, Key):
+        elif isinstance(key, FlexDictKey):
             return super().__getitem__(key)
 
         else:
@@ -54,7 +54,7 @@ class FlexDict(dict):
     def __setitem__(self, key, value):
         if isinstance(key, tuple) and len(key) == 2:
             topic, domain = key
-            key = Key(topic, domain)
+            key = FlexDictKey(topic, domain)
         super().__setitem__(key, value)
 
     def key_present(self, topic=None, domain=None) -> bool:
@@ -74,7 +74,7 @@ class FlexDict(dict):
 
         # If no slices, just check exact key
         if not isinstance(topic, slice) and not isinstance(domain, slice):
-            return Key(topic, domain) in self
+            return FlexDictKey(topic, domain) in self
 
         # Otherwise check if any key matches the slice pattern
         for k in self.keys():

@@ -21,7 +21,7 @@ import pandas as pd
 from tqdm import tqdm
 
 # Local Application Imports
-from src.flex_dictionary import Key, FlexDict
+from src.flex_dictionary import FlexDictKey, FlexDict
 from src.log_handler import logging
 from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.shared_utils import DEV_DEBUG, TEST_MODE, InvalidPCAPDataException, create_output_path
@@ -138,7 +138,7 @@ class RTPSAnalyzeCapture:
         """
         if (FrameTypes.USER_DATA == frame.frame_type) and all([frame.guid_src, frame.guid_dst]):
             self.graph_edges.setdefault(
-                Key(frame.get_topic(), frame.get_domain_id()), set()).add(
+                FlexDictKey(frame.get_topic(), frame.get_domain_id()), set()).add(
                 (frame.guid_src, frame.guid_dst))
 
     # Ensure all unique topics are included in the DataFrame
