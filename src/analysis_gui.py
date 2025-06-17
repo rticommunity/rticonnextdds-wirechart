@@ -214,8 +214,8 @@ class AnalysisGui:
                         if dialog.user_ok():
                             topic = dialog.topic_selected
                             domain = dialog.domain_selected
-                            text_handles.update_right(f"Unique Endpoints for Topic: {"ALL" if topic is None else topic},"
-                                                      f" Domain: {"ALL" if domain is None else domain}",
+                            text_handles.update_right(f"Unique Endpoints for Topic: {'ALL' if topic is None else topic},"
+                                                      f" Domain: {'ALL' if domain is None else domain}",
                                                       self.wireshark_filters.print_all_unique_endpoints(topic=topic, domain=domain))
                         else:
                             text_handles.clear_right()
@@ -224,8 +224,8 @@ class AnalysisGui:
                         if dialog.user_ok():
                             topic = dialog.topic_selected
                             domain = dialog.domain_selected
-                            text_handles.update_right(f"Wireshark Endpoint Filter for Topic: {"ALL" if topic is None else topic},"
-                                                      f" Domain: {"ALL" if domain is None else domain}",
+                            text_handles.update_right(f"Wireshark Endpoint Filter for Topic: {'ALL' if topic is None else topic},"
+                                                      f" Domain: {'ALL' if domain is None else domain}",
                                                       self.wireshark_filters.all_endpoints_filter(topic=topic, domain=domain))
                         else:
                             text_handles.clear_right()
