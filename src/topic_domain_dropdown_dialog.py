@@ -88,10 +88,7 @@ class TopicDomainDropdownDialog(simpledialog.Dialog):
         """
         Saves the selections from both combo boxes when the dialog is closed.
         """
-        self.topic_selected = TopicDomainDropdownDialog._all_to_none(self.chosen_topic.get(),
-                                                                     TopicDomainDropdownDialog.InputType.TOPIC)
-        self.domain_selected = TopicDomainDropdownDialog._all_to_none(self.chosen_domain.get(),
-                                                                      TopicDomainDropdownDialog.InputType.DOMAIN)
+        self.topic_selected , self.domain_selected = self._capture_input()
         self._user_ok = True
 
     def on_topic_selected(self, event):
@@ -101,8 +98,11 @@ class TopicDomainDropdownDialog(simpledialog.Dialog):
         Args:
             event: The event object.
         """
-        topic = TopicDomainDropdownDialog._all_to_none(self.chosen_topic.get(),
-                                                       TopicDomainDropdownDialog.InputType.TOPIC)
+        topic, domain = self._capture_input()
+
+        if topic is None and domain is None:
+            return
+
         self.domain_dropdown['values'] = self.d.related_keys(topic=topic)
 
     def on_domain_selected(self, event):
@@ -112,9 +112,24 @@ class TopicDomainDropdownDialog(simpledialog.Dialog):
         Args:
             event: The event object.
         """
+        topic, domain = self._capture_input()
+
+        if topic is None and domain is None:
+            return
+
+        self.topic_dropdown['values'] = self.d.related_keys(domain=domain)
+
+    def _capture_input(self) -> tuple:
+        """
+        Captures the current selections from both combo boxes.
+        Returns:
+            tuple: A tuple containing the selected topic and domain.
+        """
         domain = TopicDomainDropdownDialog._all_to_none(self.chosen_domain.get(),
                                                         TopicDomainDropdownDialog.InputType.DOMAIN)
-        self.topic_dropdown['values'] = self.d.related_keys(domain=domain)
+        topic = TopicDomainDropdownDialog._all_to_none(self.chosen_topic.get(),
+                                                       TopicDomainDropdownDialog.InputType.TOPIC)
+        return topic, domain
 
     def on_reset_clicked(self):
         """
