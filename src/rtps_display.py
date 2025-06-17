@@ -121,23 +121,29 @@ class RTPSDisplay():
         for frame in capture.frames:
             print(frame)
 
-    def plot_multi_topic_graph(self, analysis: RTPSAnalyzeCapture):
+    def plot_multi_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str=None, domain: int=None):
         if self.no_gui:
             logger.warning("GUI is disabled. Cannot plot graphs.")
             return
 
-        largest_topics = analysis.graph_edges.most_nodes(top_n=6)
+        largest_topics = analysis.graph_edges.most_nodes(top_n=6, topic=topic, domain=domain)
 
-        # Create figure and axes
-        fig, axs = plt.subplots(2, 3, figsize=(18, 14))
+        if not largest_topics:
+            logger.always("No topics found with sufficient edges to plot graphs.")
+            return
+        if len(largest_topics) == 1:
+            self.plot_topic_graph(analysis, topic=largest_topics[0].topic, domain=largest_topics[0].domain)
+        else:
+            # Create figure and axes
+            fig, axs = plt.subplots(2, 3, figsize=(18, 14))
 
-        # Set the main figure window title
-        fig.canvas.manager.set_window_title("RTPS Topology Graphs for Top Topics")
+            # Set the main figure window title
+            fig.canvas.manager.set_window_title("RTPS Topology Graphs for Top Topics")
 
-        for i, key in enumerate(largest_topics):
-            self.plot_topic_graph(analysis, topic=key.topic, domain=key.domain, ax=axs.flatten()[i])
-        plt.tight_layout()
-        show_plot_on_top()
+            for i, key in enumerate(largest_topics):
+                self.plot_topic_graph(analysis, topic=key.topic, domain=key.domain, ax=axs.flatten()[i])
+            plt.tight_layout()
+            show_plot_on_top()
 
     def plot_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str=None, domain: int=None, ax: plt.Axes = None):
         """

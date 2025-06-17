@@ -189,20 +189,20 @@ class FlexDict(dict):
         the unique topics and domains.
 
         Returns:
-            tuple: A tuple containing two sets:
-                - The first set contains all unique topics.
-                - The second set contains all unique domains.
+            tuple: A tuple containing two lists:
+                - The first list contains all unique topics.
+                - The second list contains all unique domains.
 
         Example:
             If the FlexDict contains the following keys:
                 Key('topic1', 1), Key('topic2', 2), Key('topic1', 3)
             The method will return:
-                ({'topic1', 'topic2'}, {1, 2, 3})
+                (['topic1', 'topic2'], [1, 2, 3])
         """
-        domains = {key.domain for key in self.keys()}
-        topics = {key.topic for key in self.keys()}
+        domains = list({key.domain for key in self.keys()})
+        topics = list({key.topic for key in self.keys()})
         return topics, domains
-    
+
     def most_nodes(self, top_n=6, topic=None, domain=None):
         """
         Returns the top N keys with the most set elements, optionally filtered by topic or domain.

@@ -29,6 +29,7 @@ from src.shared_utils import create_output_path
 from src.wireshark_filters import WiresharkFilters
 from src.dropdown_dialog import DropdownDialog
 from src.rtps_capture import RTPSCapture
+from src.topic_domain_dropdown_dialog import TopicDomainDropdownDialog
 
 logger = logging.getLogger('Wirechart')
 
@@ -189,13 +190,14 @@ class AnalysisGui:
                         self.display.plot_stats_by_frame_length(self.analysis, plot_discovery.get(),
                                                             PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
                     case MenuAction.TOPOLOGY_GRAPH:
-                        dialog = DropdownDialog(menu_window, "Enter Topic", "Enter a Topic to Plot:", ["Top 6"] + self.topics)
-                        if dialog.selection:
-                            topic = dialog.selection
-                            if topic == "Top 6":
-                                self.display.plot_multi_topic_graph(self.analysis)
+                        dialog = TopicDomainDropdownDialog(menu_window, self.analysis.graph_edges)
+                        if dialog.user_ok():
+                            topic = dialog.topic_selected
+                            domain = dialog.domain_selected
+                            if topic is None or domain is None:
+                                self.display.plot_multi_topic_graph(self.analysis, topic=topic, domain=domain)
                             else:
-                                self.display.plot_topic_graph(self.analysis, topic)
+                                self.display.plot_topic_graph(self.analysis, topic=topic, domain=domain)
                     case MenuAction.SHOW_REPAIRS:
                         repairs = self.frames.list_repairs()
                         repair_string = "\n".join(str(obj) for obj in repairs)
