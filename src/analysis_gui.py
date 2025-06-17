@@ -27,7 +27,6 @@ from src.rtps_display import RTPSDisplay, PlotScale
 from src.rtps_analyze_capture import RTPSAnalyzeCapture
 from src.shared_utils import create_output_path
 from src.wireshark_filters import WiresharkFilters
-from src.dropdown_dialog import DropdownDialog
 from src.rtps_capture import RTPSCapture
 from src.topic_domain_dropdown_dialog import TopicDomainDropdownDialog
 
@@ -211,19 +210,23 @@ class AnalysisGui:
                     case MenuAction.SAVE_TO_EXCEL:
                         self.analysis.save_to_excel(self.args['pcap'].get(), self.args['output'].get(), 'PCAPStats')
                     case MenuAction.WIRESHARK_UNIQUE_ENDPOINTS:
-                        dialog = DropdownDialog(menu_window, "Choose a Topic", "Please select a topic:", self.topics)
-                        if dialog.selection:
-                            topic = dialog.selection
-                            text_handles.update_right(f"Unique Endpoints for Topic: {topic}",
-                                                      self.wireshark_filters.print_all_unique_endpoints(topic))
+                        dialog = TopicDomainDropdownDialog(menu_window, self.analysis.graph_edges)
+                        if dialog.user_ok():
+                            topic = dialog.topic_selected
+                            domain = dialog.domain_selected
+                            text_handles.update_right(f"Unique Endpoints for Topic: {"ALL" if topic is None else topic},"
+                                                      f" Domain: {"ALL" if domain is None else domain}",
+                                                      self.wireshark_filters.print_all_unique_endpoints(topic=topic, domain=domain))
                         else:
                             text_handles.clear_right()
                     case MenuAction.WIRESHARK_TOPIC_ENDPOINTS:
-                        dialog = DropdownDialog(menu_window, "Choose a Topic", "Please select a topic:", self.topics)
-                        if dialog.selection:
-                            topic = dialog.selection
-                            text_handles.update_right(f"Wireshark Endpoint Filter for Topic: {topic}",
-                                                      self.wireshark_filters.all_endpoints_filter(topic))
+                        dialog = TopicDomainDropdownDialog(menu_window, self.analysis.graph_edges)
+                        if dialog.user_ok():
+                            topic = dialog.topic_selected
+                            domain = dialog.domain_selected
+                            text_handles.update_right(f"Wireshark Endpoint Filter for Topic: {"ALL" if topic is None else topic},"
+                                                      f" Domain: {"ALL" if domain is None else domain}",
+                                                      self.wireshark_filters.all_endpoints_filter(topic=topic, domain=domain))
                         else:
                             text_handles.clear_right()
                     case MenuAction.EXPORT_JSON:
