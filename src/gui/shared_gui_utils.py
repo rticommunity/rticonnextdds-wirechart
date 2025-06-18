@@ -11,6 +11,9 @@
 #
 ##############################################################################################
 
+# Standard Library Imports
+from platform import system
+
 def center_window(window, width=None, height=None):
     """
     Centers a Tkinter window (Tk or Toplevel).
@@ -19,19 +22,20 @@ def center_window(window, width=None, height=None):
     :param width: Desired width. If None, use window's requested width.
     :param height: Desired height. If None, use window's requested height.
     """
-    window.update_idletasks()  # Ensure accurate measurements
+    if system() == "Windows":
+        window.update_idletasks()  # Ensure accurate measurements
 
-    # Use provided size or the window's actual size
-    window_width = width if width else window.winfo_width()
-    window_height = height if height else window.winfo_height()
+        # Use provided size or the window's actual size
+        window_width = width if width else window.winfo_width()
+        window_height = height if height else window.winfo_height()
 
-    # Get screen size
-    screen_width = window.winfo_screenwidth()
-    screen_height = window.winfo_screenheight()
+        # Get screen size
+        screen_width = window.winfo_screenwidth()
+        screen_height = window.winfo_screenheight()
 
-    # Calculate position
-    x = int((screen_width / 2) - (window_width / 2))
-    y = int((screen_height / 2) - (window_height / 2))
+        # Calculate position
+        x = int((screen_width / 2) - (window_width / 2))
+        y = int((screen_height / 2) - (window_height / 2))
 
-    # Apply geometry
-    window.geometry(f'{window_width}x{window_height}+{x}+{y}')
+        # Apply geometry
+        window.geometry(f'{window_width}x{window_height}+{x}+{y}')
