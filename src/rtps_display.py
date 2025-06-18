@@ -101,14 +101,14 @@ class RTPSDisplay():
         """
         Prints a summary of the RTPSCapture, including the number of frames and unique topics.
         """
-        lines = [
-            f"Total Frames: {len(capture.frames)}",
-            f"Total Participants: {self.count_participants(capture)}"
-        ]
+        lines = []
 
         num_writers, num_readers = self.count_writers_and_readers(capture)
-        lines.append(f"Total Writers: {num_writers} and Readers: {num_readers}")
-        lines.append(f"Unique Topics: {len(capture.list_all_topics())}")
+        lines.append(f"{'Total Frames:':<20}{len(capture.frames)}")
+        lines.append(f"{'Total Participants:':<20}{self.count_participants(capture)}")
+        lines.append(f"{'Total Writers:':<20}{num_writers}")
+        lines.append(f"{'Total Readers:':<20}{num_readers}")
+        lines.append(f"{'Unique Topics:':<20}{len(capture.list_all_topics())}")
         return "\n".join(lines)
 
     def print_topics(self, capture: RTPSCapture):
