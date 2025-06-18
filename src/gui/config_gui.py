@@ -25,8 +25,8 @@ from src.rtps_display import RTPSDisplay
 from src.rtps_analyze_capture import RTPSAnalyzeCapture
 from src.readers.tshark_reader import TsharkReader
 from src.shared_utils import create_output_path
-from src.analysis_gui import AnalysisGui
-from src.shared_gui_utils import center_window
+from src.gui.analysis_gui import AnalysisGui
+from src.gui.shared_gui_utils import center_window
 
 logger = logging.getLogger(__name__)
 

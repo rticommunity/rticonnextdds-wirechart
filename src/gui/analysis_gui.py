@@ -28,8 +28,8 @@ from src.rtps_analyze_capture import RTPSAnalyzeCapture
 from src.shared_utils import create_output_path
 from src.wireshark_filters import WiresharkFilters
 from src.rtps_capture import RTPSCapture
-from src.topic_domain_dropdown_dialog import TopicDomainDropdownDialog
-from src.shared_gui_utils import center_window
+from src.gui.topic_domain_dropdown_dialog import TopicDomainDropdownDialog
+from src.gui.shared_gui_utils import center_window
 
 logger = logging.getLogger('Wirechart')
 

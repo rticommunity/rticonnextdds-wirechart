@@ -15,7 +15,7 @@
 import tkinter as tk
 
 # Project-Specific Imports
-from src.config_gui import ConfigGui
+from src.gui.config_gui import ConfigGui
 
 if __name__ == "__main__":
     root = tk.Tk()
