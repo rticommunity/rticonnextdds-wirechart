@@ -62,13 +62,28 @@ def show_plot_on_top():
         manager = plt.get_current_fig_manager()
         window = manager.window
 
+        # Maximize window depending on backend/platform
+        try:
+            # For TkAgg (Windows)
+            window.state('zoomed')
+        except Exception:
+            try:
+                # For Qt5Agg
+                window.showMaximized()
+            except Exception:
+                try:
+                    # Generic fallback (if supported)
+                    manager.resize(*manager.window.maxsize())
+                except Exception:
+                    logger.debug("Could not maximize the plot window.")
+
         # Bring the window to the front
         window.lift()
         window.focus_force()
         window.attributes('-topmost', True)
         window.after_idle(window.attributes, '-topmost', False)
     except Exception as e:
-        print(f"Could not bring plot to front: {e}")
+        logger.debug(f"Could not bring plot to front or maximize: {e}")
 
 class RTPSDisplay():
     def __init__(self, no_gui=False):
