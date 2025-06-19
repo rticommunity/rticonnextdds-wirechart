@@ -14,7 +14,6 @@
 # Standard Library Imports
 from enum import Enum
 from platform import system
-from typing import Union
 
 # Third-Party Library Imports
 import matplotlib
@@ -29,11 +28,8 @@ elif system() == "Windows":
 import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib.ticker import StrMethodFormatter
-import tkinter as tk
-from tkinter.scrolledtext import ScrolledText
 
 # Local Application Imports
-from src.flex_dictionary import FlexDict
 from src.log_handler import logging
 from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.rtps_capture import RTPSCapture
