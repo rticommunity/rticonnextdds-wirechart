@@ -38,6 +38,11 @@ class FrameSequenceTracker:
     frame_number: int
     sequence_number: int
 
+    def __eq__(self, value):
+        if not isinstance(value, FrameSequenceTracker):
+            return NotImplemented
+        return (self.frame_number, self.sequence_number) == (value.frame_number, value.sequence_number)
+
 @dataclass
 class RepairTracker:
     last_heartbeat: dict = field(default_factory=dict)          # Tracks the last heartbeat for each GUID pair
@@ -47,6 +52,8 @@ class RepairTracker:
 
 
 class RTPSAnalyzeCapture:
+    PREEMPTIVE_ACKNACK = FrameSequenceTracker(0, 0)
+
     def __init__(self, capture: RTPSCapture):
         self.graph_edges = FlexDict()
         # TODO: Should this be a defaultdict of sets?
@@ -202,22 +209,32 @@ class RTPSAnalyzeCapture:
                                     repair_tracker.durable_repairs_sent[guid_key] = sm.seq_num()
             except KeyError:
                 # If the key does not exist, it means this is the first time we are seeing this GUID pair.
-                # We can safely assume that this is not a repair.
+                # We can safely assume that this is not a repair.  The KeyError can also happen if durability
+                # tracking is not enabled for this GUID pair.
                 pass
         elif sm.sm_type & SubmessageTypes.HEARTBEAT:
             repair_tracker.last_heartbeat[guid_key] = FrameSequenceTracker(frame_number, sm.seq_num())
         elif sm.sm_type & SubmessageTypes.ACKNACK:
             repair_tracker.last_acknack[guid_key] = FrameSequenceTracker(frame_number, sm.seq_num())
-            # Record the writer SN when the first non-zero ACKNACK is received.  All repairs with
-            # a SN less than or equal to this number are considered durability repairs while all
-            # repairs after this SN are considered standard repairs.
-            if sm.seq_num() > 0 and guid_key not in repair_tracker.durability_sn:
-                # Only add this for the first non-zero ACKNACK
+            # Pre-Emptive ACKNACK: Enter the GUI pair key into the durability_sn dictionary if the SN is 0.
+            # This catches the edge case where a capture starts after discovery occurs and data is sent.
+            if sm.seq_num() == 0:
+                # Only add this for the pre-emptive ACKNACK
+                repair_tracker.durability_sn[guid_key] = RTPSAnalyzeCapture.PREEMPTIVE_ACKNACK
+            else:
                 try:
-                    repair_tracker.durability_sn[guid_key] = FrameSequenceTracker(frame_number, get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key))
+                    if  repair_tracker.durability_sn[guid_key] == RTPSAnalyzeCapture.PREEMPTIVE_ACKNACK:
+                        # If a preemptive ACKNACK is detected, add this for the first non-zero ACKNACK
+                        try:
+                            repair_tracker.durability_sn[guid_key] = FrameSequenceTracker(frame_number, get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key))
+                            if sm.topic:
+                                logger.always(f"Durability Tracking Enabled for Topic: {sm.topic} | GUID Pair: {guid_key}")
+                        except KeyError:
+                            guid_key_str = [f"{x:#x}" for x in guid_key]
+                            logger.warning(f"ACKNACK received for GUID key {guid_key_str} without a previous HEARTBEAT.")
                 except KeyError:
-                    guid_key_str = [f"{x:#x}" for x in guid_key]
-                    logger.warning(f"ACKNACK received for GUID key {guid_key_str} without a previous HEARTBEAT.")
+                    # If the key doesn't exist, we aren't tracking durability for this GUID pair.
+                    pass
 
     @staticmethod
     def _get_topic(frame: RTPSFrame):
