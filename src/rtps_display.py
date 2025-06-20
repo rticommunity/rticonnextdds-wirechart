@@ -14,7 +14,6 @@
 # Standard Library Imports
 from enum import Enum
 from platform import system
-from typing import Union
 
 # Third-Party Library Imports
 import matplotlib
@@ -29,11 +28,8 @@ elif system() == "Windows":
 import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib.ticker import StrMethodFormatter
-import tkinter as tk
-from tkinter.scrolledtext import ScrolledText
 
 # Local Application Imports
-from src.flex_dictionary import FlexDict
 from src.log_handler import logging
 from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.rtps_capture import RTPSCapture
@@ -62,13 +58,28 @@ def show_plot_on_top():
         manager = plt.get_current_fig_manager()
         window = manager.window
 
+        # Maximize window depending on backend/platform
+        try:
+            # For TkAgg (Windows)
+            window.state('zoomed')
+        except Exception:
+            try:
+                # For Qt5Agg
+                window.showMaximized()
+            except Exception:
+                try:
+                    # Generic fallback (if supported)
+                    manager.resize(*manager.window.maxsize())
+                except Exception:
+                    logger.debug("Could not maximize the plot window.")
+
         # Bring the window to the front
         window.lift()
         window.focus_force()
         window.attributes('-topmost', True)
         window.after_idle(window.attributes, '-topmost', False)
     except Exception as e:
-        print(f"Could not bring plot to front: {e}")
+        logger.debug(f"Could not bring plot to front or maximize: {e}")
 
 class RTPSDisplay():
     def __init__(self, no_gui=False):

@@ -25,7 +25,8 @@ from src.rtps_display import RTPSDisplay
 from src.rtps_analyze_capture import RTPSAnalyzeCapture
 from src.readers.tshark_reader import TsharkReader
 from src.shared_utils import create_output_path
-from src.analysis_gui import AnalysisGui
+from src.gui.analysis_gui import AnalysisGui
+from src.gui.shared_gui_utils import center_window
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ class ConfigGui:
     def build_input_gui(self):
         frame = ttk.Frame(self.root, padding=20)
         frame.grid(row=0, column=0)
+        center_window(self.root, width=485, height=194)
 
         # PCAP File
         ttk.Label(frame, text="PCAP File:").grid(row=0, column=0, sticky="w")
@@ -80,8 +82,6 @@ class ConfigGui:
 
         # Run Button
         ttk.Button(frame, text="Run Analysis", command=self.run_analysis).grid(row=5, column=1, pady=10, sticky="w", padx=(10, 0))
-
-
 
     def browse_pcap(self):
         filename = filedialog.askopenfilename(title="Select PCAP File", filetypes=[("PCAP Files", "*.pcap*")])

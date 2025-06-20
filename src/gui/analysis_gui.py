@@ -28,7 +28,8 @@ from src.rtps_analyze_capture import RTPSAnalyzeCapture
 from src.shared_utils import create_output_path
 from src.wireshark_filters import WiresharkFilters
 from src.rtps_capture import RTPSCapture
-from src.topic_domain_dropdown_dialog import TopicDomainDropdownDialog
+from src.gui.topic_domain_dropdown_dialog import TopicDomainDropdownDialog
+from src.gui.shared_gui_utils import center_window
 
 logger = logging.getLogger('Wirechart')
 
@@ -119,6 +120,7 @@ class AnalysisGui:
     def launch(self):
         menu_window = tk.Toplevel(self.root)
         menu_window.title(f"{self.args['pcap'].get()} - Analysis")
+        center_window(menu_window, width=1598, height=1074)
 
         # Configure resizing grid
         menu_window.columnconfigure(0, weight=1)
@@ -154,7 +156,7 @@ class AnalysisGui:
         # Logger Window
         logger_label = ttk.Label(menu_window, text="Logger Output", font=('TkDefaultFont', 10, 'bold'))
         logger_label.grid(row=4, column=0, columnspan=2, sticky="w", padx=5)
-        logger_output = ScrolledText(menu_window, wrap=tk.WORD, height=8)
+        logger_output = ScrolledText(menu_window, wrap=tk.WORD, height=5)
         logger_output.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=5, pady=(0, 5))
         menu_window.rowconfigure(5, weight=1)
 
