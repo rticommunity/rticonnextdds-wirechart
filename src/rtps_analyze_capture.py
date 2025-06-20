@@ -12,9 +12,7 @@
 ##############################################################################################
 
 # Standard Library Imports
-from collections import defaultdict
 from dataclasses import dataclass, field
-from enum import IntEnum
 
 # Third-Party Library Imports
 import pandas as pd
@@ -22,7 +20,7 @@ from tqdm import tqdm
 
 # Local Application Imports
 from src.flex_dictionary import FlexDictKey, FlexDict
-from src.log_handler import logging, DelayedLogHandler, get_log_level
+from src.log_handler import logging, DelayedLogHandler, get_log_level, LOG_FORMAT
 from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.shared_utils import DEV_DEBUG, TEST_MODE, InvalidPCAPDataException, create_output_path
 from src.rtps_capture import RTPSCapture
@@ -62,6 +60,7 @@ class RTPSAnalyzeCapture:
         self.capture = capture
         self.delayed_log_handler = DelayedLogHandler()
         self.delayed_log_handler.setLevel(get_log_level("ALWAYS"))
+        self.delayed_log_handler.setFormatter(LOG_FORMAT)
         logger.addHandler(self.delayed_log_handler)
 
     def analyze_capture(self):

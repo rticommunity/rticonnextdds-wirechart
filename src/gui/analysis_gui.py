@@ -135,11 +135,11 @@ class AnalysisGui:
         right_label.grid(row=0, column=1, padx=5, pady=(5, 0), sticky="w")
 
         # Left text box
-        left_text = ScrolledText(menu_window, wrap=tk.WORD, width=64, height=50, state="disabled")
+        left_text = ScrolledText(menu_window, wrap=tk.WORD, width=64, height=48, state="disabled")
         left_text.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
 
         # Right text box
-        right_text = ScrolledText(menu_window, wrap=tk.WORD, width=128, height=50, state="disabled")
+        right_text = ScrolledText(menu_window, wrap=tk.WORD, width=128, height=48, state="disabled")
         right_text.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
 
         text_handles = TextWindowHandles(left_label, left_text, right_label, right_text)
@@ -156,7 +156,7 @@ class AnalysisGui:
         # Logger Window
         logger_label = ttk.Label(menu_window, text="Logger Output", font=('TkDefaultFont', 10, 'bold'))
         logger_label.grid(row=4, column=0, columnspan=2, sticky="w", padx=5)
-        logger_output = ScrolledText(menu_window, wrap=tk.WORD, height=5)
+        logger_output = ScrolledText(menu_window, wrap=tk.WORD, height=7)
         logger_output.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=5, pady=(0, 5))
         menu_window.rowconfigure(5, weight=1)
 

@@ -15,6 +15,9 @@
 import logging
 import os
 
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+# Custom logging levels
 TEST_ERROR = logging.CRITICAL + 10
 ALWAYS = TEST_ERROR + 10
 NONE = ALWAYS + 10
@@ -63,7 +66,7 @@ def configure_root_logger(log_file='output/wirechart.log', console_level=logging
         fh.setLevel(file_level)
 
         # Formatter
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter(LOG_FORMAT)
         ch.setFormatter(formatter)
         fh.setFormatter(formatter)
 
@@ -109,7 +112,7 @@ class DelayedLogHandler(logging.Handler):
         self.triggered = False  # Flag to control when logs are emitted
         self.target_handler = None
 
-    def emit(self, record):
+    def emit(self, record: logging.LogRecord):
         """
         Caches log messages or emits them if triggered.
 
@@ -118,7 +121,11 @@ class DelayedLogHandler(logging.Handler):
         """
         if self.triggered:
             # Emit the log message immediately
-            self.target_handler.handle(record)
+            if self.target_handler:
+                self.target_handler.handle(record)
+            else:
+                # Fallback to print if no target handler is set
+                print(self.format(record))
         else:
             # Cache the log message
             self.log_messages.append(record)
@@ -138,8 +145,12 @@ class DelayedLogHandler(logging.Handler):
         """
         self.triggered = True
         for message in self.log_messages:
-            # print(message)  # Emit cached messages
-            self.target_handler.handle(message)  # safe direct call
+            if self.target_handler:
+                # Emit the cached log message using the target handler
+                self.target_handler.handle(message)
+            else:
+                # Fallback to print if no target handler is set
+                print(self.format(message))
         self.log_messages.clear()  # Clear the cache
 
     def clear_cache(self):
