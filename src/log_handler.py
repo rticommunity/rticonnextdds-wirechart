@@ -98,3 +98,52 @@ class TkinterTextHandler(logging.Handler):
             self.text_widget.insert("end", msg + "\n")
             self.text_widget.see("end")
         self.text_widget.after(0, append)
+
+class DelayedLogHandler(logging.Handler):
+    """
+    A custom logging handler that delays the emission of log messages until triggered.
+    """
+    def __init__(self):
+        super().__init__()
+        self.log_messages = []  # Cache for log messages
+        self.triggered = False  # Flag to control when logs are emitted
+        self.target_handler = None
+
+    def emit(self, record):
+        """
+        Caches log messages or emits them if triggered.
+
+        Args:
+            record (LogRecord): The log record to handle.
+        """
+        if self.triggered:
+            # Emit the log message immediately
+            self.target_handler.handle(record)
+        else:
+            # Cache the log message
+            self.log_messages.append(self.format(record))
+
+    def set_target_handler(self, handler: logging.Handler):
+        """
+        Sets the target handler where log messages will be emitted when triggered.
+
+        Args:
+            handler (logging.Handler): The handler to set as the target.
+        """
+        self.target_handler = handler
+
+    def trigger(self):
+        """
+        Triggers the emission of all cached log messages and allows future logs to be emitted immediately.
+        """
+        self.triggered = True
+        for message in self.log_messages:
+            # print(message)  # Emit cached messages
+            self.target_handler.handle(message)  # safe direct call
+        self.log_messages.clear()  # Clear the cache
+
+    def clear_cache(self):
+        """
+        Clears all cached log messages without emitting them.
+        """
+        self.log_messages.clear()

@@ -22,7 +22,7 @@ from tqdm import tqdm
 
 # Local Application Imports
 from src.flex_dictionary import FlexDictKey, FlexDict
-from src.log_handler import logging
+from src.log_handler import logging, DelayedLogHandler
 from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.shared_utils import DEV_DEBUG, TEST_MODE, InvalidPCAPDataException, create_output_path
 from src.rtps_capture import RTPSCapture
@@ -60,6 +60,8 @@ class RTPSAnalyzeCapture:
         self.rs_guid_prefix = set()
         self.df = pd.DataFrame()  # DataFrame to store analysis results
         self.capture = capture
+        self.delayed_log_handler = DelayedLogHandler()
+        logger.addHandler(self.delayed_log_handler)
 
     def analyze_capture(self):
         """
@@ -286,3 +288,12 @@ class RTPSAnalyzeCapture:
             'statistics': self.df.to_dict(orient='records'),  # Convert DataFrame to a list of dictionaries
             **self.capture.to_json()
         }
+    
+    def get_delayed_logger(self) -> DelayedLogHandler:
+        """
+        Returns the delayed log handler used for logging during the analysis.
+        This handler captures log messages that occur during the analysis process,
+        allowing them to be processed or displayed later.
+        :return: The DelayedLogHandler instance used for logging.
+        """
+        return self.delayed_log_handler
