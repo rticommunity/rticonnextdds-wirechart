@@ -22,7 +22,7 @@ from tqdm import tqdm
 
 # Local Application Imports
 from src.flex_dictionary import FlexDictKey, FlexDict
-from src.log_handler import logging, DelayedLogHandler
+from src.log_handler import logging, DelayedLogHandler, get_log_level
 from src.rtps_frame import FrameTypes, GUIDEntity, RTPSFrame
 from src.shared_utils import DEV_DEBUG, TEST_MODE, InvalidPCAPDataException, create_output_path
 from src.rtps_capture import RTPSCapture
@@ -61,6 +61,7 @@ class RTPSAnalyzeCapture:
         self.df = pd.DataFrame()  # DataFrame to store analysis results
         self.capture = capture
         self.delayed_log_handler = DelayedLogHandler()
+        self.delayed_log_handler.setLevel(get_log_level("ALWAYS"))
         logger.addHandler(self.delayed_log_handler)
 
     def analyze_capture(self):
@@ -230,7 +231,7 @@ class RTPSAnalyzeCapture:
                         try:
                             repair_tracker.durability_sn[guid_key] = FrameSequenceTracker(frame_number, get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key))
                             if sm.topic:
-                                logger.always(f"Durability Tracking Enabled for Topic: {sm.topic} | GUID Pair: {guid_key}")
+                                logger.always(f"Durability tracking enabled for topic: {sm.topic} | GUID Pair: {guid_key}")
                         except KeyError:
                             guid_key_str = [f"{x:#x}" for x in guid_key]
                             logger.warning(f"ACKNACK received for GUID key {guid_key_str} without a previous HEARTBEAT.")

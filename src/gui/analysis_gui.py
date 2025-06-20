@@ -166,10 +166,7 @@ class AnalysisGui:
         gui_handler.setLevel(logging.ERROR)
         logging.getLogger().addHandler(gui_handler)
         self.analysis.get_delayed_logger().set_target_handler(gui_handler)
-        # self.analysis.get_delayed_logger().trigger()
-
-        for log in self.analysis.get_delayed_logger().log_messages:
-             logger_output.insert("1.0", log + "\n")  # Append each log message
+        self.analysis.get_delayed_logger().trigger()
 
         # Ensure the logger is removed when the window is closed
         def on_close():

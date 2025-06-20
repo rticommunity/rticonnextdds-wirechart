@@ -121,7 +121,7 @@ class DelayedLogHandler(logging.Handler):
             self.target_handler.handle(record)
         else:
             # Cache the log message
-            self.log_messages.append(self.format(record))
+            self.log_messages.append(record)
 
     def set_target_handler(self, handler: logging.Handler):
         """
