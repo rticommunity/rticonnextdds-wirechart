@@ -115,11 +115,11 @@ class RTPSDisplay():
         lines = []
 
         num_writers, num_readers = self.count_writers_and_readers(capture)
-        lines.append(f"{'Total Frames:':<20}{len(capture.frames)}")
-        lines.append(f"{'Total Participants:':<20}{self.count_participants(capture)}")
-        lines.append(f"{'Total Writers:':<20}{num_writers}")
-        lines.append(f"{'Total Readers:':<20}{num_readers}")
-        lines.append(f"{'Unique Topics:':<20}{len(capture.list_all_topics())}")
+        lines.append(f"{'Total Frames:':<20}{len(capture.frames):,}")
+        lines.append(f"{'Total Participants:':<20}{self.count_participants(capture):,}")
+        lines.append(f"{'Total Writers:':<20}{num_writers:,}")
+        lines.append(f"{'Total Readers:':<20}{num_readers:,}")
+        lines.append(f"{'Unique Topics:':<20}{len(capture.list_all_topics()):,}")
         return "\n".join(lines)
 
     def print_topics(self, capture: RTPSCapture):
@@ -248,13 +248,13 @@ class RTPSDisplay():
         lines = []
         # Calculate total messages
         total_messages = analysis.df['count'].sum()
-        lines.append(f"Total number of messages: {total_messages}")
+        lines.append(f"Total number of messages: {total_messages:,}")
 
         # Total messages by topic
         total_messages_by_topic = analysis.df.groupby('topic')['count'].sum().sort_values(ascending=False)
         lines.append("  Total messages by topic:")
         for topic, count in total_messages_by_topic.items():
-            lines.append(f"    {topic}: {count}")
+            lines.append(f"    {topic}: {count:,}")
 
         # Submessage counts
         submessage_counts = analysis.df.groupby('sm', observed=False)['count'].sum()
@@ -266,7 +266,7 @@ class RTPSDisplay():
         # Include any submessages not in SUBMESSAGE_COMBINATIONS
         for submsg, count in submessage_counts.items():
             if submsg not in [str(s) for s in SUBMESSAGE_COMBINATIONS]:
-                lines.append(f"  {submsg}: {count}")
+                lines.append(f"  {submsg}: {count:,}")
 
         return "\n".join(lines)
 
