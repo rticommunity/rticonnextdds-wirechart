@@ -13,6 +13,7 @@
 
 # Standard Library Imports
 import os
+import re
 import subprocess
 
 # Local Application Imports
@@ -34,6 +35,45 @@ class TsharkReader:
             logger.error("Error: tshark is not installed.")
         except subprocess.CalledProcessError as e:
             logger.error(f"Error running tshark: {e.output.strip()}")
+
+    @staticmethod
+    def get_frame_count(pcap_file):
+        """
+        Gets the frame count from a pcap file using the tshark command.
+
+        :param pcap_file: Path to the pcap file
+        :return: The number of frames in the pcap file
+        """
+        result = subprocess.run(
+            ["tshark", "-r", pcap_file, "-q", "-z", "io,stat,0"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+
+        # Example output
+        # =====================================
+        # | IO Statistics                     |
+        # |                                   |
+        # | Duration: 129.1 secs              |
+        # | Interval: 129.1 secs              |
+        # |                                   |
+        # | Col 1: Frames and bytes           |
+        # |-----------------------------------|
+        # |                |1                 |
+        # | Interval       | Frames |  Bytes  |
+        # |-----------------------------------|
+        # |   0.0 <> 129.1 |  44329 | 9983865 |
+        # =====================================
+        matches = re.findall(r"\|.*?\|\s*(\d+)\s*\|\s*(\d+)\s*\|", result.stdout)
+
+        if matches:
+            frames, bytes = matches[-1]  # last row will have totals
+            logger.always(f"Total frames: {frames}, Total bytes: {bytes}")
+            return int(frames), int(bytes)
+        return 0, 0
+
     @staticmethod
     def read_pcap(pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
         """
