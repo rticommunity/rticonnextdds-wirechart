@@ -38,6 +38,14 @@ class TsharkReader:
 
     @staticmethod
     def get_frame_count(pcap_file):
+        return TsharkReader._get_stats(pcap_file)[0]
+
+    @staticmethod
+    def get_pcap_size_bytes(pcap_file):
+        return TsharkReader._get_stats(pcap_file)[1]
+
+    @staticmethod
+    def _get_stats(pcap_file):
         """
         Gets the frame count from a pcap file using the tshark command.
 

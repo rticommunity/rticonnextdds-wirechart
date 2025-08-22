@@ -101,7 +101,7 @@ class ConfigGui:
 
             start = int(self.args['frame_start'].get()) if self.args['frame_start'].get().isdigit() else 1
             finish = int(self.args['frame_end'].get()) if self.args['frame_end'].get().isdigit() \
-                else pcap_reader.get_frame_count(self.args['pcap'].get())[0]
+                else pcap_reader._get_stats(self.args['pcap'].get())
             if start is not None and finish is not None and start > finish:
                 raise ValueError("Start frame cannot be greater than finish frame.")
 
