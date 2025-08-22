@@ -99,18 +99,19 @@ class ConfigGui:
                 file_level=get_log_level(self.args['file_log_level'].get())
             )
 
-            start = int(self.args['frame_start'].get()) if self.args['frame_start'].get().isdigit() else None
-            finish = int(self.args['frame_end'].get()) if self.args['frame_end'].get().isdigit() else None
+            start = int(self.args['frame_start'].get()) if self.args['frame_start'].get().isdigit() else 1
+            finish = int(self.args['frame_end'].get()) if self.args['frame_end'].get().isdigit() \
+                else pcap_reader.get_frame_count(self.args['pcap'].get())[0]
             if start is not None and finish is not None and start > finish:
                 raise ValueError("Start frame cannot be greater than finish frame.")
 
             pcap_reader.get_version()
             rtps_frames = RTPSCapture(self.args['pcap'].get())
             rtps_frames.extract_rtps_frames(
-                TsharkReader.read_pcap,
-                display_filter='rtps',
+                pcap_reader.read_pcap,
                 start_frame=start,
-                finish_frame=finish
+                finish_frame=finish,
+                display_filter='rtps'
             )
             rtps_analysis = RTPSAnalyzeCapture(rtps_frames)
             rtps_analysis.analyze_capture()

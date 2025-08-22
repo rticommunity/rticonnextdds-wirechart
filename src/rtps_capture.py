@@ -73,7 +73,7 @@ class RTPSCapture:
         else:
             raise TypeError("Only RTPSFrame objects can be added to RTPSCapture.")
 
-    def extract_rtps_frames(self, read_pcap_method, fields=PCAP_FIELDS , display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
+    def extract_rtps_frames(self, read_pcap_method, start_frame, finish_frame, fields=PCAP_FIELDS , display_filter=None, max_frames=None):
         """
         Extracts RTPS frames from a pcap file by using an injected method to read the data.
 
@@ -85,7 +85,13 @@ class RTPSCapture:
         :param max_frames: Optional limit on number of packets
         """
         logger.always("Reading data from pcap file using the provided method...")
-        frame_dict = read_pcap_method(str(self.pcap_file_path), fields, display_filter, start_frame, finish_frame, max_frames)
+
+        chunk_size = 100000
+        frame_dict = []
+        for sliding_start_frame in range(start_frame, finish_frame, chunk_size):
+            sliding_finish_frame = min(sliding_start_frame + chunk_size - 1, finish_frame)
+            logger.debug(f"Reading frames {sliding_start_frame} to {sliding_finish_frame}")
+            frame_dict.extend(read_pcap_method(str(self.pcap_file_path), fields, display_filter, sliding_start_frame, sliding_finish_frame, max_frames))
         self._process_frames(frame_dict)
 
     def _process_frames(self, frame_dict):
