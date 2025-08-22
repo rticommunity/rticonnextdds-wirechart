@@ -27,7 +27,7 @@ class TsharkReader:
     A class responsible for reading pcap files using the tshark command.
     """
     @staticmethod
-    def get_tshark_version():
+    def get_version():
         try:
             output = subprocess.check_output(["tshark", "--version"], stderr=subprocess.STDOUT, text=True)
             logger.always(output.splitlines()[0])

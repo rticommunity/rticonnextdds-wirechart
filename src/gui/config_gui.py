@@ -90,6 +90,8 @@ class ConfigGui:
 
     def run_analysis(self):
         try:
+            pcap_reader = TsharkReader()
+
             output_log_path = create_output_path(self.args['pcap'].get(), self.args['output'].get(), 'log')
             configure_root_logger(
                 output_log_path,
@@ -102,7 +104,7 @@ class ConfigGui:
             if start is not None and finish is not None and start > finish:
                 raise ValueError("Start frame cannot be greater than finish frame.")
 
-            TsharkReader.get_tshark_version()
+            pcap_reader.get_version()
             rtps_frames = RTPSCapture(self.args['pcap'].get())
             rtps_frames.extract_rtps_frames(
                 TsharkReader.read_pcap,
