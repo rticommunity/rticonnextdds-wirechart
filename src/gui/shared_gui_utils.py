@@ -39,3 +39,22 @@ def center_window(window, width=None, height=None):
 
         # Apply geometry
         window.geometry(f'{window_width}x{window_height}+{x}+{y}')
+
+def maximize_window(window):
+    """
+    Maximizes a Tkinter window (Tk or Toplevel).
+
+    :param window: The window to maximize (e.g., Tk() or Toplevel()).
+    """
+    if system() == "Windows":
+        window.state('zoomed')  # Windows
+    elif system() == "Linux":
+        # root.attributes('-zoomed', True)   # Linux/macOS
+        # window.attributes('-fullscreen', True)  # Linux
+        pass
+    elif system() == "Darwin":  # macOS
+        # window.attributes('-fullscreen', True)
+        # screen_width = window.winfo_screenwidth()
+        # screen_height = window.winfo_screenheight()
+        # window.geometry(f"{screen_width}x{screen_height}+0+0")
+        pass
