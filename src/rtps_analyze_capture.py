@@ -167,7 +167,7 @@ class RTPSAnalyzeCapture:
     @staticmethod
     def _process_submessage(frame_number: int, sm: RTPSSubmessage, repair_tracker: RepairTracker, guid_key: tuple):
 
-        def get_heartbeat_sn(last_heartbeat: dict, guid_key: tuple) -> int:
+        def _get_heartbeat_sn(last_heartbeat: dict, guid_key: tuple) -> int:
             """
             Returns the maximum sequence number from the last heartbeat for the given GUID key.
             Also checks for GUID_DST=None.  Raises KeyError if no sequence number is found.
@@ -185,13 +185,26 @@ class RTPSAnalyzeCapture:
             # Return the maximum sequence number found
             return max(seq_num)
 
+        def _format_guid_key(guid_key: tuple) -> str:
+            """
+            Return a formatted string for the guid_key pair, safely handling None.
+            """
+            def _fmt(x: int, pad_len: int) -> str:
+                return f"{x:#0{pad_len + 2}x}" if x is not None else "None"
+            src_guid, writer_guid = RTPSFrame.static_guid_prefix_and_entity_id(guid_key[0])
+            dst_guid, reader_guid = RTPSFrame.static_guid_prefix_and_entity_id(guid_key[1])
+            return (
+                f"Writer: {_fmt(src_guid, 24)}::{_fmt(writer_guid, 8)} - "
+                f"Reader: {_fmt(dst_guid, 24)}::{_fmt(reader_guid, 8)}"
+            )
+
         # TODO: Not sure how to handle FRAGs, so ignoring them for now
         if (sm.sm_type & SubmessageTypes.DATA) and not (sm.sm_type & SubmessageTypes.FRAGMENT):
         # if (sm.sm_type & SubmessageTypes.DATA):
             try:
                 # To qualify as a repair, the sequence number must be less than or equal to the last HEARTBEAT and
                 # must be sent after the last ACKNACK for this GUID pair.
-                if (sm.seq_num() <= get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key)) and \
+                if (sm.seq_num() <= _get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key)) and \
                    (repair_tracker.last_acknack[guid_key].frame_number > repair_tracker.last_heartbeat[guid_key].frame_number):
                         sm.sm_type |= SubmessageTypes.REPAIR
                         if sm.seq_num() <= repair_tracker.durability_sn[guid_key].sequence_number:
@@ -228,12 +241,12 @@ class RTPSAnalyzeCapture:
                     if  repair_tracker.durability_sn[guid_key] == RTPSAnalyzeCapture.PREEMPTIVE_ACKNACK:
                         # If a preemptive ACKNACK is detected, add this for the first non-zero ACKNACK
                         try:
-                            repair_tracker.durability_sn[guid_key] = FrameSequenceTracker(frame_number, get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key))
+                            repair_tracker.durability_sn[guid_key] = FrameSequenceTracker(frame_number, _get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key))
                             if sm.topic:
-                                logger.always(f"Durability tracking enabled for topic: {sm.topic} | GUID Pair: {guid_key}")
+                                logger.always(f"Durability tracking enabled for topic: {sm.topic} | {_format_guid_key(guid_key)}")
                         except KeyError:
                             guid_key_str = [f"{x:#x}" for x in guid_key]
-                            logger.warning(f"ACKNACK received for GUID key {guid_key_str} without a previous HEARTBEAT.")
+                            logger.warning(f"Frame: {frame_number} | ACKNACK received for GUID key {guid_key_str} without a previous HEARTBEAT.")
                 except KeyError:
                     # If the key doesn't exist, we aren't tracking durability for this GUID pair.
                     pass
@@ -288,7 +301,7 @@ class RTPSAnalyzeCapture:
             'statistics': self.df.to_dict(orient='records'),  # Convert DataFrame to a list of dictionaries
             **self.capture.to_json()
         }
-    
+
     def get_delayed_logger(self) -> DelayedLogHandler:
         """
         Returns the delayed log handler used for logging during the analysis.
