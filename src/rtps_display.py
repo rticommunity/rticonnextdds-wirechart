@@ -28,6 +28,7 @@ elif system() == "Windows":
 import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib.ticker import StrMethodFormatter
+import numpy as np
 
 # Local Application Imports
 from src.log_handler import logging
@@ -180,9 +181,6 @@ class RTPSDisplay():
         G = nx.DiGraph()
         G.add_edges_from(edges)
 
-        # Layout
-        pos = nx.spring_layout(G, k=4, iterations=100, seed=42)
-
         # Define a color map for start nodes (sources)
         source_colors = {}
         color_index = 0
@@ -190,6 +188,8 @@ class RTPSDisplay():
         # Set node labels and edge colors
         edge_colors = []
         node_labels = {}
+        sources = set()
+        destinations = set()
         for src, dst in edges:
             node_labels[src] = "RS" if RTPSFrame.static_guid_prefix_and_entity_id(src)[0] in analysis.rs_guid_prefix else "DW"
             node_labels[dst] = "RS" if RTPSFrame.static_guid_prefix_and_entity_id(dst)[0] in analysis.rs_guid_prefix else "DR"
@@ -197,6 +197,8 @@ class RTPSDisplay():
                 source_colors[src] = COLOR_PALETTE[color_index % len(COLOR_PALETTE)]
                 color_index += 1
             edge_colors.append(source_colors[src])
+            sources.add(src)
+            destinations.add(dst)
 
         # Set node colors based on labels
         node_colors = []
@@ -210,14 +212,45 @@ class RTPSDisplay():
             else:
                 node_colors.append("gray")        # Fallback for undefined
 
+        # Assume: sources and destinations are lists
+        sources = list(sources)
+        destinations = list(destinations)
+
+        pos = {}
+
+        n_sources = len(sources)
+        n_dests = len(destinations)
+
+        # Plot layout parameters
+        top_y = 0.8        # vertical position for sources (top)
+        bottom_y = 0.2     # vertical position for destinations (bottom)
+        center_x = 0.5
+
+        # ---- Sources (top row) ----
+        if n_sources == 1:
+            pos[sources[0]] = (center_x, top_y)
+        else:
+            # Evenly spaced x positions between 0.01 and 0.99
+            xs = np.linspace(0.01, 0.99, n_sources)
+            for x, source in zip(xs, sources):
+                pos[source] = (x, top_y)
+
+        # ---- Destinations (bottom row) ----
+        if n_dests == 1:
+            pos[destinations[0]] = (center_x, bottom_y)
+        else:
+            xs = np.linspace(0.01, 0.99, n_dests)
+            for x, dest in zip(xs, destinations):
+                pos[dest] = (x, bottom_y)
+
         # If no Axes passed, create a new figure and axes
         if ax_none:
             fig, ax = plt.subplots(figsize=(14, 10))
             fig.canvas.manager.set_window_title(f"RTPS Topology Graph for Topic: {topic}")
 
         # Draw graph using the correct Axes
-        nx.draw_networkx_nodes(G, pos, ax=ax, node_size=2000, node_color=node_colors, edgecolors='black')
-        nx.draw_networkx_labels(G, pos, ax=ax, labels=node_labels, font_size=12, font_weight='bold')
+        nx.draw_networkx_nodes(G, pos, ax=ax, node_size=1000, node_color=node_colors, edgecolors='black')
+        nx.draw_networkx_labels(G, pos, ax=ax, labels=node_labels, font_size=10, font_weight='bold')
         nx.draw_networkx_edges(
             G,
             pos,
@@ -227,7 +260,7 @@ class RTPSDisplay():
             arrowstyle='-|>',
             arrowsize=20,
             width=1,
-            node_size=2000
+            node_size=1000
         )
 
         topic_label = topic if isinstance(topic, str) else "All Topics"
