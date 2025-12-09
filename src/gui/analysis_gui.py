@@ -47,6 +47,7 @@ class MenuAction(Enum):
     SAVE_TO_EXCEL = auto()
     WIRESHARK_UNIQUE_ENDPOINTS = auto()
     WIRESHARK_TOPIC_ENDPOINTS = auto()
+    SAVE_TO_PKL = auto()  # Placeholder for future PKL save functionality
     EXPORT_JSON = auto()  # Placeholder for future JSON export functionality
     EXIT = auto()
 
@@ -63,6 +64,7 @@ class MenuAction(Enum):
             MenuAction.SAVE_TO_EXCEL: "Save to Excel",
             MenuAction.WIRESHARK_UNIQUE_ENDPOINTS: "Unique Endpoints",
             MenuAction.WIRESHARK_TOPIC_ENDPOINTS: "Endpoints Filter",
+            MenuAction.SAVE_TO_PKL: "Save to PKL",
             MenuAction.EXPORT_JSON: "Export to JSON",
             MenuAction.EXIT: "Exit"
         }[self]
@@ -233,6 +235,8 @@ class AnalysisGui:
                                                       self.wireshark_filters.all_endpoints_filter(topic=topic, domain=domain))
                         else:
                             text_handles.clear_right()
+                    case MenuAction.SAVE_TO_PKL:
+                        self.frames.save_pkl()
                     case MenuAction.EXPORT_JSON:
                         output = create_output_path(str(self.args['pcap'].get()), str(self.args['output'].get()), 'json')
                         data = self.analysis.to_json()
@@ -273,6 +277,7 @@ class AnalysisGui:
 
         # Save_Excel and Exit button
         options = [
+            MenuAction.SAVE_TO_PKL,
             MenuAction.EXPORT_JSON,
             MenuAction.SAVE_TO_EXCEL,
             MenuAction.EXIT

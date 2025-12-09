@@ -40,7 +40,8 @@ class ConfigGui:
             'output': tk.StringVar(value='output'),
             'frame_range': tk.StringVar(),
             'console_log_level': tk.StringVar(value='ERROR'),
-            'file_log_level': tk.StringVar(value='INFO')
+            'file_log_level': tk.StringVar(value='INFO'),
+            'load_pkl': tk.BooleanVar(value=False)
         }
 
         self.build_input_gui()
@@ -80,6 +81,9 @@ class ConfigGui:
         ttk.Combobox(frame, textvariable=self.args['file_log_level'],
                     values=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], width=37).grid(row=4, column=1, sticky="w", padx=(10, 0))
 
+        # Load from PKL Button
+        ttk.Checkbutton(frame, text="Load from PKL", variable=self.args['load_pkl']).grid(row=5, column=0, pady=10, sticky="w")
+
         # Run Button
         ttk.Button(frame, text="Run Analysis", command=self.run_analysis).grid(row=5, column=1, pady=10, sticky="w", padx=(10, 0))
 
@@ -100,20 +104,23 @@ class ConfigGui:
                 file_level=get_log_level(self.args['file_log_level'].get())
             )
 
-            start = int(self.args['frame_start'].get()) if self.args['frame_start'].get().isdigit() else 1
-            finish = int(self.args['frame_end'].get()) if self.args['frame_end'].get().isdigit() \
-                else pcap_reader.get_frame_count(pcap_file)
-            if start is not None and finish is not None and start > finish:
-                raise ValueError("Start frame cannot be greater than finish frame.")
-
-            pcap_reader.get_version()
             rtps_frames = RTPSCapture(pcap_file)
-            rtps_frames.extract_rtps_frames(
-                pcap_reader.read_pcap,
-                start_frame=start,
-                finish_frame=finish,
-                display_filter='rtps'
-            )
+            if self.args['load_pkl'].get():
+                rtps_frames.load_pkl()
+            else:
+                start = int(self.args['frame_start'].get()) if self.args['frame_start'].get().isdigit() else 1
+                finish = int(self.args['frame_end'].get()) if self.args['frame_end'].get().isdigit() \
+                    else pcap_reader.get_frame_count(pcap_file)
+                if start is not None and finish is not None and start > finish:
+                    raise ValueError("Start frame cannot be greater than finish frame.")
+
+                pcap_reader.get_version()
+                rtps_frames.extract_rtps_frames(
+                    pcap_reader.read_pcap,
+                    start_frame=start,
+                    finish_frame=finish,
+                    display_filter='rtps'
+                )
             rtps_analysis = RTPSAnalyzeCapture(rtps_frames)
             rtps_analysis.analyze_capture()
             rtps_display = RTPSDisplay()  # Removed the no_gui parameter

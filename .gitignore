@@ -2,6 +2,7 @@
 *.txt
 !config/requirements.txt
 *.pcap*
+*.pkl*
 **/*output/*
 **/*__pycache__/*
 **/*test/*

@@ -72,7 +72,10 @@ Output                  Specify an output path for statistics and logs.  Default
 Frame Range             Specify the range of frames (inclusive) to analyze.  Default is all frames.
 Console Log Level       Specify the console log level (DEBUG, INFO, WARNING, *ERROR*, CRITICAL).
 File Log Level          Specify the file log level (DEBUG, *INFO*, WARNING, ERROR, CRITICAL).
+Load from PKL           Load PCAP frames from a previously saved Python PKL file.
 </pre>
+
+The Analysis GUI provides you the option to save the capture to a Python PKL file.  This is recommended for large PCAPs, as loading a previously saved file from a PKL file is far more efficient than loading it again using `tshark`.
 
 ## Details
 

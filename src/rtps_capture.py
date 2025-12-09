@@ -13,7 +13,9 @@
 
 # Standard Library Imports
 from enum import Enum
+from os import path
 from pathlib import Path
+import pickle
 
 # Third-Party Library Imports
 from tqdm import tqdm
@@ -182,3 +184,39 @@ class RTPSCapture:
         :return: A JSON-compatible dictionary representation of the object.
         """
         return {"frames": [frame.to_dict() for frame in self.frames]}
+
+    def save_pkl(self):
+        """
+        Saves the RTPSCapture object to a pickle file.
+
+        :return: None
+        """
+        if len(self.frames) == 0:
+            raise RuntimeError("Cannot save an empty RTPSCapture object.")
+
+        pkl_path = self.pcap_file_path.with_suffix('.pkl')
+
+        with open(pkl_path, 'wb') as pkl_file:
+            pickle.dump(self, pkl_file)
+
+    def load_pkl(self):
+        """
+        Loads a RTPSCapture object from a pickle file.
+
+        :return: A RTPSCapture object.
+        """
+        if len(self.frames) > 0:
+            raise RuntimeError("Cannot load into a non-empty RTPSCapture object.")
+
+        pkl_path = self.pcap_file_path.with_suffix('.pkl')
+
+        if not path.exists(pkl_path):
+            raise FileNotFoundError(f"Pickle file does not exist: {pkl_path}")
+
+        with open(pkl_path, 'rb') as pkl_file:
+            pkl_data = pickle.load(pkl_file)
+
+        if not isinstance(pkl_data, RTPSCapture):
+            raise TypeError("Pickle file does not contain a RTPSCapture object.")
+
+        self.frames = pkl_data.frames
