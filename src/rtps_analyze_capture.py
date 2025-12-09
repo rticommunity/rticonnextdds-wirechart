@@ -47,6 +47,7 @@ class RepairTracker:
     last_acknack: dict = field(default_factory=dict)            # Tracks the last ACKNACK for each GUID pair
     durability_sn: dict = field(default_factory=dict)           # Tracks the initial sequence number for durability repairs
     durable_repairs_sent: dict = field(default_factory=dict)    # Tracks the sequence numbers of durable repairs sent for each GUID pair
+    repair_attempts: dict = field(default_factory=dict)         # Tracks the number of repair attempts for each GUID pair (integer)
 
 
 class RTPSAnalyzeCapture:
@@ -197,6 +198,17 @@ class RTPSAnalyzeCapture:
                 f"Writer: {_fmt(src_guid, 24)}::{_fmt(writer_guid, 8)} - "
                 f"Reader: {_fmt(dst_guid, 24)}::{_fmt(reader_guid, 8)}"
             )
+        
+        def _detect_duplicate_repairs(frame_number: int, sm: RTPSSubmessage, repair_tracker: RepairTracker, guid_key: tuple):
+            try:
+                repair_tracker.repair_attempts[(guid_key, sm.seq_num())] += 1
+                logger.warning(
+                    f"Frame: {frame_number} | Duplicate repair attempt "
+                    f"{repair_tracker.repair_attempts[(guid_key, sm.seq_num())]} for "
+                    f"sequence number {sm.seq_num()} | {_format_guid_key(guid_key)}"
+                )
+            except KeyError:
+                repair_tracker.repair_attempts[(guid_key, sm.seq_num())] = 1
 
         # TODO: Not sure how to handle FRAGs, so ignoring them for now
         if (sm.sm_type & SubmessageTypes.DATA) and not (sm.sm_type & SubmessageTypes.FRAGMENT):
@@ -207,21 +219,25 @@ class RTPSAnalyzeCapture:
                 if (sm.seq_num() <= _get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key)) and \
                    (repair_tracker.last_acknack[guid_key].frame_number > repair_tracker.last_heartbeat[guid_key].frame_number):
                         sm.sm_type |= SubmessageTypes.REPAIR
-                        if sm.seq_num() <= repair_tracker.durability_sn[guid_key].sequence_number:
-                            if (guid_key in repair_tracker.durable_repairs_sent) and \
-                               (sm.seq_num() <= repair_tracker.durable_repairs_sent[guid_key]):
-                                # The durable repair has already been sent, so this is just a standard repair.
-                                pass
-                            else: # This is a durable repair
-                                sm.sm_type |= SubmessageTypes.DURABLE
-                                if guid_key in repair_tracker.durable_repairs_sent:
-                                    # Repairs should be sequential, but check just in case.
-                                    if sm.seq_num() > repair_tracker.durable_repairs_sent[guid_key]:
+                        try:
+                            if sm.seq_num() <= repair_tracker.durability_sn[guid_key].sequence_number:
+                                if (guid_key in repair_tracker.durable_repairs_sent) and \
+                                (sm.seq_num() <= repair_tracker.durable_repairs_sent[guid_key]):
+                                    # The durable repair has already been sent, so this is just a standard repair.
+                                    _detect_duplicate_repairs(frame_number, sm, repair_tracker, guid_key)
+                                else: # This is a durable repair
+                                    sm.sm_type |= SubmessageTypes.DURABLE
+                                    if guid_key in repair_tracker.durable_repairs_sent:
+                                        # Repairs should be sequential, but check just in case.
+                                        if sm.seq_num() > repair_tracker.durable_repairs_sent[guid_key]:
+                                            repair_tracker.durable_repairs_sent[guid_key] = sm.seq_num()
+                                    else:
+                                        # If the key does not exist, this is likely the first time
+                                        # we are seeing this GUID pair.  Just add it.
                                         repair_tracker.durable_repairs_sent[guid_key] = sm.seq_num()
-                                else:
-                                    # If the key does not exist, this is likely the first time
-                                    # we are seeing this GUID pair.  Just add it.
-                                    repair_tracker.durable_repairs_sent[guid_key] = sm.seq_num()
+                        except KeyError:
+                            # Durability tracking is not enabled for this GUID pair. Still check for duplicate repairs.
+                            _detect_duplicate_repairs(frame_number, sm, repair_tracker, guid_key)
             except KeyError:
                 # If the key does not exist, it means this is the first time we are seeing this GUID pair.
                 # We can safely assume that this is not a repair.  The KeyError can also happen if durability
