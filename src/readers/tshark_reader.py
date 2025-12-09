@@ -126,7 +126,7 @@ class TsharkReader:
         if max_frames:
             cmd.extend(['-c', str(max_frames)])
 
-        logger.debug(f"Running command: {' '.join(cmd)}")
+        logger.info(f"Running command: {' '.join(cmd)}")
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, check=True)
             raw_frames = result.stdout.strip().split('\n')
