@@ -91,10 +91,11 @@ class RTPSCapture:
 
         chunk_size = 100000
         frame_dict = []
-        for sliding_start_frame in range(start_frame, finish_frame, chunk_size):
+        for iteration_counter, sliding_start_frame in enumerate(range(start_frame, finish_frame, chunk_size)):
             sliding_finish_frame = min(sliding_start_frame + chunk_size - 1, finish_frame)
             logger.debug(f"Reading frames {sliding_start_frame} to {sliding_finish_frame}")
-            frame_dict.extend(read_pcap_method(str(self.pcap_file_path), fields, display_filter, sliding_start_frame, sliding_finish_frame, max_frames))
+            frame_dict.extend(read_pcap_method(str(self.pcap_file_path), fields, display_filter, sliding_start_frame,
+                                               sliding_finish_frame, max_frames, iteration_counter))
         logger.always(f"Total frames read from pcap: {len(frame_dict)}")
         self._process_frames(frame_dict)
 

@@ -83,7 +83,7 @@ class TsharkReader:
         return 0, 0
 
     @staticmethod
-    def read_pcap(pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
+    def read_pcap(pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None, iteration_counter=0):
         """
         Reads a pcap file using the tshark command and returns the raw frame data.
 
@@ -134,7 +134,7 @@ class TsharkReader:
             if raw_frames == ['']:
                 raise InvalidPCAPDataException("No RTPS frames found in the pcap file.", log_level=logging.ERROR)
 
-            logger.always(f"tshark returned {len(raw_frames)} frames")
+            logger.always(f"Iteration {iteration_counter}: tshark returned {len(raw_frames)} frames")
 
             frame_dict = []
             for raw_frame in raw_frames:
