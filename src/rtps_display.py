@@ -331,6 +331,23 @@ class RTPSDisplay():
 
         return "\n".join(lines)
 
+    def print_instances_found(self, analysis: RTPSAnalyzeCapture):
+        """
+        Prints the instance count for each topic in the capture.
+        """
+        # lines = []
+        # lines.append("Instance IDs found by topic:")
+        # for topic, instances in analysis.instances_found.items():
+        #     instance_list = ', '.join(f"0x{instance_id:06X}" for instance_id in sorted(instances))
+        #     lines.append(f"  {topic}: {instance_list}")
+        # return "\n".join(lines)
+        lines = []
+        lines.append("Instance count by topic:")
+        for topic, instances in analysis.instances_found.items():
+            instance_count = len(instances)
+            lines.append(f"  {topic}: {instance_count}")
+        return "\n".join(lines)
+
     def plot_stats_by_frame_count(self, analysis: RTPSAnalyzeCapture, include_discovery=False, scale=PlotScale.LINEAR):
         if self.no_gui:
             logger.warning("GUI is disabled. Cannot plot statistics.")

@@ -101,11 +101,12 @@ def list_combinations_by_flag(flag: SubmessageTypes, combinations=SUBMESSAGE_COM
     return result
 
 class RTPSSubmessage():
-    def __init__(self, topic, length, sm_type, seq_num_tuple):
+    def __init__(self, topic, length, sm_type, seq_num_tuple, instance_id):
         self.topic = topic
         self.length = length
         self.sm_type = sm_type
         self.seq_num_tuple = seq_num_tuple
+        self.instance_id = instance_id
 
     def __eq__(self, other):
         if isinstance(other, RTPSSubmessage):

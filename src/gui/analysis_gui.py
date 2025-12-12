@@ -39,6 +39,7 @@ class MenuAction(Enum):
     CAPTURE_SUMMARY = auto()
     STATS_COUNT = auto()
     STATS_BYTES = auto()
+    INSTANCES_FOUND = auto()
     BAR_COUNT = auto()
     BAR_BYTES = auto()
     TOPOLOGY_GRAPH = auto()
@@ -56,6 +57,7 @@ class MenuAction(Enum):
             MenuAction.CAPTURE_SUMMARY: "Capture Summary",
             MenuAction.STATS_COUNT: "Stats - Count",
             MenuAction.STATS_BYTES: "Stats - Bytes",
+            MenuAction.INSTANCES_FOUND: "Instances Found",
             MenuAction.BAR_COUNT: "Bar Chart - Count",
             MenuAction.BAR_BYTES: "Bar Chart - Bytes",
             MenuAction.TOPOLOGY_GRAPH: "Topology Graph",
@@ -188,6 +190,8 @@ class AnalysisGui:
                         text_handles.update_right("Stats (Submessage Count)", self.display.print_stats(self.analysis))
                     case MenuAction.STATS_BYTES:
                         text_handles.update_right("Stats (Submessage Bytes)", self.display.print_stats_in_bytes(self.analysis))
+                    case MenuAction.INSTANCES_FOUND:
+                        text_handles.update_right("Instance Count by Topic", self.display.print_instances_found(self.analysis))
                     case MenuAction.BAR_COUNT:
                         self.display.plot_stats_by_frame_count(self.analysis, plot_discovery.get(),
                                                             PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
@@ -256,6 +260,7 @@ class AnalysisGui:
             MenuAction.CAPTURE_SUMMARY,
             MenuAction.STATS_COUNT,
             MenuAction.STATS_BYTES,
+            MenuAction.INSTANCES_FOUND,
             MenuAction.BAR_COUNT,
             MenuAction.BAR_BYTES,
             MenuAction.TOPOLOGY_GRAPH,

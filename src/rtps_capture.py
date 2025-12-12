@@ -40,7 +40,8 @@ PCAP_FIELDS = list(['frame.number', 'frame.len', 'rtps.domain_id',
                     'rtps.guidPrefix.src', 'rtps.sm.wrEntityId',        # Writer GUID
                     'rtps.guidPrefix.dst', 'rtps.sm.rdEntityId',        # Reader GUID
                     'rtps.sm.seqNumber', 'rtps.sm.octetsToNextHeader',
-                    'rtps.sm.id', 'rtps.param.service_kind', '_ws.col.Info'])
+                    'rtps.sm.id', 'rtps.guid',
+                    'rtps.param.service_kind', '_ws.col.Info'])
 
 class RTPSCapture:
     """

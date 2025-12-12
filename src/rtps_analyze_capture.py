@@ -13,6 +13,7 @@
 
 # Standard Library Imports
 from dataclasses import dataclass, field
+from collections import defaultdict
 
 # Third-Party Library Imports
 import pandas as pd
@@ -59,6 +60,7 @@ class RTPSAnalyzeCapture:
         self.rs_guid_prefix = set()
         self.df = pd.DataFrame()  # DataFrame to store analysis results
         self.capture = capture
+        self.instances_found = defaultdict(set)
         self.delayed_log_handler = DelayedLogHandler()
         self.delayed_log_handler.setLevel(get_log_level("ALWAYS"))
         self.delayed_log_handler.setFormatter(LOG_FORMAT)
@@ -91,7 +93,7 @@ class RTPSAnalyzeCapture:
             guid_key = (frame.guid_src, frame.guid_dst)
             for sm in frame:
                 topic = RTPSAnalyzeCapture._get_topic(frame)
-                RTPSAnalyzeCapture._process_submessage(frame.frame_number, sm, repair_tracker, guid_key)
+                RTPSAnalyzeCapture._process_submessage(frame.frame_number, sm, repair_tracker, guid_key, self.instances_found)
                 frame_classification |= sm.sm_type
                 sm_list.append({'topic': topic, 'sm': str(sm.sm_type), 'count': 1, 'length': sm.length})
 
@@ -166,7 +168,7 @@ class RTPSAnalyzeCapture:
         return missing_list
 
     @staticmethod
-    def _process_submessage(frame_number: int, sm: RTPSSubmessage, repair_tracker: RepairTracker, guid_key: tuple):
+    def _process_submessage(frame_number: int, sm: RTPSSubmessage, repair_tracker: RepairTracker, guid_key: tuple, instances_found: defaultdict):
 
         def _get_heartbeat_sn(last_heartbeat: dict, guid_key: tuple) -> int:
             """
@@ -198,7 +200,7 @@ class RTPSAnalyzeCapture:
                 f"Writer: {_fmt(src_guid, 24)}::{_fmt(writer_guid, 8)} - "
                 f"Reader: {_fmt(dst_guid, 24)}::{_fmt(reader_guid, 8)}"
             )
-        
+
         def _detect_duplicate_repairs(frame_number: int, sm: RTPSSubmessage, repair_tracker: RepairTracker, guid_key: tuple):
             try:
                 repair_tracker.repair_attempts[(guid_key, sm.seq_num())] += 1
@@ -214,6 +216,8 @@ class RTPSAnalyzeCapture:
         if (sm.sm_type & SubmessageTypes.DATA) and not (sm.sm_type & SubmessageTypes.FRAGMENT):
         # if (sm.sm_type & SubmessageTypes.DATA):
             try:
+                if sm.sm_type == SubmessageTypes.DATA:
+                    instances_found[sm.topic].add(sm.instance_id)
                 # To qualify as a repair, the sequence number must be less than or equal to the last HEARTBEAT and
                 # must be sent after the last ACKNACK for this GUID pair.
                 if (sm.seq_num() <= _get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key)) and \

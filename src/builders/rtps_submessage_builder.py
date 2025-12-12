@@ -23,10 +23,11 @@ from src.rtps_submessage import SubmessageTypes, RTPSSubmessage
 logger = logging.getLogger(__name__)
 
 class RTPSSubmessageBuilder:
-    def __init__(self, sm, length, seq_num_it, frame_type, multiple_sm=False):
+    def __init__(self, sm, length, seq_num_it, instance_it, frame_type, multiple_sm=False):
         self.sm = sm
         self.length = length
         self.seq_num_it = seq_num_it
+        self.instance_it = instance_it
         self.frame_type = frame_type
         self.multiple_sm = multiple_sm
 
@@ -38,11 +39,16 @@ class RTPSSubmessageBuilder:
 
         seq_num_tuple = self._generate_sequence_numbers(sm_flags)
 
+        instance_id = None
+        if sm_flags == SubmessageTypes.DATA:
+            instance_id = next(self.instance_it)
+
         return RTPSSubmessage(
             topic=topic,
             length=self.length,
             sm_type=sm_flags,
-            seq_num_tuple=seq_num_tuple
+            seq_num_tuple=seq_num_tuple,
+            instance_id=instance_id
         )
 
     def _extract_topic_and_type(self, sm):
