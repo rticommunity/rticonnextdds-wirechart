@@ -41,7 +41,11 @@ class RTPSSubmessageBuilder:
 
         instance_id = None
         if sm_flags == SubmessageTypes.DATA:
-            instance_id = next(self.instance_it)
+            try:
+                instance_id = next(self.instance_it)
+            except StopIteration:
+                # Unkeyed topic.  Set to a default value.
+                instance_id = 0
 
         return RTPSSubmessage(
             topic=topic,
