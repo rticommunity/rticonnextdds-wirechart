@@ -97,9 +97,16 @@ class TkinterTextHandler(logging.Handler):
 
     def emit(self, record):
         msg = self.format(record)
+
         def append():
-            self.text_widget.insert("end", msg + "\n")
-            self.text_widget.see("end")
+            if not self.text_widget or not self.text_widget.winfo_exists():
+                return
+            try:
+                self.text_widget.insert("end", msg + "\n")
+                self.text_widget.see("end")
+            except tk.TclError:
+                pass
+
         self.text_widget.after(0, append)
 
 class DelayedLogHandler(logging.Handler):
