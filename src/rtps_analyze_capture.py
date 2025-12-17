@@ -263,7 +263,7 @@ class RTPSAnalyzeCapture:
                         try:
                             repair_tracker.durability_sn[guid_key] = FrameSequenceTracker(frame_number, _get_heartbeat_sn(repair_tracker.last_heartbeat, guid_key))
                             if sm.topic:
-                                logger.always(f"Durability tracking enabled for topic: {sm.topic} | {_format_guid_key(guid_key)}")
+                                logger.delayed(f"Durability tracking enabled for topic: {sm.topic} | {_format_guid_key(guid_key)}")
                         except KeyError:
                             guid_key_str = [f"{x:#x}" for x in guid_key]
                             logger.warning(f"Frame: {frame_number} | ACKNACK received for GUID key {guid_key_str} without a previous HEARTBEAT.")

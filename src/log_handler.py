@@ -20,7 +20,8 @@ LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 # Custom logging levels
 TEST_ERROR = logging.CRITICAL + 10
 ALWAYS = TEST_ERROR + 10
-NONE = ALWAYS + 10
+DELAYED = ALWAYS + 10
+NONE = DELAYED + 10
 
 def get_log_level(level_str: str) -> int:
     """
@@ -37,6 +38,7 @@ def get_log_level(level_str: str) -> int:
         "CRITICAL": logging.CRITICAL,
         "TEST_ERROR": TEST_ERROR,
         "ALWAYS": ALWAYS,
+        "DELAYED": DELAYED,
         "NONE": NONE,
     }
 
@@ -46,6 +48,8 @@ def get_log_level(level_str: str) -> int:
 # Add the custom level name to the logging module
 logging.addLevelName(TEST_ERROR, "TEST_ERROR")
 logging.addLevelName(ALWAYS, "ALWAYS")
+logging.addLevelName(DELAYED, "DELAYED")
+logging.addLevelName(NONE, "NONE")
 
 # Configure the logger
 def configure_root_logger(log_file='output/wirechart.log', console_level=logging.ERROR, file_level=logging.INFO):
@@ -74,6 +78,9 @@ def configure_root_logger(log_file='output/wirechart.log', console_level=logging
         root_logger.addHandler(ch)
         root_logger.addHandler(fh)
 
+        # Add filters to exclude custom levels from console and file handlers
+        ch.addFilter(ExcludeDelayedFilter())
+
 # Define the custom log function
 def always(self, message, *args, **kws):
     if self.isEnabledFor(ALWAYS):
@@ -83,12 +90,24 @@ def always(self, message, *args, **kws):
 logging.Logger.always = always
 
 # Define the custom log function
+def delayed(self, message, *args, **kws):
+    if self.isEnabledFor(DELAYED):
+        self._log(DELAYED, message, args, **kws)
+
+# Add the custom function to the Logger class
+logging.Logger.delayed = delayed
+
+# Define the custom log function
 def test_error(self, message, *args, **kws):
     if self.isEnabledFor(TEST_ERROR):
         self._log(TEST_ERROR, message, args, **kws)
 
 # Add the custom function to the Logger class
 logging.Logger.test_error = test_error
+
+class ExcludeDelayedFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.levelno != DELAYED
 
 class TkinterTextHandler(logging.Handler):
     def __init__(self, text_widget):
