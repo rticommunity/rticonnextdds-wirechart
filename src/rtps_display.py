@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from matplotlib.ticker import StrMethodFormatter
 import numpy as np
+import mplcursors
 
 # Local Application Imports
 from src.log_handler import logging
@@ -434,6 +435,13 @@ class RTPSDisplay():
         fig = ax.get_figure()
         fig.canvas.manager.set_window_title(f"Submessage {metric.capitalize()} by Topic")
 
+        # Add interactive cursor
+        cursor = mplcursors.cursor(ax, hover=True)
+        @cursor.connect("add")
+        def on_add(sel):
+            height = sel.artist.patches[sel.index].get_height()
+            sel.annotation.set_text(f'{sel.artist.get_label()}: {height:,.0f}/{sel.target[1]:,.0f} {units}')
+
         # Adjust layout and show the plot
-        plt.tight_layout()
+        plt.tight_layout()        
         show_plot_on_top()
