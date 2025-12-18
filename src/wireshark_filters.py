@@ -104,7 +104,7 @@ class WiresharkFilters:
             for prefix, id in [WiresharkFilters.format_guid_entity_id(guid_dst)]
         }
 
-        return "\n".join(["DataWriters"] + sorted(dw_set) + ["", "DataReaders"] + sorted(dr_set))
+        return "\n".join([f"DataWriters ({len(dw_set)})"] + sorted(dw_set) + ["", f"DataReaders ({len(dr_set)})"] + sorted(dr_set))
 
     def all_endpoints_filter(self, topic: str = None, domain: int = None) -> str:
         """

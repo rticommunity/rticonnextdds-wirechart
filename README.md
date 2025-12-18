@@ -23,6 +23,7 @@ The application requires the following Python libraries:
 
 - `pandas`: For data manipulation and analysis.
 - `matplotlib`: For generating visualizations.
+- `mplcursors`: For interactive data cursors.
 - `networkx`: For creating node/edge graphs.
 - `openpyxl`: For exporting data to Excel files.
 - `tqdm`: For status display bar.
@@ -30,7 +31,7 @@ The application requires the following Python libraries:
 Install the dependencies using:
 
 ```bash
-pip install pandas matplotlib networkx openpyxl tqdm
+pip install pandas matplotlib mplcursors networkx openpyxl tqdm
 ```
 #### Python Virtual Environment
 [requirements.txt](./config/requirements.txt) will install the exact version of the tools above:
