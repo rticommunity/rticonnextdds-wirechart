@@ -12,6 +12,7 @@
 ##############################################################################################
 
 # Standard Library Imports
+import copy
 import logging
 import os
 
@@ -147,6 +148,7 @@ class DelayedLogHandler(logging.Handler):
         """
         if self.triggered:
             # Emit the log message immediately
+            record = self._rewrite_level(record)
             if self.target_handler:
                 self.target_handler.handle(record)
             else:
@@ -171,6 +173,7 @@ class DelayedLogHandler(logging.Handler):
         """
         self.triggered = True
         for message in self.log_messages:
+            message = self._rewrite_level(message)
             if self.target_handler:
                 # Emit the cached log message using the target handler
                 self.target_handler.handle(message)
@@ -178,6 +181,13 @@ class DelayedLogHandler(logging.Handler):
                 # Fallback to print if no target handler is set
                 print(self.format(message))
         self.log_messages.clear()  # Clear the cache
+
+    def _rewrite_level(self, record: logging.LogRecord) -> logging.LogRecord:
+        if record.levelno == DELAYED:
+            record = copy.copy(record)
+            record.levelno = ALWAYS
+            record.levelname = logging.getLevelName(ALWAYS)
+        return record
 
     def clear_cache(self):
         """
