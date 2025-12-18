@@ -120,6 +120,11 @@ class AnalysisGui:
             self.ws_filters_enabled = False
 
     def launch(self):
+        def fixed_checkbutton(parent, **kwargs):
+            cb = ttk.Checkbutton(parent, **kwargs)
+            parent.after_idle(lambda c=cb: c.state(["!alternate"]))
+            return cb
+
         menu_window = tk.Toplevel(self.root)
         menu_window.title(f"{self.args['pcap'].get()} - Analysis")
         maximize_window(menu_window)
@@ -148,12 +153,14 @@ class AnalysisGui:
 
         # Add Boolean options side-by-side above the logger box
         checkbox_frame = ttk.Frame(menu_window)
-        checkbox_frame.grid(row=2, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+        checkbox_frame.grid(row=2, column=0, columnspan=3, sticky="w", padx=5, pady=5)
 
         plot_discovery = tk.BooleanVar(value=False)
         log_scale = tk.BooleanVar(value=False)
-        ttk.Checkbutton(checkbox_frame, text="Include Discovery Traffic", variable=plot_discovery).pack(side="left", padx=10)
-        ttk.Checkbutton(checkbox_frame, text="Use Log Scale", variable=log_scale).pack(side="left", padx=0)
+        enable_plot_cursors = tk.BooleanVar(value=False)
+        fixed_checkbutton(checkbox_frame, text="Include Discovery Traffic", variable=plot_discovery).pack(side="left", padx=10)
+        fixed_checkbutton(checkbox_frame, text="Use Log Scale", variable=log_scale).pack(side="left", padx=10)
+        fixed_checkbutton(checkbox_frame, text="Enable Plot Cursors", variable=enable_plot_cursors).pack(side="left", padx=10)
 
         # Logger Window
         logger_label = ttk.Label(menu_window, text="Logger Output", font=('TkDefaultFont', 10, 'bold'))
@@ -190,10 +197,12 @@ class AnalysisGui:
                         text_handles.update_right("Stats (Submessage Bytes)", self.display.print_stats_in_bytes(self.analysis))
                     case MenuAction.BAR_COUNT:
                         self.display.plot_stats_by_frame_count(self.analysis, plot_discovery.get(),
-                                                            PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
+                                                            PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR,
+                                                            enable_plot_cursors=enable_plot_cursors.get())
                     case MenuAction.BAR_BYTES:
                         self.display.plot_stats_by_frame_length(self.analysis, plot_discovery.get(),
-                                                            PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR)
+                                                            PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR,
+                                                            enable_plot_cursors=enable_plot_cursors.get())
                     case MenuAction.TOPOLOGY_GRAPH:
                         dialog = TopicDomainDropdownDialog(menu_window, self.analysis.graph_edges)
                         if dialog.user_ok():

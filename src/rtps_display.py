@@ -332,20 +332,20 @@ class RTPSDisplay():
 
         return "\n".join(lines)
 
-    def plot_stats_by_frame_count(self, analysis: RTPSAnalyzeCapture, include_discovery=False, scale=PlotScale.LINEAR):
+    def plot_stats_by_frame_count(self, analysis: RTPSAnalyzeCapture, include_discovery=False, scale=PlotScale.LINEAR, enable_plot_cursors=False):
         if self.no_gui:
             logger.warning("GUI is disabled. Cannot plot statistics.")
             return
-        self._plot_statistics(analysis, metric='count', include_discovery=include_discovery, scale=scale)
+        self._plot_statistics(analysis, metric='count', include_discovery=include_discovery, scale=scale, enable_plot_cursors=enable_plot_cursors)
 
-    def plot_stats_by_frame_length(self, analysis: RTPSAnalyzeCapture, include_discovery=False, scale=PlotScale.LINEAR):
+    def plot_stats_by_frame_length(self, analysis: RTPSAnalyzeCapture, include_discovery=False, scale=PlotScale.LINEAR, enable_plot_cursors=False):
         if self.no_gui:
             logger.warning("GUI is disabled. Cannot plot statistics.")
             return
-        self._plot_statistics(analysis, metric='length', include_discovery=include_discovery, scale=scale)
+        self._plot_statistics(analysis, metric='length', include_discovery=include_discovery, scale=scale, enable_plot_cursors=enable_plot_cursors)
 
     # TODO: Ensure correct order of submessages in the plot
-    def _plot_statistics(self, analysis: RTPSAnalyzeCapture, metric='count', include_discovery=False, scale=PlotScale.LINEAR):
+    def _plot_statistics(self, analysis: RTPSAnalyzeCapture, metric='count', include_discovery=False, scale=PlotScale.LINEAR, enable_plot_cursors=False):
         """
         Plots a stacked bar chart of submessage counts or lengths by topic.
 
@@ -436,12 +436,13 @@ class RTPSDisplay():
         fig.canvas.manager.set_window_title(f"Submessage {metric.capitalize()} by Topic")
 
         # Add interactive cursor
-        cursor = mplcursors.cursor(ax, hover=True)
-        @cursor.connect("add")
-        def on_add(sel):
-            height = sel.artist.patches[sel.index].get_height()
-            sel.annotation.set_text(f'{sel.artist.get_label()}: {height:,.0f}/{sel.target[1]:,.0f} {units}')
+        if enable_plot_cursors:
+            cursor = mplcursors.cursor(ax, hover=True)
+            @cursor.connect("add")
+            def on_add(sel):
+                height = sel.artist.patches[sel.index].get_height()
+                sel.annotation.set_text(f'{sel.artist.get_label()}: {height:,.0f} {units}')
 
         # Adjust layout and show the plot
-        plt.tight_layout()        
+        plt.tight_layout()
         show_plot_on_top()
