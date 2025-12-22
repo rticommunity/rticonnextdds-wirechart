@@ -213,9 +213,11 @@ class AnalysisGui:
                             topic = dialog.topic_selected
                             domain = dialog.domain_selected
                             if topic is None or domain is None:
-                                self.display.plot_multi_topic_graph(self.analysis, topic=topic, domain=domain)
+                                self.display.plot_multi_topic_graph(self.analysis, topic=topic, domain=domain,
+                                                                    enable_plot_cursors=enable_plot_cursors.get())
                             else:
-                                self.display.plot_topic_graph(self.analysis, topic=topic, domain=domain)
+                                self.display.plot_topic_graph(self.analysis, topic=topic, domain=domain,
+                                                              enable_plot_cursors=enable_plot_cursors.get())
                     case MenuAction.SHOW_REPAIRS:
                         repairs = self.frames.list_repairs()
                         repair_string = "\n".join(str(obj) for obj in repairs)
