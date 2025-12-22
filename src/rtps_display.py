@@ -38,6 +38,7 @@ from src.rtps_capture import RTPSCapture
 from src.rtps_analyze_capture import DISCOVERY_TOPIC, RTPSAnalyzeCapture
 from src.rtps_submessage import SubmessageTypes, SUBMESSAGE_COMBINATIONS, list_combinations_by_flag
 from src.shared_utils import TEST_MODE
+from src.wireshark_filters import WiresharkFilters
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +135,7 @@ class RTPSDisplay():
         for frame in capture.frames:
             print(frame)
 
-    def plot_multi_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str=None, domain: int=None):
+    def plot_multi_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str=None, domain: int=None, enable_plot_cursors=False):
         if self.no_gui:
             logger.warning("GUI is disabled. Cannot plot graphs.")
             return
@@ -145,7 +146,7 @@ class RTPSDisplay():
             logger.always("No topics found with sufficient edges to plot graphs.")
             return
         if len(largest_topics) == 1:
-            self.plot_topic_graph(analysis, topic=largest_topics[0].topic, domain=largest_topics[0].domain)
+            self.plot_topic_graph(analysis, topic=largest_topics[0].topic, domain=largest_topics[0].domain, enable_plot_cursors=enable_plot_cursors)
         else:
             # Create figure and axes
             fig, axs = plt.subplots(2, 3, figsize=(18, 14))
@@ -154,11 +155,11 @@ class RTPSDisplay():
             fig.canvas.manager.set_window_title("RTPS Topology Graphs for Top Topics")
 
             for i, key in enumerate(largest_topics):
-                self.plot_topic_graph(analysis, topic=key.topic, domain=key.domain, ax=axs.flatten()[i])
+                self.plot_topic_graph(analysis, topic=key.topic, domain=key.domain, ax=axs.flatten()[i], enable_plot_cursors=enable_plot_cursors)
             plt.tight_layout()
             show_plot_on_top()
 
-    def plot_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str=None, domain: int=None, ax: plt.Axes = None):
+    def plot_topic_graph(self, analysis: RTPSAnalyzeCapture, topic: str=None, domain: int=None, ax: plt.Axes = None, enable_plot_cursors=False):
         """
         Draws a directed graph using edges provided in a set of tuples.
         Labels the first node in each tuple as 'DW' and the second as 'DR'.
@@ -189,6 +190,7 @@ class RTPSDisplay():
         # Set node labels and edge colors
         edge_colors = []
         node_labels = {}
+        formatted_guids = {}
         sources = set()
         destinations = set()
         for src, dst in edges:
@@ -200,6 +202,17 @@ class RTPSDisplay():
             edge_colors.append(source_colors[src])
             sources.add(src)
             destinations.add(dst)
+
+            if enable_plot_cursors: # Format GUIDs for hover
+                prefix_src, id_src = RTPSFrame.static_guid_prefix_and_entity_id(src)
+                prefix_src_str = format(prefix_src, '024x')
+                prefix_src_str = ':'.join(prefix_src_str[i:i+2] for i in range(0, len(prefix_src_str), 2))
+                formatted_guids[src] = f"{prefix_src_str} {hex(id_src)}"
+
+                prefix_dst, id_dst = RTPSFrame.static_guid_prefix_and_entity_id(dst)
+                prefix_dst_str = format(prefix_dst, '024x')
+                prefix_dst_str = ':'.join(prefix_dst_str[i:i+2] for i in range(0, len(prefix_dst_str), 2))
+                formatted_guids[dst] = f"{prefix_dst_str} {hex(id_dst)}"
 
         # Set node colors based on labels
         node_colors = []
@@ -269,6 +282,15 @@ class RTPSDisplay():
 
         ax.set_title(f"Topic: {topic_label}, Domain: {domain_label}", fontsize=14)
         ax.axis('off')
+
+        if enable_plot_cursors: # Add hover cursor for nodes
+            cursor = mplcursors.cursor(ax, hover=True)
+            @cursor.connect("add")
+            def on_add(sel):
+                mouse_x, mouse_y = sel.target
+                closest_node = min(pos.keys(), key=lambda node: (pos[node][0] - mouse_x)**2 + (pos[node][1] - mouse_y)**2)
+                guid_str = formatted_guids.get(closest_node, str(closest_node))
+                sel.annotation.set_text(guid_str)
 
         if ax_none:
             plt.tight_layout()
