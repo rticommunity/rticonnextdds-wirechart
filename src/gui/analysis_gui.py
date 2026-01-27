@@ -41,6 +41,7 @@ class MenuAction(Enum):
     STATS_BYTES = auto()
     INSTANCES_FOUND = auto()
     TOPIC_ENDPOINT_COUNT = auto()
+    TOPIC_ENDPOINT_COUNT_CHART = auto()
     BAR_COUNT = auto()
     BAR_BYTES = auto()
     TOPOLOGY_GRAPH = auto()
@@ -60,6 +61,7 @@ class MenuAction(Enum):
             MenuAction.STATS_BYTES: "Stats - Bytes",
             MenuAction.INSTANCES_FOUND: "Instances Found",
             MenuAction.TOPIC_ENDPOINT_COUNT: "Endpoint Count",
+            MenuAction.TOPIC_ENDPOINT_COUNT_CHART: "Endpoint Count Chart",
             MenuAction.BAR_COUNT: "Bar Chart - Count",
             MenuAction.BAR_BYTES: "Bar Chart - Bytes",
             MenuAction.TOPOLOGY_GRAPH: "Topology Graph",
@@ -211,6 +213,10 @@ class AnalysisGui:
                                                       self.display.count_endpoints_by_topic_string(self.analysis.graph_edges, topic=topic, domain=domain))
                         else:
                             text_handles.clear_right()
+                    case MenuAction.TOPIC_ENDPOINT_COUNT_CHART:
+                        self.display.plot_endpoint_counts(self.analysis.graph_edges,
+                                                        topic=None,
+                                                        domain=None)
                     case MenuAction.BAR_COUNT:
                         self.display.plot_stats_by_frame_count(self.analysis, plot_discovery.get(),
                                                             PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR,
@@ -283,6 +289,7 @@ class AnalysisGui:
             MenuAction.STATS_BYTES,
             MenuAction.INSTANCES_FOUND,
             MenuAction.TOPIC_ENDPOINT_COUNT,
+            MenuAction.TOPIC_ENDPOINT_COUNT_CHART,
             MenuAction.BAR_COUNT,
             MenuAction.BAR_BYTES,
             MenuAction.TOPOLOGY_GRAPH,

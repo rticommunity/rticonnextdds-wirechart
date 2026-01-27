@@ -96,14 +96,15 @@ class RTPSDisplay():
             if FrameTypes.DISCOVERY in frame.frame_type:
                 participants.add(frame.guid_prefix_and_entity_id(GUIDEntity.GUID_SRC)[0])
         return len(participants)
-    
-    def count_endpoints_by_topic_and_domain(self, endpoints: FlexDict, topic: str = None, domain: int = None) -> list:
+
+    def count_endpoints_by_topic_and_domain(self, endpoints: FlexDict, topic: str = None, domain: int = None, sort_by_domain: bool = True) -> list:
         """
         Counts unique DataWriters and DataReaders for each topic/domain combination.
 
         Args:
             topic (str, optional): The topic to filter by. If None, processes all topics. Defaults to None.
             domain (int, optional): The domain to filter by. Defaults to None.
+            sort_by_domain (bool, optional): If True, sorts by domain first. If False, ignores domain in sorting. Defaults to True.
 
         Returns:
             list: A list of tuples containing topic/domain keys and their endpoint counts.
@@ -139,9 +140,12 @@ class RTPSDisplay():
                     dr_count = len({guid_dst for _, guid_dst in elements})
                     topic_counts[(topic_key.topic, topic_key.domain)] = (dw_count, dr_count)
 
-        # Sort by domain first, then by DW ascending, then DR descending
-        return sorted(topic_counts.items(), key=lambda x: (x[0][1], x[1][0], -x[1][1]))
-    
+        # Sort by domain first (if enabled), then by DW ascending, then DR descending
+        if sort_by_domain:
+            return sorted(topic_counts.items(), key=lambda x: (x[0][1], x[1][0], -x[1][1]))
+        else:
+            return sorted(topic_counts.items(), key=lambda x: (x[1][0], -x[1][1]))
+
     def count_endpoints_by_topic_string(self, endpoints: FlexDict, topic: str = None, domain: int = None) -> str:
         sorted_topics = self.count_endpoints_by_topic_and_domain(endpoints, topic=topic, domain=domain)
         # Format the output with domain headers and indented topics
@@ -156,6 +160,65 @@ class RTPSDisplay():
             result.append(f"\t{topic_name} (DW: {dw}, DR: {dr})")
 
         return "\n".join(result)
+
+    def plot_endpoint_counts(self, endpoints: FlexDict, topic: str = None, domain: int = None):
+        """
+        Plots endpoint counts (DataWriters and DataReaders) in a vertical bar chart
+        with separate bars for each topic.
+
+        Args:
+            endpoints (FlexDict): The endpoints dictionary containing topic/domain data.
+            topic (str, optional): The topic to filter by. If None, processes all topics. Defaults to None.
+            domain (int, optional): The domain to filter by. Defaults to None.
+        """
+        if self.no_gui:
+            logger.warning("GUI is disabled. Cannot plot endpoint counts.")
+            return
+
+        sorted_topics = self.count_endpoints_by_topic_and_domain(endpoints, topic=topic, domain=domain, sort_by_domain=False)
+
+        if not sorted_topics:
+            logger.always("No endpoint data to plot.")
+            return
+
+        # Create figure
+        fig, ax = plt.subplots(figsize=(16, 10))
+
+        # Prepare data for plotting
+        x_labels = []
+        dw_counts = []
+        dr_counts = []
+
+        for (topic_name, topic_domain), (dw, dr) in sorted_topics:
+            x_labels.append(f"{topic_name}")
+            dw_counts.append(dw)
+            dr_counts.append(dr)
+
+        # Set up bar positions
+        x_pos = np.arange(len(x_labels))
+        bar_width = 0.35
+
+        # Create bars
+        bars1 = ax.bar(x_pos - bar_width/2, dw_counts, bar_width, label='DataWriters', color='lightblue', edgecolor='black')
+        bars2 = ax.bar(x_pos + bar_width/2, dr_counts, bar_width, label='DataReaders', color='mistyrose', edgecolor='black')
+
+        # Customize plot
+        ax.set_xlabel('Topics', fontsize=12)
+        ax.set_ylabel('Count', fontsize=12)
+        ax.set_title('Endpoint Counts by Topic', fontsize=14, fontweight='bold')
+        ax.set_xticks(x_pos)
+        ax.set_xticklabels(x_labels, rotation=90, ha='center')
+        ax.legend()
+        ax.grid(axis='y', alpha=0.3)
+
+        # Format y-axis with commas
+        ax.get_yaxis().set_major_formatter(StrMethodFormatter('{x:,.0f}'))
+
+        # Set window title
+        fig.canvas.manager.set_window_title("Endpoint Counts by Topic")
+
+        plt.tight_layout()
+        show_plot_on_top()
 
     def count_writers_and_readers(self, capture: RTPSCapture, include_builtin=False):
         """
