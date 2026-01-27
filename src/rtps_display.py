@@ -203,8 +203,7 @@ class RTPSDisplay():
         bars2 = ax.bar(x_pos + bar_width/2, dr_counts, bar_width, label='DataReaders', color='mistyrose', edgecolor='black')
 
         # Customize plot
-        ax.set_xlabel('Topics', fontsize=12)
-        ax.set_ylabel('Count', fontsize=12)
+        ax.set_ylabel('Endpoint Count', fontsize=12)
         ax.set_title('Endpoint Counts by Topic', fontsize=14, fontweight='bold')
         ax.set_xticks(x_pos)
         ax.set_xticklabels(x_labels, rotation=90, ha='center')
