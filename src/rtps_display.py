@@ -18,6 +18,8 @@ from platform import system
 # Third-Party Library Imports
 import matplotlib
 
+from src.flex_dictionary import FlexDict
+
 if system() == "Linux":
     matplotlib.use("TkAgg")  # or "Qt5Agg"
 elif system() == "Windows":
@@ -94,6 +96,66 @@ class RTPSDisplay():
             if FrameTypes.DISCOVERY in frame.frame_type:
                 participants.add(frame.guid_prefix_and_entity_id(GUIDEntity.GUID_SRC)[0])
         return len(participants)
+    
+    def count_endpoints_by_topic_and_domain(self, endpoints: FlexDict, topic: str = None, domain: int = None) -> list:
+        """
+        Counts unique DataWriters and DataReaders for each topic/domain combination.
+
+        Args:
+            topic (str, optional): The topic to filter by. If None, processes all topics. Defaults to None.
+            domain (int, optional): The domain to filter by. Defaults to None.
+
+        Returns:
+            list: A list of tuples containing topic/domain keys and their endpoint counts.
+                 Format: "TOPIC_NAME (DW: #, DR: #)"
+
+        Example:
+            Square (DW: 3, DR: 2)
+            Circle (DW: 2, DR: 1)
+            Triangle (DW: 1, DR: 1)
+        """
+        topic_counts = {}
+
+        # Get all topic/domain keys to iterate over
+        if topic is not None:
+            # Process only the specified topic
+            if not endpoints.key_present(topic=topic):
+                logger.warning(f"No endpoints found for topic '{topic}'")
+                return ""
+
+            elements = endpoints.get_elements_as_set(topic=topic, domain=domain)
+            dw_count = len({guid_src for guid_src, _ in elements})
+            dr_count = len({guid_dst for _, guid_dst in elements})
+            # Determine the actual domain (could be None if filtering all domains)
+            actual_domain = domain if domain is not None else 0  # Default to 0 if None
+            topic_counts[(topic, actual_domain)] = (dw_count, dr_count)
+        else:
+            # Process all topics
+            # Need to iterate through the endpoints dictionary structure
+            for topic_key in endpoints.keys():
+                elements = endpoints.get_elements_as_set(topic=topic_key.topic, domain=topic_key.domain)
+                if elements:
+                    dw_count = len({guid_src for guid_src, _ in elements})
+                    dr_count = len({guid_dst for _, guid_dst in elements})
+                    topic_counts[(topic_key.topic, topic_key.domain)] = (dw_count, dr_count)
+
+        # Sort by domain first, then by DW ascending, then DR descending
+        return sorted(topic_counts.items(), key=lambda x: (x[0][1], x[1][0], -x[1][1]))
+    
+    def count_endpoints_by_topic_string(self, endpoints: FlexDict, topic: str = None, domain: int = None) -> str:
+        sorted_topics = self.count_endpoints_by_topic_and_domain(endpoints, topic=topic, domain=domain)
+        # Format the output with domain headers and indented topics
+        result = []
+        current_domain = None
+        for (topic_name, domain), (dw, dr) in sorted_topics:
+            if domain != current_domain:
+                if result:  # Add blank line between domains
+                    result.append("")
+                result.append(f"Domain {domain}")
+                current_domain = domain
+            result.append(f"\t{topic_name} (DW: {dw}, DR: {dr})")
+
+        return "\n".join(result)
 
     def count_writers_and_readers(self, capture: RTPSCapture, include_builtin=False):
         """

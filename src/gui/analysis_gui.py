@@ -40,6 +40,7 @@ class MenuAction(Enum):
     STATS_COUNT = auto()
     STATS_BYTES = auto()
     INSTANCES_FOUND = auto()
+    TOPIC_ENDPOINT_COUNT = auto()
     BAR_COUNT = auto()
     BAR_BYTES = auto()
     TOPOLOGY_GRAPH = auto()
@@ -58,6 +59,7 @@ class MenuAction(Enum):
             MenuAction.STATS_COUNT: "Stats - Count",
             MenuAction.STATS_BYTES: "Stats - Bytes",
             MenuAction.INSTANCES_FOUND: "Instances Found",
+            MenuAction.TOPIC_ENDPOINT_COUNT: "Endpoint Count",
             MenuAction.BAR_COUNT: "Bar Chart - Count",
             MenuAction.BAR_BYTES: "Bar Chart - Bytes",
             MenuAction.TOPOLOGY_GRAPH: "Topology Graph",
@@ -199,6 +201,16 @@ class AnalysisGui:
                         text_handles.update_right("Stats (Submessage Bytes)", self.display.print_stats_in_bytes(self.analysis))
                     case MenuAction.INSTANCES_FOUND:
                         text_handles.update_right("Instance Count by Topic", self.display.print_instances_found(self.analysis))
+                    case MenuAction.TOPIC_ENDPOINT_COUNT:
+                        dialog = TopicDomainDropdownDialog(menu_window, self.analysis.graph_edges)
+                        if dialog.user_ok():
+                            topic = dialog.topic_selected
+                            domain = dialog.domain_selected
+                            text_handles.update_right(f"Unique Endpoints for Topic: {'ALL' if topic is None else topic},"
+                                                      f" Domain: {'ALL' if domain is None else domain}",
+                                                      self.display.count_endpoints_by_topic_string(self.analysis.graph_edges, topic=topic, domain=domain))
+                        else:
+                            text_handles.clear_right()
                     case MenuAction.BAR_COUNT:
                         self.display.plot_stats_by_frame_count(self.analysis, plot_discovery.get(),
                                                             PlotScale.LOGARITHMIC if log_scale.get() else PlotScale.LINEAR,
@@ -270,6 +282,7 @@ class AnalysisGui:
             MenuAction.STATS_COUNT,
             MenuAction.STATS_BYTES,
             MenuAction.INSTANCES_FOUND,
+            MenuAction.TOPIC_ENDPOINT_COUNT,
             MenuAction.BAR_COUNT,
             MenuAction.BAR_BYTES,
             MenuAction.TOPOLOGY_GRAPH,
