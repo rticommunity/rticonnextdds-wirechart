@@ -14,6 +14,7 @@
 # Standard Library Imports
 from enum import Enum
 from platform import system
+from collections import defaultdict
 
 # Third-Party Library Imports
 import matplotlib
@@ -115,6 +116,17 @@ class RTPSDisplay():
             Circle (DW: 2, DR: 1)
             Triangle (DW: 1, DR: 1)
         """
+        def max_edges(edges):
+            source_to_dests = defaultdict(set)
+
+            for src, dst in edges:
+                source_to_dests[src].add(dst)
+
+            if not source_to_dests:
+                return 0
+
+            return max(len(dests) for dests in source_to_dests.values())
+
         topic_counts = {}
 
         # Get all topic/domain keys to iterate over
@@ -125,26 +137,32 @@ class RTPSDisplay():
                 return ""
 
             elements = endpoints.get_elements_as_set(topic=topic, domain=domain)
+            max_edge_count = max_edges(elements)
             dw_count = len({guid_src for guid_src, _ in elements})
             dr_count = len({guid_dst for _, guid_dst in elements})
             # Determine the actual domain (could be None if filtering all domains)
             actual_domain = domain if domain is not None else 0  # Default to 0 if None
-            topic_counts[(topic, actual_domain)] = (dw_count, dr_count)
+            topic_counts[(topic, actual_domain)] = (max_edge_count, dw_count, dr_count)
         else:
             # Process all topics
             # Need to iterate through the endpoints dictionary structure
             for topic_key in endpoints.keys():
                 elements = endpoints.get_elements_as_set(topic=topic_key.topic, domain=topic_key.domain)
                 if elements:
+                    max_edge_count = max_edges(elements)
                     dw_count = len({guid_src for guid_src, _ in elements})
                     dr_count = len({guid_dst for _, guid_dst in elements})
-                    topic_counts[(topic_key.topic, topic_key.domain)] = (dw_count, dr_count)
+                    topic_counts[(topic_key.topic, topic_key.domain)] = (max_edge_count, dw_count, dr_count)
 
         # Sort by domain first (if enabled), then by DW ascending, then DR descending
         if sort_by_domain:
-            return sorted(topic_counts.items(), key=lambda x: (x[0][1], x[1][0], -x[1][1]))
+            sorted_items = sorted(topic_counts.items(), key=lambda x: (x[0][1], -x[1][0]))
         else:
-            return sorted(topic_counts.items(), key=lambda x: (x[1][0], -x[1][1]))
+            sorted_items = sorted(topic_counts.items(), key=lambda x: -x[1][0])
+        
+        # Remove total_endpoints from the tuple, keeping only (dw_count, dr_count)
+        return [(key, (dw_count, dr_count)) for key, ( _ , dw_count, dr_count) in sorted_items]
+
 
     def count_endpoints_by_topic_string(self, endpoints: FlexDict, topic: str = None, domain: int = None) -> str:
         sorted_topics = self.count_endpoints_by_topic_and_domain(endpoints, topic=topic, domain=domain)
