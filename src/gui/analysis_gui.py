@@ -33,7 +33,7 @@ from src.gui.shared_gui_utils import maximize_window
 
 logger = logging.getLogger('Wirechart')
 
-BUTTON_WIDTH = 18
+BUTTON_WIDTH = 22
 
 class MenuAction(Enum):
     CAPTURE_SUMMARY = auto()
@@ -148,11 +148,11 @@ class AnalysisGui:
         right_label.grid(row=0, column=1, padx=5, pady=(5, 0), sticky="w")
 
         # Left text box
-        left_text = ScrolledText(menu_window, wrap=tk.WORD, width=64, height=48, state="disabled")
+        left_text = ScrolledText(menu_window, wrap=tk.WORD, width=64, height=36, state="disabled")
         left_text.grid(row=1, column=0, sticky="nsew", padx=5, pady=5)
 
         # Right text box
-        right_text = ScrolledText(menu_window, wrap=tk.WORD, width=128, height=48, state="disabled")
+        right_text = ScrolledText(menu_window, wrap=tk.WORD, width=128, height=36, state="disabled")
         right_text.grid(row=1, column=1, sticky="nsew", padx=5, pady=5)
 
         text_handles = TextWindowHandles(left_label, left_text, right_label, right_text)
@@ -170,10 +170,10 @@ class AnalysisGui:
 
         # Logger Window
         logger_label = ttk.Label(menu_window, text="Logger Output", font=('TkDefaultFont', 10, 'bold'))
-        logger_label.grid(row=4, column=0, columnspan=2, sticky="w", padx=5)
+        logger_label.grid(row=6, column=0, columnspan=2, sticky="w", padx=5)
         logger_output = ScrolledText(menu_window, wrap=tk.WORD, height=7)
-        logger_output.grid(row=5, column=0, columnspan=2, sticky="nsew", padx=5, pady=(0, 5))
-        menu_window.rowconfigure(5, weight=1)
+        logger_output.grid(row=7, column=0, columnspan=2, sticky="nsew", padx=5, pady=(0, 5))
+        menu_window.rowconfigure(7, weight=1)
 
         # Configure the logger to write to the ScrolledText widget
         gui_handler = TkinterTextHandler(logger_output)
@@ -289,16 +289,24 @@ class AnalysisGui:
             MenuAction.STATS_BYTES,
             MenuAction.INSTANCES_FOUND,
             MenuAction.TOPIC_ENDPOINT_COUNT,
-            MenuAction.TOPIC_ENDPOINT_COUNT_CHART,
-            MenuAction.BAR_COUNT,
-            MenuAction.BAR_BYTES,
-            MenuAction.TOPOLOGY_GRAPH,
+            
             MenuAction.SHOW_REPAIRS,
             MenuAction.SHOW_DURABLE_REPAIRS
         ]
         standard_button_frame = ttk.Frame(menu_window)
-        standard_button_frame.grid(row=3, column=0, columnspan=2, sticky="w", padx=5, pady=0)
+        standard_button_frame.grid(row=3, column=0, columnspan=2, sticky="w", padx=5, pady=5)
         AnalysisGui._create_buttons(standard_button_frame, options, handle_option)
+
+        # Chart Button Frame
+        options = [
+            MenuAction.BAR_COUNT,
+            MenuAction.BAR_BYTES,
+            MenuAction.TOPOLOGY_GRAPH,
+            MenuAction.TOPIC_ENDPOINT_COUNT_CHART
+        ]
+        chart_button_frame = ttk.Frame(menu_window)
+        chart_button_frame.grid(row=4, column=0, columnspan=2, sticky="w", padx=5, pady=5)
+        AnalysisGui._create_buttons(chart_button_frame, options, handle_option)
 
         # Wireshark Buttons
         options = [
@@ -306,7 +314,7 @@ class AnalysisGui:
             MenuAction.WIRESHARK_TOPIC_ENDPOINTS
         ]
         wireshark_button_frame = ttk.Frame(menu_window)
-        wireshark_button_frame.grid(row=4, column=0, columnspan=2, sticky="w", padx=5, pady=10)
+        wireshark_button_frame.grid(row=5, column=0, columnspan=2, sticky="w", padx=5, pady=(5, 15))
         AnalysisGui._create_buttons(wireshark_button_frame, options, handle_option, enable=self.ws_filters_enabled)
 
         # Save_Excel and Exit button
@@ -317,7 +325,7 @@ class AnalysisGui:
             MenuAction.EXIT
         ]
         exit_button_frame = ttk.Frame(menu_window)
-        exit_button_frame.grid(row=6, column=0, columnspan=2, sticky="e", padx=5, pady=10)
+        exit_button_frame.grid(row=8, column=0, columnspan=2, sticky="e", padx=5, pady=10)
         AnalysisGui._create_buttons(exit_button_frame, options, handle_option)
 
     @staticmethod
