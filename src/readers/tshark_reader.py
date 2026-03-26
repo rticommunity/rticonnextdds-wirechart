@@ -13,8 +13,10 @@
 
 # Standard Library Imports
 import os
-import re
 import subprocess
+
+# Third-Party Library Imports
+import dpkt
 
 # Local Application Imports
 from src.log_handler import logging
@@ -47,61 +49,48 @@ class TsharkReader:
     @staticmethod
     def _get_stats(pcap_file):
         """
-        Gets the frame count from a pcap file using the tshark command.
+        Gets the frame count and total captured bytes from a pcap/pcapng file.
+        Uses dpkt for fast header-only parsing — no packet dissection.
 
         :param pcap_file: Path to the pcap file
-        :return: The number of frames in the pcap file
+        :return: Tuple of (frame_count, total_bytes)
         """
-        result = subprocess.run(
-            ["tshark", "-r", pcap_file, "-q", "-z", "io,stat,0"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            check=True
-        )
-
-        # Example output
-        # =====================================
-        # | IO Statistics                     |
-        # |                                   |
-        # | Duration: 129.1 secs              |
-        # | Interval: 129.1 secs              |
-        # |                                   |
-        # | Col 1: Frames and bytes           |
-        # |-----------------------------------|
-        # |                |1                 |
-        # | Interval       | Frames |  Bytes  |
-        # |-----------------------------------|
-        # |   0.0 <> 129.1 |  44329 | 9983865 |
-        # =====================================
-        matches = re.findall(r"\|.*?\|\s*(\d+)\s*\|\s*(\d+)\s*\|", result.stdout)
-
-        if matches:
-            frames, bytes = matches[-1]  # last row will have totals
-            logger.always(f"Total frames: {frames}, Total bytes: {bytes}")
-            return int(frames), int(bytes)
-        return 0, 0
+        frame_count = 0
+        total_bytes = 0
+        with open(pcap_file, 'rb') as f:
+            try:
+                reader = dpkt.pcap.Reader(f)
+            except ValueError:
+                f.seek(0)
+                reader = dpkt.pcapng.Reader(f)
+            for _, buf in reader:
+                frame_count += 1
+                total_bytes += len(buf)
+        logger.always(f"Total frames: {frame_count}, Total bytes: {total_bytes}")
+        return frame_count, total_bytes
 
     @staticmethod
-    def read_pcap(pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None, iteration_counter=0):
+    def read_pcap(pcap_file, fields, display_filter=None, start_frame=None, finish_frame=None, max_frames=None):
         """
-        Reads a pcap file using the tshark command and returns the raw frame data.
+        Reads a pcap file using the tshark command and yields frame data one frame at a time.
 
         :param pcap_file: Path to the pcap file
-        :param fields: Set of fields to extract (e.g., ['_ws_col_Info', '_ws.col.Protocol'])
-        :param display_filter: Optional display filter (e.g., 'http')
+        :param fields: List of fields to extract (e.g., ['frame.number', '_ws.col.Info'])
+        :param display_filter: Optional display filter (e.g., 'rtps')
         :param start_frame: Optional start frame number
         :param finish_frame: Optional finish frame number
         :param max_frames: Optional limit on number of packets
-        :return: List of dictionaries (field, value) pairs for each frame
+        :return: Generator of dictionaries (field, value) pairs for each frame
         """
+        fields = list(fields)
+
         if not os.path.exists(pcap_file):
             logger.error(f"PCAP file {pcap_file} does not exist.")
             raise FileNotFoundError(f"PCAP file {pcap_file} does not exist.")
 
         # -2 performs a two-pass read of the pcap file, which collects all the discovery data
         # https://www.wireshark.org/docs/man-pages/tshark.html
-        cmd = ['tshark', '-2', '-r', pcap_file, '-T', 'fields']
+        cmd = ['tshark', '-2', '-r', pcap_file, '-n', '-T', 'fields']
 
         # Add each field to the command
         for field in fields:
@@ -127,20 +116,28 @@ class TsharkReader:
             cmd.extend(['-c', str(max_frames)])
 
         logger.info(f"Running command: {' '.join(cmd)}")
+        frame_count = 0
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            raw_frames = result.stdout.strip().split('\n')
-
-            if raw_frames == ['']:
+            for line in proc.stdout:
+                line = line.rstrip('\n')
+                if not line:
+                    continue
+                values = line.split('\t')
+                yield {field: value for field, value in zip(fields, values)}
+                frame_count += 1
+            proc.stdout.close()
+            proc.wait()
+            if proc.returncode != 0:
+                stderr_output = proc.stderr.read()
+                logger.error("Error running tshark.")
+                raise subprocess.CalledProcessError(proc.returncode, cmd, stderr=stderr_output)
+            if frame_count == 0:
                 raise InvalidPCAPDataException("No RTPS frames found in the pcap file.", log_level=logging.ERROR)
-
-            logger.always(f"Iteration {iteration_counter}: tshark returned {len(raw_frames)} frames")
-
-            frame_dict = []
-            for raw_frame in raw_frames:
-                values = raw_frame.split('\t')
-                frame_dict.append({field: value for field, value in zip(fields, values)})
-            return frame_dict
-        except subprocess.CalledProcessError as e:
-            logger.error("Error running tshark.")
-            raise e
+        finally:
+            if not proc.stdout.closed:
+                proc.stdout.close()
+            if not proc.stderr.closed:
+                proc.stderr.close()
+            if proc.poll() is None:
+                proc.wait()

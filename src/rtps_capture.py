@@ -89,34 +89,26 @@ class RTPSCapture:
         """
         logger.always("Reading data from pcap file using the provided method...")
 
-        chunk_size = 100000
-        frame_dict = []
-        for iteration_counter, sliding_start_frame in enumerate(range(start_frame, finish_frame, chunk_size)):
-            sliding_finish_frame = min(sliding_start_frame + chunk_size - 1, finish_frame)
-            logger.debug(f"Reading frames {sliding_start_frame} to {sliding_finish_frame}")
-            frame_dict.extend(read_pcap_method(str(self.pcap_file_path), fields, display_filter, sliding_start_frame,
-                                               sliding_finish_frame, max_frames, iteration_counter))
-        logger.always(f"Total frames read from pcap: {len(frame_dict)}")
-        self._process_frames(frame_dict)
+        frames_gen = read_pcap_method(str(self.pcap_file_path), fields, display_filter, start_frame, finish_frame, max_frames)
+        self._process_frames(frames_gen, total=finish_frame - start_frame)
 
-    def _process_frames(self, frame_dict):
+    def _process_frames(self, frame_dict, total=None):
         """
         Processes frame dictionary list and populates the RTPSCapture object.
 
-        :param frame_data: List of dictionaries containing (field, value) pairs for each frame
-        :param fields: Set of fields to extract
+        :param frame_data: Generator or list of dictionaries containing (field, value) pairs for each frame
+        :param total: Optional total frame count hint for the progress bar
         """
-        if not frame_dict:
-            raise InvalidPCAPDataException("No RTPS frames to process")
-
         exception_counts = {
             "frame_critical_errors": 0,
             "frame_errors": 0,
             "frame_warnings": 0,
             "discovery_warnings": 0
         }
+        frames_received = 0
 
-        for frame in tqdm(frame_dict, disable=TEST_MODE):
+        for frame in tqdm(frame_dict, total=total, disable=TEST_MODE):
+            frames_received += 1
             try:
                 self.add_frame(RTPSFrameBuilder(frame).build())  # Create a RTPSFrame object for each record
             except InvalidPCAPDataException as e:
@@ -139,6 +131,7 @@ class RTPSCapture:
                 logger.debug(f"Frame {int(frame['frame.number']):09d} ignored. Message: {e}")
                 continue
 
+        logger.always(f"tshark returned {frames_received} frames")
         logger.always(f"Discovery warnings: {exception_counts['discovery_warnings']} | "
                       f"Critical errors: {exception_counts['frame_critical_errors']} | "
                       f"Frame warnings: {exception_counts['frame_warnings']} | "
