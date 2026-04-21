@@ -46,6 +46,7 @@ class SubmessageTypes(Flag):
 SUBMESSAGE_COMBINATIONS = [
     SubmessageTypes.DISCOVERY | SubmessageTypes.DATA_P,
     SubmessageTypes.DISCOVERY | SubmessageTypes.DATA_RW,
+    SubmessageTypes.DISCOVERY | SubmessageTypes.DATA_RW | SubmessageTypes.FRAGMENT,
     SubmessageTypes.DISCOVERY | SubmessageTypes.REPAIR,
     SubmessageTypes.DISCOVERY | SubmessageTypes.HEARTBEAT,
     SubmessageTypes.DISCOVERY | SubmessageTypes.PIGGYBACK | SubmessageTypes.HEARTBEAT,

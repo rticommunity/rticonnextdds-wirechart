@@ -97,7 +97,7 @@ class RTPSSubmessageBuilder:
             return SubmessageTypes.DATA
         elif sm_type == "DATA(p)":
             return SubmessageTypes.DATA_P
-        elif sm_type in {"DATA(r)", "DATA(w)"}:
+        elif sm_type in {"DATA(r)", "DATA(w)", "DATA_FRAG(r)", "DATA_FRAG(w)"}:
             return SubmessageTypes.DATA_RW
         elif re.search(r'DATA\([pwr]\[UD]\)', sm_type):
             return SubmessageTypes.STATE
