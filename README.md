@@ -1,12 +1,14 @@
-<img src="./img/wirechart_icon.png">
-
 # Wirechart
+
+<img src="./img/wirechart_icon.png">
 
 Wirechart analyzes DDS traffic based on an input PCAP file.  It provides statics about the total number of DDS topics in a capture and insight into the traffic for each topic.  Wirechart presents some basic data in the terminal and the full analysis is presented visually and can optionally be saved to an `*.xlsx` file in a format that can be easily converted to a pivot table.
 
 ⚠️ **Note:** Wirechart depends on information exchanged during the discovery process to perform analytics. For the most accurate results, you must start the packet capture prior to starting your DDS application.
 
 ## Requirements
+
+- Python 3.11 or newer
 
 ### Tkinter
 
@@ -19,6 +21,7 @@ pip install --upgrade pillow
 ```
 
 ### Python Dependencies
+
 The application requires the following Python libraries:
 
 - `pandas`: For data manipulation and analysis.
@@ -33,7 +36,9 @@ Install the dependencies using:
 ```bash
 pip install pandas matplotlib mplcursors networkx openpyxl tqdm
 ```
+
 #### Python Virtual Environment
+
 [requirements.txt](./config/requirements.txt) will install the exact version of the tools above:
 
 ```bash
@@ -56,8 +61,8 @@ deactivate
 ### External Tools
 
 - `tshark`: Required for extracting data from PCAP files.
-    - Install [Wireshark](https://www.wireshark.org/download.html), which installs `tshark` by default.  See more details [here](https://tshark.dev/setup/install/) on installing `tshark` standalone from Wireshark.
-    - Ensure `tshark` is accessible from your system's `PATH`.
+  - Install [Wireshark](https://www.wireshark.org/download.html), which installs `tshark` by default.  See more details [here](https://tshark.dev/setup/install/) on installing `tshark` standalone from Wireshark.
+  - Ensure `tshark` is accessible from your system's `PATH`.
 
 ## Usage
 
@@ -67,25 +72,25 @@ usage: python3 wirechart.py
 
 ### Configuration Description
 
-<pre>
+```text
 PCAP File               Required to specify the PCAP file.
 Output                  Specify an output path for statistics and logs.  Default is 'output'.
 Frame Range             Specify the range of frames (inclusive) to analyze.  Default is all frames.
 Console Log Level       Specify the console log level (DEBUG, INFO, WARNING, *ERROR*, CRITICAL).
 File Log Level          Specify the file log level (DEBUG, *INFO*, WARNING, ERROR, CRITICAL).
 Load from PKL           Load PCAP frames from a previously saved Python PKL file.
-</pre>
+```
 
 The Analysis GUI provides you the option to save the capture to a Python PKL file.  This is recommended for large PCAPs, as loading a previously saved file from a PKL file is far more efficient than loading it again using `tshark`.
 
 ## Details
 
 - **Length Calculation:** The size in bytes is calculated based on the entire frame size, including IP, UDP, and RTPS headers.  The cumulative header length is attributed to the first RTPS entity submessage (often a `DATA` submessage).  Interpreter submessages (e.g. `INTO_TS`) are also attributed to the first entity submessage.  Any subsequence submessages (e.g. a `PIGGYBACK_HEARTBEAT`) will be the actual submessage length.  For example, if a frame has `INFO_TS`, `DATA`, and `HEARTBEAT` submessages, the length of each submessage will be:
-    - `DATA`: Length of IP, UDP, and RTPS headers + Length of `INFO_TS` + Length of `DATA`
-    - `HEARTBEAT` Length of `HEARTBEAT`
+  - `DATA`: Length of IP, UDP, and RTPS headers + Length of `INFO_TS` + Length of `DATA`
+  - `HEARTBEAT` Length of `HEARTBEAT`
 - **Node Graphs:**
-    - Node graphs will only be accurate for RELIABLE DW/DR pairs.  It's possible that a BEST_EFFORT DW/DR will display, but not guaranteed.  If the DW starts before the DR, a `GAP` submessage will be sent when the DR matches, which has the data required to show up on the node graph. See issues [4](https://github.com/rticommunity/rti-wirechart/issues/4) and [25](https://github.com/rticommunity/rti-wirechart/issues/25).
-    - Node graphs do not differentiate between domains.  For example, if the topic `Squares` is in both domains 0 and 1, they will display in the same graph. See issue [26](https://github.com/rticommunity/rti-wirechart/issues/26).
+  - Node graphs will only be accurate for RELIABLE DW/DR pairs.  It's possible that a BEST_EFFORT DW/DR will display, but not guaranteed.  If the DW starts before the DR, a `GAP` submessage will be sent when the DR matches, which has the data required to show up on the node graph. See issues [4](https://github.com/rticommunity/rti-wirechart/issues/4) and [25](https://github.com/rticommunity/rti-wirechart/issues/25).
+  - Node graphs do not differentiate between domains.  For example, if the topic `Squares` is in both domains 0 and 1, they will display in the same graph. See issue [26](https://github.com/rticommunity/rti-wirechart/issues/26).
 
 ### Known Issues
 
@@ -94,8 +99,8 @@ The Analysis GUI provides you the option to save the capture to a Python PKL fil
 ### Test Versions
 
 - Windows 11
-    - tshark: 4.4.6
-    - Python: 3.12.0, 3.13.3
+  - tshark: 4.4.6
+  - Python: 3.12.0, 3.13.3
 - Ubuntu 22.04
-    - tshark: 4.4.6
-    - Python: 3.10.12
+  - tshark: 4.4.6
+  - Python: 3.10.12

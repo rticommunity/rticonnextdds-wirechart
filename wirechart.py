@@ -12,12 +12,26 @@
 ##############################################################################################
 
 # Third-Party Library Imports
+import sys
 import tkinter as tk
 
 # Project-Specific Imports
 from src.gui.config_gui import ConfigGui
 
+
+MIN_PYTHON = (3, 11)
+
+
+def _enforce_minimum_python_version() -> None:
+    if sys.version_info < MIN_PYTHON:
+        required = ".".join(str(part) for part in MIN_PYTHON)
+        current = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+        raise SystemExit(
+            f"Wirechart requires Python {required} or newer. Current version: {current}."
+        )
+
 if __name__ == "__main__":
+    _enforce_minimum_python_version()
     root = tk.Tk()
     icon = tk.PhotoImage(file="./img/wirechart_icon.png")
     root.iconphoto(True, icon)
